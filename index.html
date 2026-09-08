@@ -32,7 +32,7 @@
   --font-mono: "Courier New", "Lucida Console", monospace;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --die: clamp(40px, 3.6vw, 58px);
+  --die: clamp(36px, 2.7vw, 46px);
 }
 
 * { box-sizing: border-box; }
@@ -196,10 +196,10 @@ body::after {
 /* ============================================================
    BOARD — quarantine segments, tools, staff
    ============================================================ */
-#wards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
-.ward { border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
+#wards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.ward { flex: 0 0 auto; border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
 .ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
-.ward .beds { display: flex; gap: 8px; justify-content: space-between; }
+.ward .beds { display: flex; gap: 6px; justify-content: flex-start; }
 .bed { display: flex; flex-direction: column; gap: 4px; }
 .slot {
   width: calc(var(--die) + 8px); height: calc(var(--die) + 8px);
@@ -217,7 +217,10 @@ body::after {
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; min-width: 64px; }
 
-#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-bottom: 8px; }
+#work { display: grid; grid-template-columns: minmax(170px, max-content) 1fr; gap: 12px; align-items: start; margin-bottom: 8px; }
+#staff { display: flex; flex-direction: column; gap: 6px; }
+#staff .lbl, #work .board-row { min-height: 18px; }
+#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
 .dept-tile {
   border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2);
   padding: 5px 6px; min-height: 58px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
@@ -242,11 +245,11 @@ body::after {
 .dept-tile .meep-on { position: absolute; right: 4px; bottom: 4px; }
 
 .meeple {
-  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border: 1px solid var(--border);
-  background: var(--panel-2); border-radius: 14px; cursor: default; font-size: 11px; transition: box-shadow .2s;
+  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border);
+  background: var(--panel-2); border-radius: 6px; cursor: default; font-size: 12px; min-height: 40px; transition: box-shadow .2s;
 }
-.meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
-.meeple .key { color: var(--text-dim); font-size: 9px; }
+.meeple .dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #000; flex: none; }
+.meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
 .dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); }
 .meeple.avail { cursor: pointer; border-color: var(--green-dark); }
@@ -364,7 +367,7 @@ body::after {
    ACTIONS bar + buttons
    ============================================================ */
 #strip {
-  position: sticky; top: 0; z-index: 5; margin: 6px 0 12px;
+  position: sticky; bottom: 0; z-index: 5; margin: 12px 0 0;
   background: var(--panel); border: 1px solid var(--amber-dim); padding: 8px 10px;
   box-shadow: 0 0 14px rgba(255,176,0,0.12), 0 6px 12px rgba(0,0,0,0.6);
 }
@@ -465,8 +468,10 @@ details.addons summary::-webkit-details-marker { display: none; }
     grid-template-areas: "hud" "board" "center" "side";
   }
   #board, #center { overflow: visible; }
-  #strip { top: 0; }
-  #wards { grid-template-columns: 1fr; }
+  #strip { bottom: 0; }
+  #work { grid-template-columns: 1fr; }
+  #staff { flex-direction: row; flex-wrap: wrap; }
+  #staff .lbl { width: 100%; }
   #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
 </style>
@@ -2646,8 +2651,11 @@ function renderBoard() {
     html += '</div></div>';
   });
   html += '</div>';
-  html += renderStrip();
-  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
+  let staff = '<div id="staff"><span class="lbl">Staff</span>';
+  let key = 0;
+  for (const m of p.meeples) staff += renderMeeple(p, m, m.off ? null : ++key);
+  staff += '</div>';
+  html += `<div id="work">${staff}<div><div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
   for (const d of p.departments) {
     const cls = [];
     const def = DEPT_DEFS[d.type];
@@ -2665,11 +2673,7 @@ function renderBoard() {
     const clickable = cls.includes("can") || cls.includes("returnable");
     html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
   }
-  html += '</div>';
-  html += '<div class="board-row"><span class="lbl">Staff</span>';
-  let key = 0;
-  for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
-  html += '</div>';
+  html += '</div></div></div>';
   if (p.specialists.length && (returning || consult)) {
     html += `<div class="board-row"><span class="lbl">Specialists</span><span class="stack-info">${returning ? "click one to return it for an intel token" : "click one for the Consultant to shadow"}</span></div><div id="specs">`;
     for (const sp of p.specialists) {
@@ -2689,6 +2693,7 @@ function renderBoard() {
   html += '</span>';
   if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
   html += '</div></div>';
+  html += renderStrip();
   el.innerHTML = html;
 }
 function renderCenter() {
