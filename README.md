@@ -28,7 +28,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 
 ## Features
 
-- **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, 6 starting tool types in 9 slots, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
+- **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, the six starting tools, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
 - **Two modes** — Vs 1–3 AI SOCs (2–4 player rules, including the 2-player extra reveal) or the rulebook's solo score-chase with Audit Reports (draw 4 keep 3, one-of-each reveal, bottom-row filing)
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
 - **4 presets** — Beginner, Standard (the full base game vs two rivals), Solo, Hard
@@ -43,12 +43,12 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 
 | Tool (Dice Hospital original) | Effect |
 |---|---|
-| Sandbox (Critical Care Unit) · ×2 on the starting board | Heal one red host 1 step |
-| Forensics Lab (Oncology) · ×2 | Heal one yellow host 1 step |
-| Patch Console (Pharmacy) · ×2 | Heal one green host 1 step |
-| War Room (Intensive Care) | Heal one host at 1–2 one step |
-| SIEM Console (Imaging) | Heal one host at 3–4 one step |
-| Help Desk (Clinic) | Heal one host at 5–6 one step |
+| Sandbox (Critical Care Unit) · starting | Heal one red host 1 step |
+| Forensics Lab (Oncology) · starting | Heal one yellow host 1 step |
+| Patch Console (Pharmacy) · starting | Heal one green host 1 step |
+| War Room (Intensive Care) · starting | Heal one host at 1–2 one step |
+| SIEM Console (Imaging) · starting | Heal one host at 3–4 one step |
+| Help Desk (Clinic) · starting | Heal one host at 5–6 one step |
 | Reimage Station (Operating Theatre) | Heal one red host 3 steps |
 | Kill-Chain Lab (Cardiology) | Heal exactly 3 red hosts of consecutive values 1 step each |
 | Decryptor (Anaesthesia) | Heal exactly 3 red hosts of the same value 1 step each |
@@ -87,7 +87,7 @@ No queues: roll 4 hosts and keep 3 each intake (a kept total under 9 earns an in
 
 ## What's approximated
 
-The rulebook doesn't print the starting board's exact 9-slot layout, the 15 Event cards, or the 15 Medical Report cards. The starting layout is assumed to be two each of the colour tools plus one each of the value tools (`START_DEPTS` at the top of `index.html`). Audit Reports and Incident Events are PumaTriage originals in the same spirit. Final Round Collections slots are generated randomly. Adjust the tables at the top of `index.html` if your copy differs.
+The rulebook doesn't print the 15 Event cards or the 15 Medical Report cards, and its component list says each starting board "depicts 9 hospital departments" while only six starting types exist; the starting SOC uses one of each (`START_DEPTS` at the top of `index.html`) on the reading that the count includes the station, discharge and mortuary areas. Audit Reports and Incident Events are PumaTriage originals in the same spirit. Final Round Collections slots are generated randomly. Adjust the tables at the top of `index.html` if your copy differs.
 
 ## Keyboard Shortcuts
 
