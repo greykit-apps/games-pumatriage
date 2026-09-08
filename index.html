@@ -155,7 +155,7 @@ body::after {
 }
 .die.o-red::after { --orig: var(--red); } .die.o-yellow::after { --orig: var(--yellow); } .die.o-green::after { --orig: var(--green); }
 .die.v-1, .die.v-2 { background: #1a0505; }
-.die.clickable { cursor: pointer; }
+.die.clickable { cursor: pointer; touch-action: manipulation; }
 .die.clickable:hover { transform: translateY(-2px); }
 .die.target-ok { animation: target-pulse 1s ease-in-out infinite; }
 @keyframes target-pulse {
@@ -734,6 +734,7 @@ const UI = {
   flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
+  lastDieClick: null,
 };
 const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
 // Mutates in place: handlers hold a reference to UI.sel across a reset.
@@ -1814,11 +1815,32 @@ function onSpecCardClick(uid) {
   if (inPhase("activate", "consultant")) { const s = specOf(human(), uid); if (s && s.type !== "consultant") onConsultantPick(uid); return; }
 }
 function toggleDie(list, uid) { const i = list.indexOf(uid); if (i >= 0) list.splice(i, 1); else list.push(uid); }
+// A quick second click on the same host commits the selection; a slow second
+// click still toggles it off. Tracked by uid and time rather than the native
+// dblclick event, because the board is rebuilt between the two clicks.
+const DBLCLICK_MS = 350;
+function isDoubleClick(uid) {
+  const now = Date.now(), last = UI.lastDieClick;
+  UI.lastDieClick = { uid, t: now };
+  if (last && last.uid === uid && now - last.t < DBLCLICK_MS) { UI.lastDieClick = null; return true; }
+  return false;
+}
+function keepCommit(uid) {
+  const s = UI.sel, p = human();
+  if (uid !== p.epidemicDie && !s.dice.includes(uid) && s.dice.length < 3) s.dice.push(uid);
+  if (s.dice.length === 3) onKeepConfirm(); else updateAll();
+}
+function overflowCommit(uid) {
+  const O = G.overflow;
+  if (findDie(human(), uid) && !O.marked.includes(uid) && O.marked.length < O.shortage) O.marked.push(uid);
+  if (O.marked.length === O.shortage) onOverflowConfirm(); else updateAll();
+}
 function onDieClick(uid) {
   if (!G || UI.animating) return;
-  if (inPhase("setup", "startDice")) return onStartDie(uid);
-  if (inPhase("intake", "keep")) return onKeepToggle(uid);
-  if (inPhase("intake", "place") && G.overflow) return onOverflowToggle(uid);
+  const dbl = isDoubleClick(uid);
+  if (inPhase("setup", "startDice")) { if (dbl) { UI.sel.pending = null; onStartConfirm(); return; } return onStartDie(uid); }
+  if (inPhase("intake", "keep")) return dbl ? keepCommit(uid) : onKeepToggle(uid);
+  if (inPhase("intake", "place") && G.overflow) return dbl ? overflowCommit(uid) : onOverflowToggle(uid);
   if (inPhase("final", "collections")) return onCollectDie(uid);
   if (!inPhase("activate", "human")) return;
   const p = human(), s = UI.sel, die = findDie(p, uid);
@@ -1827,6 +1849,12 @@ function onDieClick(uid) {
     case "targeting":
     case "spec":
       if (!UI.legalTargets.has(uid)) return;
+      if (dbl) {
+        if (!s.dice.includes(uid)) s.dice.push(uid);
+        computeLegal();
+        if (targetsComplete()) { confirmTargets(); return; }
+        break;
+      }
       toggleDie(s.dice, uid);
       break;
     case "intelHeal": {
@@ -2750,11 +2778,11 @@ function promptFor() {
   if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("New game", "showMainMenu()")] };
   if (UI.animating) return { text: "…", buttons: [] };
   if (ph === "setup" && st === "admin") return { text: "The CISO hands you two directives. Keep one; it scores or shields for the whole game." };
-  if (ph === "setup" && st === "startDice") return { text: "Your first hosts arrive at 3, 4 and 5. Click two to swap their values, then confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
+  if (ph === "setup" && st === "startDice") return { text: "Your first hosts arrive at 3, 4 and 5. Click two to swap their values; double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
   if (st === "extraReveal") return { text: "Two-SOC table: as Incident Commander, reveal one extra tool or one extra specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
   if (ph === "intake" && st === "pick") return { text: "Choose an escalation queue. Low numbers carry sicker hosts but improve first and the lowest taken earns an intel token." };
-  if (ph === "intake" && st === "keep") return { text: "Keep 3 of the 4 rolled hosts. The 4th goes back in the bag. A kept total under 9 earns an intel token.", buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
-  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full. Mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} on your board to write off as ${plural(G.overflow.shortage, "a breach", "breaches")}.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "intake" && st === "keep") return { text: "Keep 3 of the 4 rolled hosts. The 4th goes back in the bag. A kept total under 9 earns an intel token. Double-click a host to confirm.", buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
+  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full. Mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} on your board to write off as ${plural(G.overflow.shortage, "a breach", "breaches")}. Double-click the last one to confirm.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
   if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "One tool and one specialist are revealed. Take one; the other goes to the bottom of its stack." : "Take one improvement: deploy a tool or hire a specialist. Specialists bring an extra pair of hands." };
   if (ph === "improve" && st === "return") return { text: "Optionally return one of your improvements (even the one you just took) to the bottom of its stack for an intel token.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
   if (ph === "activate" && st === "consultant") return { text: "Pick a specialist on your board for the Consultant to shadow.", buttons: [B("Skip", "onConsultantSkip()")] };
@@ -2765,8 +2793,8 @@ function promptFor() {
     switch (s.state) {
       case "idle": return { text: "Click an analyst, then a tool. Worked hosts move to the lower slot and skip dwell time. Hosts healed to 7 are restored.", buttons: [endB, undoB] };
       case "meepleSel": return { text: "Now click a glowing tool. Dimmed tools have no valid targets.", buttons: [B("Cancel", "cancelSel()"), undoB] };
-      case "targeting": { const dept = deptOf(p, s.deptUid); const def = DEPT_DEFS[dept.type]; return { text: `${def.name}: ${deptDesc(def)} Click glowing hosts, then confirm.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] }; }
-      case "spec": return { text: `${s.spec.name}: ${specDesc(s.spec)} Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
+      case "targeting": { const dept = deptOf(p, s.deptUid); const def = DEPT_DEFS[dept.type]; return { text: `${def.name}: ${deptDesc(def)} Click glowing hosts; double-click the last one to confirm.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] }; }
+      case "spec": return { text: `${s.spec.name}: ${specDesc(s.spec)} Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the target"} and double-click to confirm, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
       case "choice": return { text: `${s.spec.name} triggered. Choose in the shared area.`, buttons: [B("Skip", "skipSpec()")] };
       case "admReturn": return { text: "Click a host on your board to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
       case "intelHeal": return { text: "Intel token: click any host to heal it 1 step. It counts as worked.", buttons: [B("Cancel", "cancelSel()")] };
@@ -2965,6 +2993,7 @@ function showHowToPlay(tab) {
         <li><b>B</b> — spend an intel token to heal</li>
         <li><b>H</b> or <b>?</b> — this help</li>
         <li><b>M</b> — toggle sound</li>
+        <li><b>Double-click a host</b> — confirm the current selection (a slow second click deselects it instead)</li>
         <li><b>Tab</b> — every host, tool and analyst is reachable by keyboard</li>
       </ul>
     </div>
@@ -3017,7 +3046,7 @@ function showGameOver() {
 const TUTORIAL_STEPS = [
   ["Welcome, Commander", "Compromised hosts arrive as dice. The face is integrity: 1 is nearly lost, 6 is nearly clean. Push a host past 6 and it is restored to production for reputation."],
   ["Quarantine", "Your four segments hold three hosts each. New hosts land in the upper Queued slot. Anything still Queued at the end of a shift degrades by 1, and a 1 that degrades is a breach."],
-  ["Tools and staff", "During Activation, click an analyst, then a tool, then the glowing hosts it can work on. The host moves to its Worked slot and is safe from dwell time this shift."],
+  ["Tools and staff", "During Activation, click an analyst, then a tool, then the glowing hosts it can work on. Double-click a host to confirm; a slow second click deselects it instead. The host moves to its Worked slot and is safe from dwell time this shift."],
   ["Colours", "Red, yellow and green are just colours. Some tools and specialists only work on one colour. An intel token can retag a host for a shift when you need a match."],
   ["Improve", "Each shift you take one improvement: a tool gives you more ways to heal, a specialist gives you an extra pair of hands with a follow-up ability."],
   ["Escalation queues", "Lower-numbered queues carry sicker hosts, but their owner improves first, and the lowest taken earns an intel token and the Commander role. Don't take more than you can house."],

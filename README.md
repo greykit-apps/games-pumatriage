@@ -94,6 +94,7 @@ The rulebook doesn't print the starting board's exact 9-slot layout, the 15 Even
 | Key | Action |
 |---|---|
 | 1–9 | Select an analyst or specialist |
+| Double-click a host | Confirm the current selection (a slow second click deselects it) |
 | Enter | Confirm the highlighted action |
 | Escape | Cancel selection / close dialogs |
 | U | Undo the last placement |
