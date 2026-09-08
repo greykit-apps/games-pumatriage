@@ -500,9 +500,10 @@ function dischargePoints(n) {
 // Dice per colour by table size. The box has 21 of each; 3p removes 3, 2p removes 6, solo removes 10.
 const DICE_PER_COLOUR = { 2: 15, 3: 18, 4: 21, solo: 11 };
 
-// The starting board shows 9 department spaces of 6 types. The rulebook
-// doesn't spell out the multiset; this is the assumed layout. Adjust here.
-const START_DEPTS = ["ccu", "ccu", "oncology", "oncology", "pharmacy", "pharmacy", "intensive", "imaging", "clinic"];
+// The starting board has one of each of the six starting departments. The
+// rulebook's component list says "9 hospital departments", which appears to
+// count the Nurses' Station, discharge and mortuary areas too. Adjust here.
+const START_DEPTS = ["ccu", "oncology", "pharmacy", "intensive", "imaging", "clinic"];
 
 const NURSES_AT_START = 3;
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
@@ -2955,7 +2956,7 @@ function showHowToPlay(tab) {
         <li><b>Shift change.</b> Staff return, Worked hosts move back to Queued, the display is recycled and refilled. Skipped after shift 8.</li>
       </ol>
     </div>
-    <div ${panel("tools")}><table class="help-table"><tr><th>Tool</th><th>Staff it to…</th></tr>${toolRows}</table><p class="hint">The starting SOC has 9 tool slots: two each of Sandbox, Forensics Lab and Patch Console, and one each of War Room, SIEM Console and Help Desk. Improvement tools come two of each in the stack.</p></div>
+    <div ${panel("tools")}><table class="help-table"><tr><th>Tool</th><th>Staff it to…</th></tr>${toolRows}</table><p class="hint">The starting SOC has one of each of the six starting tools. Improvement tools come two of each in the stack.</p></div>
     <div ${panel("specs")}><table class="help-table"><tr><th>Specialist</th><th>Follow-up</th></tr>${specRows}</table><p class="hint">Any staff member can staff any tool; colours only matter for the follow-up trigger.</p></div>
     <div ${panel("solo")}>
       <h4>CISO Directives (rivals mode)</h4>
