@@ -32,7 +32,7 @@
   --font-mono: "Courier New", "Lucida Console", monospace;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --die: 40px;
+  --die: clamp(40px, 3.6vw, 58px);
 }
 
 * { box-sizing: border-box; }
@@ -60,14 +60,13 @@ body::after {
    ============================================================ */
 #app {
   height: 100vh; display: grid; gap: 8px; padding: 8px;
-  grid-template-columns: minmax(430px, 1.2fr) minmax(300px, 0.9fr) minmax(230px, 0.6fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "hud hud hud" "board center side" "board actions side";
+  grid-template-columns: minmax(520px, 1.6fr) minmax(250px, 0.75fr) minmax(230px, 0.65fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "hud hud hud" "board center side";
 }
 #hud-top { grid-area: hud; }
 #board   { grid-area: board; overflow: auto; }
 #center  { grid-area: center; overflow: auto; }
-#actions { grid-area: actions; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 
 .panel {
@@ -90,6 +89,15 @@ body::after {
 #hud-top .sub { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
 #hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+#phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
+.pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
+.pstep.done { color: var(--green-dark); border-color: #163016; }
+.pstep.on { color: var(--amber); border-color: var(--amber); background: rgba(255,176,0,0.12); text-shadow: 0 0 6px rgba(255,176,0,0.5); }
+.ticks { display: flex; gap: 2px; margin-top: 2px; }
+.ticks span { width: 6px; height: 8px; background: #1a3a1a; display: inline-block; }
+.ticks span.on { background: var(--green); }
+.bagdots { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.bagdots .mini-dot { width: 9px; height: 9px; }
 .stat .lbl { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
 .stat .val { font-size: 16px; color: var(--green); transition: color .3s; }
 .stat.flash .val { animation: stat-flash .6s ease-out; }
@@ -176,21 +184,21 @@ body::after {
 /* ============================================================
    BOARD — quarantine segments, tools, staff
    ============================================================ */
-#wards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.ward { border: 1px solid var(--border); background: var(--panel-2); padding: 4px 6px 6px; }
+#wards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 4px; }
+.ward { border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
 .ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
-.ward .beds { display: flex; gap: 6px; justify-content: space-around; }
-.bed { display: flex; flex-direction: column; gap: 3px; }
+.ward .beds { display: flex; gap: 8px; justify-content: space-between; }
+.bed { display: flex; flex-direction: column; gap: 4px; }
 .slot {
   width: calc(var(--die) + 8px); height: calc(var(--die) + 8px);
-  border: 1px dashed #234023; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; border-radius: 6px; display: flex; align-items: center; justify-content: center;
   position: relative;
 }
-.slot.t { border-color: #1c2e1c; background: rgba(0,255,65,0.03); }
-.slot.u::before, .slot.t::before {
-  position: absolute; left: 3px; top: 1px; font-size: 7px; letter-spacing: 1px; color: #2c4a2c;
-}
-.slot.u::before { content: "Q"; } .slot.t::before { content: "W"; }
+.slot.u.empty { border-color: #1a2e1a; border-style: dashed; }
+.slot.u.empty.open { border-color: #2a5a2a; }
+.slot.t.empty::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #1a2e1a; }
+.slot.t { background: rgba(0,255,65,0.03); }
+.h3-note { float: right; color: var(--text-dim); letter-spacing: 0; text-transform: none; font-size: 10px; }
 .slot.drop-ok { border-color: var(--amber); box-shadow: inset 0 0 8px rgba(255,176,0,0.3); cursor: pointer; }
 .slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
 
@@ -204,7 +212,7 @@ body::after {
   display: flex; flex-direction: column; justify-content: space-between;
 }
 .dept-tile .dn { font-size: 11px; color: var(--white); line-height: 1.2; }
-.dept-tile .dr { font-size: 10px; color: var(--text-dim); margin-top: 3px; letter-spacing: 0.5px; }
+.dept-tile .dr { font-size: 11px; color: var(--green-dim); margin-top: 3px; letter-spacing: 0.3px; }
 .dept-tile.tag-red    { border-left-color: var(--red); }
 .dept-tile.tag-yellow { border-left-color: var(--yellow); }
 .dept-tile.tag-green  { border-left-color: var(--green); }
@@ -242,7 +250,7 @@ body::after {
   border-top: 3px solid var(--border);
 }
 .spec-card .sn { color: var(--white); font-size: 11px; }
-.spec-card .sd { color: var(--text-dim); }
+.spec-card .sd { color: var(--green-dim); font-size: 11px; }
 .spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
 .spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
 .spec-card.tag-blue { border-top-color: var(--blue); }
@@ -338,15 +346,33 @@ body::after {
 #log-list li { padding: 2px 0; border-bottom: 1px solid #0f1f0f; animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
 @keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 #log-list li.warn { color: var(--amber); } #log-list li.bad { color: var(--red); } #log-list li.good { color: var(--green); } #log-list li.sys { color: var(--text-dim); }
-#log-list li .ts { color: #2c5a2c; margin-right: 4px; }
+#log-list li .ts { color: #3f7f3f; margin-right: 4px; }
 
 /* ============================================================
    ACTIONS bar + buttons
    ============================================================ */
-#actions { display: flex; flex-direction: column; gap: 6px; }
-#phase-display { color: var(--amber); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-#phase-instructions { font-size: 12px; min-height: 32px; color: var(--white); }
-#action-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+#strip {
+  position: sticky; top: 0; z-index: 5; margin: 6px 0 12px;
+  background: var(--panel); border: 1px solid var(--amber-dim); padding: 8px 10px;
+  box-shadow: 0 0 14px rgba(255,176,0,0.12), 0 6px 12px rgba(0,0,0,0.6);
+}
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.strip-phase { color: var(--amber); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+.strip-shift { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.strip-rule { font-size: 12px; color: var(--green); padding: 3px 0; }
+.strip-rule b { color: var(--white); font-weight: normal; }
+.strip-rule .strip-count { color: var(--amber); margin-left: 6px; }
+.strip-rule.amber { color: var(--amber); }
+#phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
+#action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.strip-tools .hint { margin: 0 0 0 auto; }
+.ladder { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.lcell { font-size: 10px; padding: 1px 5px; border: 1px solid var(--border); color: var(--text-dim); }
+.lcell b { font-weight: normal; color: var(--green-dim); }
+.lcell.cur { color: #000; background: var(--amber); border-color: var(--amber); }
+.lcell.cur b { color: #000; }
+.lcell.next { color: var(--amber); border-color: var(--amber-dim); }
 .action-btn {
   background: transparent; color: var(--green); border: 1px solid var(--green-dark); padding: 6px 12px;
   cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s;
@@ -403,7 +429,7 @@ body::after {
 /* ============================================================
    A11Y, touch, motion, mobile
    ============================================================ */
-*:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+*:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (pointer: coarse) {
   .action-btn, .icon-btn { min-height: 44px; }
@@ -413,16 +439,17 @@ body::after {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   body::before, body::after { display: none; }
 }
-@media (max-width: 1400px) { :root { --die: 34px; } }
 @media (max-width: 960px) {
+  :root { --die: clamp(36px, 9vw, 48px); }
   body { overflow: auto; }
   #app {
     height: auto; grid-template-columns: 1fr; grid-template-rows: auto;
-    grid-template-areas: "hud" "actions" "center" "board" "side";
+    grid-template-areas: "hud" "board" "center" "side";
   }
   #board, #center { overflow: visible; }
-  #actions { position: sticky; top: 0; z-index: 100; background: var(--bg); }
+  #strip { top: 0; }
   #wards { grid-template-columns: 1fr; }
+  #phase-strip { margin-left: 0; width: 100%; overflow-x: auto; }
 }
 </style>
 </head>
@@ -433,6 +460,7 @@ body::after {
       <div class="title">PumaTriage</div>
       <div class="sub">INCIDENT RESPONSE · DICE</div>
     </div>
+    <div id="phase-strip" aria-label="Shift phases"></div>
     <div class="stats" id="hud-stats"></div>
     <div class="hud-buttons">
       <button class="icon-btn" id="btn-help" onclick="showHowToPlay()" aria-label="How to play" title="How to play (H)">?</button>
@@ -443,11 +471,6 @@ body::after {
 
   <section id="board" class="panel" aria-label="Your SOC"></section>
   <section id="center" class="panel" aria-label="Shared area"></section>
-  <section id="actions" class="panel" aria-label="Actions">
-    <div id="phase-display"></div>
-    <div id="phase-instructions"></div>
-    <div id="action-buttons"></div>
-  </section>
   <aside id="side">
     <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
     <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
@@ -2003,12 +2026,15 @@ function endActivation() {
   const p = human();
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
   const idle = p.meeples.filter(m => !m.used && !m.off).length && p.departments.some(d => canActivate(d, p));
-  if (idle && !UI.endConfirm) {
-    UI.endConfirm = true;
+  const ev = currentEvent();
+  const dmg = ev && ev.neglectMod !== undefined ? ev.neglectMod : (G.cfg.superbug ? 2 : 1);
+  const risk = untreatedDice(p).filter(d => d.value <= dmg).length;
+  if ((idle || risk) && !UI.endConfirm) {
+    UI.endConfirm = true; UI.endRisk = risk;
     setTimeout(() => { UI.endConfirm = false; if (G) updatePhaseUI(); }, 3000);
     updatePhaseUI(); return;
   }
-  UI.endConfirm = false;
+  UI.endConfirm = false; UI.endRisk = 0;
   applyEndActivation(p);
   resetSel(); UI.undo = []; UI.undoBarrier = 0;
   log("Activation complete. Waiting on dwell time.", "sys");
@@ -2539,7 +2565,9 @@ function renderBoard() {
   const p = human(), el = document.getElementById("board"), s = UI.sel;
   const live = G.phase === "activate" && G.step === "human";
   const returning = G.phase === "improve" && G.step === "return" && !UI.animating;
-  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}</h3>`;
+  const intake = G.phase === "intake" && G.step === "place";
+  const consult = G.phase === "activate" && G.step === "consultant";
+  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">top row queued · bottom row worked</span></h3>`;
   html += '<div id="wards">';
   p.wards.forEach((w, wi) => {
     const n = w.filter(b => b.u || b.t).length;
@@ -2549,54 +2577,58 @@ function renderBoard() {
       for (const k of ["u", "t"]) {
         const d = b[k];
         const x = d ? dieState(d.uid) : null;
-        html += `<div class="slot ${k}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+        html += `<div class="slot ${k}${d ? "" : " empty"}${!d && k === "u" && intake ? " open" : ""}" aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
       }
       html += '</div>';
     }
     html += '</div></div>';
   });
   html += '</div>';
+  html += renderStrip();
   html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
   for (const d of p.departments) {
     const cls = [];
-    if (d.used) cls.push("used");
-    if (live && (s.state === "meepleSel" || s.state === "targeting")) { if (UI.legalByDept[d.uid] && !d.used) cls.push("can"); else if (!d.used) cls.push("disabled"); }
+    const def = DEPT_DEFS[d.type];
+    let why = deptDesc(def);
+    if (d.used) { cls.push("used"); why = "Used this shift. " + why; }
+    if (live && (s.state === "meepleSel" || s.state === "targeting")) {
+      if (UI.legalByDept[d.uid] && !d.used) cls.push("can");
+      else if (!d.used) { cls.push("disabled"); why = "No valid targets right now. " + why; }
+    }
     if (live && s.deptUid === d.uid) cls.push("sel");
-    if (returning && d.improvement) cls.push("returnable");
+    if (returning && d.improvement) { cls.push("returnable"); why = "Click to return it for an intel token. " + why; }
     if (d.uid >= G.nextUid - 2) cls.push("new");
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
     const clickable = cls.includes("can") || cls.includes("returnable");
-    html += renderDeptTile(d.type, cls.join(" "), `data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}"`, inner);
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
   }
   html += '</div>';
-  html += '<div class="board-row"><span class="lbl">Analysts</span>';
+  html += '<div class="board-row"><span class="lbl">Staff</span>';
   let key = 0;
   for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
   html += '</div>';
-  if (p.specialists.length) {
-    html += '<div class="board-row"><span class="lbl">Specialists</span></div><div id="specs">';
+  if (p.specialists.length && (returning || consult)) {
+    html += `<div class="board-row"><span class="lbl">Specialists</span><span class="stack-info">${returning ? "click one to return it for an intel token" : "click one for the Consultant to shadow"}</span></div><div id="specs">`;
     for (const sp of p.specialists) {
       const cls = [];
       if (returning) cls.push("returnable");
-      if (G.phase === "activate" && G.step === "consultant" && sp.type !== "consultant") cls.push("clickable");
+      if (consult && sp.type !== "consultant") cls.push("clickable");
       if (p.consultantCopy === sp.type && sp.type !== "consultant") cls.push("sel");
       html += renderSpecCard(sp.type, cls.join(" "), `data-act="spec" data-uid="${sp.uid}" role="button" tabindex="0"`);
     }
     html += '</div>';
   }
-  html += '<div class="board-row"><span class="lbl">Status</span><div id="tray">';
-  html += `<span class="token intel" title="Intel tokens: heal any host 1 step or retag its colour during activation. +1 reputation each at the end.">INTEL ×${p.bloodBags}</span>`;
-  html += `<span class="token breach" title="Breach records: −${FATALITY_PENALTY} reputation each at the end.">BREACH ×${p.fatalities}</span>`;
+  const n = p.dischargedThisRound.length;
+  html += '<div class="board-row"><span class="lbl">Shift</span><div id="tray">';
   if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
-  if (p.dischargedThisRound.length) {
-    html += '<span class="stack-info">Restored:</span>';
-    for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`;
-  }
+  html += `<span class="ladder" title="Reputation for hosts restored in one shift. Restore more at once for more per host."><span class="stack-info">restore</span>`;
+  for (let i = 1; i <= 8; i++) html += `<span class="lcell ${i === n ? "cur" : i === n + 1 ? "next" : ""}">${i}<b>:${dischargePoints(i)}</b></span>`;
+  html += '</span>';
+  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
   html += '</div></div>';
   el.innerHTML = html;
 }
-
 function renderCenter() {
   const el = document.getElementById("center");
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
@@ -2645,8 +2677,6 @@ function renderCenter() {
     html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
   } else if (ph === "activate" && st === "consultant") {
     html += '<div class="center-title">Consultant</div><div class="hint">Click one of your specialists on the board for the Consultant to shadow this shift.</div>';
-  } else if (ph === "activate" && st === "human") {
-    html += renderActivationPanel();
   } else if (ph === "discharge" && st === "reports") {
     html += '<div class="center-title">Audit Reports</div>' + renderReports(true);
   } else if (ph === "final" && st === "collections") {
@@ -2700,43 +2730,48 @@ function renderReports(clickable) {
   if (G.solo.completed.length) html += `<div class="report-list"><span class="stack-info">Filed: ${G.solo.completed.length}</span></div>`;
   return html;
 }
-function renderActivationPanel() {
-  const p = human(), s = UI.sel;
-  let html = '<div class="center-title">Activation</div>';
-  const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
-  const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
-  if (m) {
-    const def = specDefForMeeple(p, m);
-    html += `<div class="rule-card"><div class="rn">${esc(meepleLabel(p, m))}</div>${def ? esc(specDesc(def)) : "Places on any one unused tool to trigger it."}</div>`;
-  }
-  if (dept) {
-    const def = DEPT_DEFS[dept.type];
-    html += `<div class="rule-card"><div class="rn">${esc(def.name)}</div>${esc(deptDesc(def))}<div class="hint">Selected ${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""}.</div></div>`;
-  }
-  if (s.state === "spec" || s.state === "choice" || s.state === "admReturn") {
-    html += `<div class="rule-card"><div class="rn">${esc(s.spec.name)} follow-up</div>${esc(specDesc(s.spec))}</div>`;
-    if (s.state === "choice") {
-      const o = s.specOpts;
-      html += '<div class="act-controls">';
-      if (o.choice === "pathologist") html += `<button class="action-btn primary" onclick="onSpecChoice('yes')">Close a breach record (+1 intel)</button><button class="action-btn" onclick="onSpecChoice('no')">No thanks</button>`;
-      if (o.choice === "admissions") html += `<button class="action-btn" onclick="onSpecChoice('return')" ${boardDice(p).length ? "" : "disabled"}>Hand off a host</button><button class="action-btn" onclick="onSpecChoice('admit')" ${emptyBeds(p).length ? "" : "disabled"}>Admit a new host</button><button class="action-btn" onclick="onSpecChoice('skip')">Skip</button><div class="hint">${o.count} ${plural(o.count, "trigger")} left.</div>`;
-      html += '</div>';
+function renderStrip() {
+  const p = human(), s = UI.sel, live = G.phase === "activate" && G.step === "human";
+  let html = `<div id="strip" aria-live="off"><div class="strip-head"><span class="strip-phase">${esc(PHASE_NAMES[G.phase] || "")}</span><span class="strip-shift">shift ${Math.min(G.round, ROUNDS)} of ${ROUNDS}</span></div>`;
+  if (live) {
+    const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
+    const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
+    if (m && !["spec", "choice", "admReturn"].includes(s.state)) {
+      const def = specDefForMeeple(p, m);
+      html += `<div class="strip-rule"><b>${esc(meepleLabel(p, m))}</b> — ${def ? esc(specDesc(def)) : "staffs any one unused tool."}</div>`;
+    }
+    if (dept && !["spec", "choice", "admReturn"].includes(s.state)) {
+      const def = DEPT_DEFS[dept.type];
+      html += `<div class="strip-rule"><b>${esc(def.name)}</b> — ${esc(deptDesc(def))}<span class="strip-count">${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""} selected</span></div>`;
+    }
+    if (["spec", "choice", "admReturn"].includes(s.state)) {
+      html += `<div class="strip-rule amber"><b>${esc(s.spec.name)}</b> — ${esc(specDesc(s.spec))}</div>`;
+      if (s.state === "choice") {
+        const o = s.specOpts;
+        html += '<div class="act-controls">';
+        if (o.choice === "pathologist") html += `<button class="action-btn primary" onclick="onSpecChoice('yes')">Close a breach record (+1 intel)</button><button class="action-btn" onclick="onSpecChoice('no')">No thanks</button>`;
+        if (o.choice === "admissions") html += `<button class="action-btn" onclick="onSpecChoice('return')" ${boardDice(p).length ? "" : "disabled"}>Hand off a host</button><button class="action-btn" onclick="onSpecChoice('admit')" ${emptyBeds(p).length ? "" : "disabled"}>Admit a new host</button><button class="action-btn" onclick="onSpecChoice('skip')">Skip</button><span class="hint">${o.count} ${plural(o.count, "trigger")} left</span>`;
+        html += '</div>';
+      }
+    }
+    if (s.state === "colour" || s.state === "intelColour") {
+      html += `<div class="strip-rule amber">${s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}: pick the colour.` : "Pick the host's colour for this shift."}<div class="colour-pick">`;
+      for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
+      html += '</div></div>';
     }
   }
-  if (s.state === "colour" || s.state === "intelColour") {
-    html += '<div class="rule-card"><div class="rn">Pick a colour</div>' + (s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}.` : "The token retags this host for the rest of the shift.") + '<div class="colour-pick">';
-    for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
-    html += '</div></div>';
+  html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
+  if (live) {
+    const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
+    const idle = p.meeples.filter(x => !x.used && !x.off).length;
+    const usable = p.departments.filter(d => canActivate(d, p)).length;
+    html += '<div class="strip-tools">';
+    html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token (the blood bag) to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
+    html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
+    html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
+    html += `<span class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} ready · ${p.bloodBags} intel</span></div>`;
   }
-  html += '<div class="act-controls">';
-  const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
-  html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
-  html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
-  html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
   html += '</div>';
-  const idle = p.meeples.filter(x => !x.used && !x.off).length;
-  const usable = p.departments.filter(d => canActivate(d, p)).length;
-  html += `<div class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} with valid targets · ${p.bloodBags} intel</div>`;
   return html;
 }
 function renderRivals() {
@@ -2759,66 +2794,74 @@ function renderRivals() {
   }
   el.innerHTML = html;
 }
+const PHASE_STEPS = [["intake", "Intake"], ["improve", "Improve"], ["activate", "Activate"], ["neglect", "Dwell"], ["discharge", "Restore"], ["shift", "Shift"]];
 function updateHUD() {
   const p = human();
+  const shiftN = Math.min(G.round, ROUNDS);
+  let ticks = '<span class="ticks">'; for (let i = 1; i <= ROUNDS; i++) ticks += `<span class="${i <= shiftN ? "on" : ""}"></span>`; ticks += '</span>';
+  const bag = `<span class="bagdots">${COLOURS.map(c => `<span class="mini-dot dot c-${c}"></span>${G.bag[c]}`).join(" ")}</span>`;
   const stats = [
-    ["Shift", `${Math.min(G.round, ROUNDS)}/${ROUNDS}`],
+    ["Shift", `${shiftN}/${ROUNDS}`, "", ticks],
     ["Reputation", p.score, p.score < 0 ? "bad" : ""],
     ["Intel", p.bloodBags],
     ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
     ["Restored", p.dischargedTotal],
-    ["Bag", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
+    ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
   ];
   const el = document.getElementById("hud-stats");
-  el.innerHTML = stats.map(([l, v, c]) => `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== v ? "flash" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span></div>`).join("");
-  for (const [l, v] of stats) UI.prevHUD[l] = v;
+  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? "Dice left in the bag by colour" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
+  for (const [l, v, , , key] of stats) UI.prevHUD[l] = key || v;
+  const ps = document.getElementById("phase-strip");
+  const idx = PHASE_STEPS.findIndex(([id]) => id === G.phase);
+  const allDone = G.phase === "final" || G.phase === "gameover";
+  ps.innerHTML = PHASE_STEPS.map(([id, label], i) => `<span class="pstep ${i === idx ? "on" : (allDone || (idx >= 0 && i < idx)) ? "done" : ""}" ${i === idx ? 'aria-current="step"' : ""}>${label}</span>`).join("");
 }
 function promptFor() {
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   const B = (label, fn, opt = {}) => ({ label, fn, ...opt });
   if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("New game", "showMainMenu()")] };
   if (UI.animating) return { text: "…", buttons: [] };
-  if (ph === "setup" && st === "admin") return { text: "The CISO hands you two directives. Keep one; it scores or shields for the whole game." };
-  if (ph === "setup" && st === "startDice") return { text: "Your first hosts arrive at 3, 4 and 5. Click two to swap their values; double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
-  if (st === "extraReveal") return { text: "Two-SOC table: as Incident Commander, reveal one extra tool or one extra specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
-  if (ph === "intake" && st === "pick") return { text: "Choose an escalation queue. Low numbers carry sicker hosts but improve first and the lowest taken earns an intel token." };
-  if (ph === "intake" && st === "keep") return { text: "Keep 3 of the 4 rolled hosts. The 4th goes back in the bag. A kept total under 9 earns an intel token. Double-click a host to confirm.", buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
-  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full. Mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} on your board to write off as ${plural(G.overflow.shortage, "a breach", "breaches")}. Double-click the last one to confirm.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
-  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "One tool and one specialist are revealed. Take one; the other goes to the bottom of its stack." : "Take one improvement: deploy a tool or hire a specialist. Specialists bring an extra pair of hands." };
-  if (ph === "improve" && st === "return") return { text: "Optionally return one of your improvements (even the one you just took) to the bottom of its stack for an intel token.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
-  if (ph === "activate" && st === "consultant") return { text: "Pick a specialist on your board for the Consultant to shadow.", buttons: [B("Skip", "onConsultantSkip()")] };
+  if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
+  if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
+  if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
+  if (ph === "intake" && st === "pick") return { text: "Click an escalation queue to take it." };
+  if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
+  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
+  if (ph === "improve" && st === "return") return { text: "Return one improvement for an intel token, or keep everything.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
+  if (ph === "activate" && st === "consultant") return { text: "Pick a specialist for the Consultant to shadow this shift.", buttons: [B("Skip", "onConsultantSkip()")] };
   if (ph === "activate" && st === "human") {
-    const undoB = B("Undo", "undo()", { disabled: !canUndo() });
-    const endLabel = UI.endConfirm ? "Sure?" : "End activation";
+    const endLabel = UI.endConfirm ? (UI.endRisk ? `Sure? ${UI.endRisk} will breach` : "Sure?") : "End activation";
     const endB = B(endLabel, "endActivation()", { primary: !p.meeples.some(m => !m.used && !m.off) || !p.departments.some(d => canActivate(d, p)), danger: UI.endConfirm, key: "E" });
     switch (s.state) {
-      case "idle": return { text: "Click an analyst, then a tool. Worked hosts move to the lower slot and skip dwell time. Hosts healed to 7 are restored.", buttons: [endB, undoB] };
-      case "meepleSel": return { text: "Now click a glowing tool. Dimmed tools have no valid targets.", buttons: [B("Cancel", "cancelSel()"), undoB] };
-      case "targeting": { const dept = deptOf(p, s.deptUid); const def = DEPT_DEFS[dept.type]; return { text: `${def.name}: ${deptDesc(def)} Click glowing hosts; double-click the last one to confirm.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] }; }
-      case "spec": return { text: `${s.spec.name}: ${specDesc(s.spec)} Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the target"} and double-click to confirm, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
-      case "choice": return { text: `${s.spec.name} triggered. Choose in the shared area.`, buttons: [B("Skip", "skipSpec()")] };
-      case "admReturn": return { text: "Click a host on your board to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
-      case "intelHeal": return { text: "Intel token: click any host to heal it 1 step. It counts as worked.", buttons: [B("Cancel", "cancelSel()")] };
-      case "intelRecolour": return { text: "Intel token: click the host to retag, then pick its new colour for this shift.", buttons: [B("Cancel", "cancelSel()")] };
-      case "intelColour": case "colour": return { text: "Pick the new colour in the shared area.", buttons: [B("Cancel", "cancelSel()")] };
+      case "idle": return { text: "Click an analyst, then a tool.", buttons: [endB] };
+      case "meepleSel": return { text: "Now click a glowing tool.", buttons: [B("Cancel", "cancelSel()")] };
+      case "targeting": return { text: "Click glowing hosts; double-click the last one to confirm.", buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] };
+      case "spec": return { text: `Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the follow-up target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
+      case "choice": return { text: "Choose the follow-up above, or skip.", buttons: [B("Skip", "skipSpec()")] };
+      case "admReturn": return { text: "Click a host to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
+      case "intelHeal": return { text: "Click any host to heal it 1 step for one intel token.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelRecolour": return { text: "Click the host to retag.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelColour": case "colour": return { text: "Pick the colour above.", buttons: [B("Cancel", "cancelSel()")] };
     }
   }
-  if (ph === "discharge" && st === "reports") return { text: "File Audit Reports with this shift's restored hosts. Only the bottom row is open; filing one slides the card above it down.", buttons: [B("File best", "onReportsBest()"), B("Done", "onReportsDone()", { primary: true })] };
-  if (ph === "final" && st === "collections") return { text: "Hand a matching host to an outside provider, or pass for the rest of the handover.", buttons: [B("Pass", "onCollectPass()", { primary: !collectionMoves(p).length })] };
+  if (ph === "discharge" && st === "reports") return { text: "Click an open Audit Report to file it with this shift's restored hosts.", buttons: [B("File best", "onReportsBest()"), B("Done", "onReportsDone()", { primary: true })] };
+  if (ph === "final" && st === "collections") return { text: "Click a host that matches an open provider slot, or pass.", buttons: [B("Pass", "onCollectPass()", { primary: !collectionMoves(p).length })] };
   if (ph === "activate" && st === "bots") return { text: "Rival SOCs are working their queues." };
-  if (ph === "neglect") return { text: "Dwell time: every host still queued degrades." };
+  if (ph === "neglect") return { text: "Every host still queued degrades." };
   if (ph === "discharge") return { text: "Restorations are scored." };
   return { text: "" };
 }
 function updatePhaseUI() {
   if (!G) return;
   const ph = G.phase;
-  document.getElementById("phase-display").textContent = `${PHASE_NAMES[ph] || ph}${G.gameOver ? "" : " · shift " + Math.min(G.round, ROUNDS)}`;
   if (UI.prevPhase !== null && UI.prevPhase !== ph && !G.gameOver && ph !== "setup" && !UI.reducedMotion) { showPhaseToast(PHASE_NAMES[ph]); sfx("phase"); }
   UI.prevPhase = ph;
   const pr = promptFor();
-  document.getElementById("phase-instructions").textContent = pr.text || "";
-  document.getElementById("action-buttons").innerHTML = (pr.buttons || []).map(b =>
+  const pi = document.getElementById("phase-instructions"), ab = document.getElementById("action-buttons");
+  if (!pi || !ab) return;
+  pi.textContent = pr.text || "";
+  ab.innerHTML = (pr.buttons || []).map(b =>
     `<button class="action-btn ${b.primary ? "primary" : ""} ${b.danger ? "danger" : ""}" onclick="${b.fn}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}${b.key ? `<span class="k">${b.key}</span>` : ""}</button>`).join("");
 }
 /* ============================================================
