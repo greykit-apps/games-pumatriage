@@ -407,11 +407,17 @@ body::after {
 .menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
 .presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
 .preset-btn.on { background: rgba(255,176,0,0.15); border-color: var(--amber); color: var(--amber); }
-.rule-row { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
+.rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
 .rule-row .rl { color: var(--white); }
-.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 1 / -1; margin-top: -2px; }
-.rule-row .rv { color: var(--amber); min-width: 90px; text-align: right; }
-.rule-row input[type="range"] { width: 100%; accent-color: var(--green); }
+.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 2; margin-top: -2px; }
+.seg { display: flex; flex-wrap: wrap; }
+.seg-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 10px; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; }
+.seg-btn + .seg-btn { margin-left: -1px; }
+.seg-btn:hover { color: var(--green); border-color: var(--green-dark); }
+.seg-btn.on { color: var(--amber); border-color: var(--amber); background: rgba(255,176,0,0.12); position: relative; z-index: 1; }
+details.addons summary { cursor: pointer; color: var(--amber); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; list-style: none; }
+details.addons summary::before { content: "▸ "; } details.addons[open] summary::before { content: "▾ "; }
+details.addons summary::-webkit-details-marker { display: none; }
 .rules-head { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
 .help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
 .help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
@@ -464,6 +470,7 @@ body::after {
     <div class="stats" id="hud-stats"></div>
     <div class="hud-buttons">
       <button class="icon-btn" id="btn-help" onclick="showHowToPlay()" aria-label="How to play" title="How to play (H)">?</button>
+      <button class="icon-btn" id="speed-btn" onclick="cycleSpeed()" aria-label="Rival and phase speed" title="Rival and phase speed: normal (S)">1×</button>
       <button class="icon-btn" id="mute-btn" onclick="toggleMute()" aria-label="Toggle sound" aria-pressed="false" title="Toggle sound (M)"></button>
       <button class="icon-btn" id="newgame-btn" onclick="newGameClick()" aria-label="New game" title="New game" style="width:auto;padding:0 8px;font-size:11px;">NEW</button>
     </div>
@@ -758,8 +765,10 @@ const UI = {
   flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
-  lastDieClick: null,
+  lastDieClick: null, speed: 1, addonsOpen: false,
 };
+const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
+const SPEED_LABEL = { 1: "1×", 2: "2×", 3: "≫" };
 const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
 // Mutates in place: handlers hold a reference to UI.sel across a reset.
 function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Object.assign(UI.sel, clone(SEL_DEFAULTS)); }
@@ -1413,10 +1422,13 @@ const STEP = {
       go("improve", "return"); return NEXT;
     },
     return() {
+      // The rulebook's "return one improvement for a blood bag" is offered to the
+      // human at the top of activation instead of as its own stop: nothing
+      // happens between the two points, and it saves a click every shift.
       for (const p of playersInTurnOrder()) {
         if (p.returnDone) continue;
         if (p.isBot) { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); continue; }
-        G.actor = p.id; return WAIT;
+        p.returnDone = true; p.returnOpen = true;
       }
       go("activate", "start"); return NEXT;
     },
@@ -1514,7 +1526,7 @@ const STEP = {
         for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
         for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
         for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
-        p.ambulance = null; p.took = false; p.returnDone = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
+        p.ambulance = null; p.took = false; p.returnDone = false; p.returnOpen = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
         p.breachesThisRound = 0; p.neglectResults = null; p.botSummary = "";
       }
       for (const a of G.ambulances) { a.dice = []; a.takenBy = null; }
@@ -1800,8 +1812,8 @@ function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; a
 function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
 function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
 function onConsultantSkip() { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), null); advance(); }
-function onReportClick(col) { if (!inPhase("discharge", "reports")) return; if (applyCompleteReport(col)) { sfx("score"); saveGame(); updateAll(); } }
-function onReportsBest() { if (!inPhase("discharge", "reports")) return; let c; while ((c = bestReport()) !== null) applyCompleteReport(c); sfx("score"); saveGame(); updateAll(); }
+function onReportClick(col) { if (!inPhase("discharge", "reports")) return; if (applyCompleteReport(col)) { sfx("score"); if (!completableReports().length) { applyReportsDone(); advance(); return; } saveGame(); updateAll(); } }
+function onReportsBest() { if (!inPhase("discharge", "reports")) return; let c; while ((c = bestReport()) !== null) applyCompleteReport(c); sfx("score"); applyReportsDone(); advance(); }
 function onReportsDone() { if (!inPhase("discharge", "reports")) return; applyReportsDone(); advance(); }
 function onCollectDie(uid) {
   if (!inPhase("final", "collections")) return;
@@ -1821,8 +1833,26 @@ function onMeepleClick(uid) {
   else { resetSel(); s.state = "meepleSel"; UI.sel.meepleUid = uid; }
   computeLegal(); updateAll();
 }
+function canReturnNow(p) { return p.returnOpen && !p.meeples.some(m => m.used) && (p.departments.some(d => d.improvement) || p.specialists.length > 0); }
+function onReturnToggle() {
+  if (!inPhase("activate", "human")) return;
+  const p = human(), s = UI.sel;
+  if (s.state === "returning") { resetSel(); }
+  else if (canReturnNow(p)) { resetSel(); s.state = "returning"; }
+  computeLegal(); updateAll();
+}
+function applyReturnNow(kind, uid) {
+  const p = human();
+  if (!canReturnNow(p)) return;
+  pushUndo();
+  applyReturn(p, kind, uid);
+  p.returnOpen = false;
+  sfx("intel");
+  afterAction();
+}
 function onDeptClick(uid) {
   if (inPhase("improve", "return")) { const d = deptOf(human(), uid); if (d && d.improvement) onReturnClick("dept", uid); return; }
+  if (inPhase("activate", "human") && UI.sel.state === "returning") { const d = deptOf(human(), uid); if (d && d.improvement) applyReturnNow("dept", uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), dept = deptOf(p, uid), s = UI.sel;
   if (!dept || dept.used) return;
@@ -1836,6 +1866,7 @@ function onDeptClick(uid) {
 }
 function onSpecCardClick(uid) {
   if (inPhase("improve", "return")) { onReturnClick("spec", uid); return; }
+  if (inPhase("activate", "human") && UI.sel.state === "returning") { applyReturnNow("spec", uid); return; }
   if (inPhase("activate", "consultant")) { const s = specOf(human(), uid); if (s && s.type !== "consultant") onConsultantPick(uid); return; }
 }
 function toggleDie(list, uid) { const i = list.indexOf(uid); if (i >= 0) list.splice(i, 1); else list.push(uid); }
@@ -1956,6 +1987,7 @@ function runActivation(opt) {
     const o = specOptions(def, ctx, p);
     if (o) {
       if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(); }
+      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
         o.ordered = !!def.then.and;
@@ -2016,7 +2048,7 @@ function cancelSel() {
     case "intelHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); break;
     case "intelRecolour": case "intelColour": s.state = "targeting"; s.pending = null; break;
     case "colour": if (s.colourFor === "spec") { s.state = "spec"; } else { s.state = "targeting"; } s.colourQueue = null; break;
-    case "meepleSel": resetSel(); break;
+    case "meepleSel": case "returning": resetSel(); break;
     default: return;
   }
   computeLegal(); updateAll();
@@ -2081,6 +2113,7 @@ function setupInput() {
     if (modalOpen) return;
     if (e.key === "h" || e.key === "H" || e.key === "?") { showHowToPlay(); return; }
     if (e.key === "m" || e.key === "M") { toggleMute(); return; }
+    if (e.key === "s" || e.key === "S") { cycleSpeed(); return; }
     if (!G || G.gameOver) return;
     if (e.key === "Enter") { const b = document.querySelector("#action-buttons .action-btn.primary:not(:disabled)"); if (b) { b.click(); e.preventDefault(); } return; }
     if (e.key === "u" || e.key === "U") { undo(); return; }
@@ -2340,6 +2373,7 @@ function processEventQueue() {
     case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
   }
   if (UI.reducedMotion) delay = Math.min(delay, 30);
+  delay = Math.round(delay * SPEED_FACTOR[UI.speed]);
   UI.queueTimer = setTimeout(processEventQueue, delay);
 }
 function screenPulse(colour) {
@@ -2417,6 +2451,12 @@ const SFX = {
   lose:      () => [392, 330, 262, 196].forEach((f, i) => playTone(f, "sawtooth", 0.3, 0.1, i * 0.2)),
 };
 function sfx(name) { if (UI.muted || !SFX[name]) return; SFX[name](); }
+function cycleSpeed() {
+  UI.speed = UI.speed >= 3 ? 1 : UI.speed + 1;
+  const b = document.getElementById("speed-btn");
+  if (b) { b.textContent = SPEED_LABEL[UI.speed]; b.title = `Rival and phase speed: ${["", "normal", "fast", "instant"][UI.speed]} (S)`; }
+  try { localStorage.setItem("pumatriage_speed_v1", String(UI.speed)); } catch (e) {}
+}
 function toggleMute() {
   UI.muted = !UI.muted;
   const b = document.getElementById("mute-btn");
@@ -2564,7 +2604,7 @@ function renderMeeple(p, m, key) {
 function renderBoard() {
   const p = human(), el = document.getElementById("board"), s = UI.sel;
   const live = G.phase === "activate" && G.step === "human";
-  const returning = G.phase === "improve" && G.step === "return" && !UI.animating;
+  const returning = (G.phase === "improve" && G.step === "return" && !UI.animating) || (live && s.state === "returning");
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
   let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">top row queued · bottom row worked</span></h3>`;
@@ -2769,6 +2809,7 @@ function renderStrip() {
     html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token (the blood bag) to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
     html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
     html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
+    if (canReturnNow(p)) html += `<button class="action-btn sm ${s.state === "returning" ? "primary" : ""}" onclick="onReturnToggle()" title="Return one tool or specialist to the bottom of its stack for an intel token. Only before your first placement this shift.">Return one for intel</button>`;
     html += `<span class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} ready · ${p.bloodBags} intel</span></div>`;
   }
   html += '</div>';
@@ -2836,6 +2877,7 @@ function promptFor() {
     switch (s.state) {
       case "idle": return { text: "Click an analyst, then a tool.", buttons: [endB] };
       case "meepleSel": return { text: "Now click a glowing tool.", buttons: [B("Cancel", "cancelSel()")] };
+      case "returning": return { text: "Click the tool or specialist to return for an intel token.", buttons: [B("Cancel", "cancelSel()")] };
       case "targeting": return { text: "Click glowing hosts; double-click the last one to confirm.", buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] };
       case "spec": return { text: `Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the follow-up target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
       case "choice": return { text: "Choose the follow-up above, or skip.", buttons: [B("Skip", "skipSpec()")] };
@@ -2893,10 +2935,11 @@ function closeModal() {
 }
 function renderRuleRow(key) {
   const d = SLIDER_DEFS[key], v = houseRules[key];
-  const shown = d.toggle ? d.labels[v] : d.labels ? d.labels[v] : `${v}${d.unit || ""}`;
-  return `<div class="rule-row"><span class="rl">${esc(d.label)}${d.harder ? ' <span style="color:var(--red)">▲</span>' : ""}</span>
-    <input type="range" min="${d.min}" max="${d.max}" value="${v}" step="1" aria-label="${esc(d.label)}" oninput="setRule('${key}', this.value)">
-    <span class="rv">${esc(shown)}</span><span class="rd">${esc(d.desc || "")}</span></div>`;
+  let opts = [];
+  for (let i = d.min; i <= d.max; i++) opts.push([i, d.labels ? d.labels[i] : `${i}${d.unit || ""}`]);
+  const seg = opts.map(([i, l]) => `<button class="seg-btn ${i === v ? "on" : ""}" role="radio" aria-checked="${i === v}" onclick="setRule('${key}', ${i})">${esc(l)}</button>`).join("");
+  return `<div class="rule-row"><span class="rl">${esc(d.label)}${d.harder ? ' <span style="color:var(--red)" title="harder">▲</span>' : ""}</span>
+    <div class="seg" role="radiogroup" aria-label="${esc(d.label)}">${seg}</div><span class="rd">${esc(d.desc || "")}</span></div>`;
 }
 function setRule(key, val) {
   houseRules[key] = parseInt(val, 10);
@@ -2917,6 +2960,7 @@ function showMainMenu(keepScroll) {
   const saved = hasSave();
   const keys = Object.keys(SLIDER_DEFS).filter(k => !SLIDER_DEFS[k].showIf || SLIDER_DEFS[k].showIf(houseRules));
   const base = keys.filter(k => !SLIDER_DEFS[k].addon), addons = keys.filter(k => SLIDER_DEFS[k].addon);
+  const addonsOn = addons.filter(k => houseRules[k]).length;
   mc.innerHTML = `
     <h2>PumaTriage</h2>
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
@@ -2924,13 +2968,15 @@ function showMainMenu(keepScroll) {
     <div class="presets">${Object.keys(DIFFICULTY_PRESETS).map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</div>
     <div class="rules-head">Table</div>
     ${base.map(renderRuleRow).join("")}
-    <div class="rules-head">Add-ons — house rules, off in Standard</div>
+    <details class="addons" ${UI.addonsOpen || addonsOn ? "open" : ""} ontoggle="UI.addonsOpen = this.open"><summary>House rules — ${addonsOn ? addonsOn + " on" : "all off"}</summary>
     ${addons.map(renderRuleRow).join("")}
+    </details>
     <div class="modal-actions">
-      <button class="action-btn primary" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
+      <button class="action-btn primary" id="menu-start" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
       <button class="action-btn" onclick="showHowToPlay('overview')">How to play</button>
     </div>`;
   openModal(!!G);
+  if (!keepScroll) { const b = document.getElementById("menu-start"); if (b) b.focus(); }
   mc.scrollTop = scroll;
 }
 function startGame() {
@@ -3117,6 +3163,7 @@ function endTutorial() {
 function init() {
   setupInput();
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+  try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
   document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
   document.getElementById("center").innerHTML = '<div class="center-title">Table</div><div class="hint">Start a game from the menu.</div>';
   const shot = /[#&]shot=([a-z]+)/.exec(location.hash);
