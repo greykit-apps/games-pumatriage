@@ -1,0 +1,3080 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PumaTriage — Incident Response Dice Game</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
+<style>
+/* ============================================================
+   TOKENS — cybersec-CRT tribe palette (byte-identical to the
+   sibling games; plain --green/--amber/--red names per the
+   greykit.games canon proposal)
+   ============================================================ */
+:root {
+  --green: #00ff41;
+  --green-dim: #00cc33;
+  --green-dark: #009926;
+  --amber: #ffb000;
+  --amber-dim: #cc8800;
+  --red: #ff3333;
+  --red-dim: #cc2222;
+  --yellow: #ffdd33;
+  --blue: #6699ff;
+  --cyan: #00cccc;
+  --white: #e8ffe8;
+  --bg: #0a0a0a;
+  --panel: #111;
+  --panel-2: #0d160d;
+  --border: #1a3a1a;
+  --text: #00ff41;
+  --text-dim: #00aa2a;
+  --font-mono: "Courier New", "Lucida Console", monospace;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --die: 40px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0; height: 100%;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-mono); font-size: 13px; line-height: 1.35;
+}
+body { overflow: hidden; }
+button { font-family: var(--font-mono); }
+a { color: var(--green); }
+
+/* CRT overlay: scanlines + vignette over the whole app */
+body::before {
+  content: ""; position: fixed; inset: 0; z-index: 9000; pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0px, rgba(0,0,0,0.18) 1px, transparent 1px, transparent 3px);
+}
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 9001; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.55) 100%);
+}
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+#app {
+  height: 100vh; display: grid; gap: 8px; padding: 8px;
+  grid-template-columns: minmax(430px, 1.2fr) minmax(300px, 0.9fr) minmax(230px, 0.6fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-areas: "hud hud hud" "board center side" "board actions side";
+}
+#hud-top { grid-area: hud; }
+#board   { grid-area: board; overflow: auto; }
+#center  { grid-area: center; overflow: auto; }
+#actions { grid-area: actions; }
+#side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+
+.panel {
+  background: var(--panel); border: 1px solid var(--border); padding: 8px;
+  position: relative;
+}
+.panel h3 {
+  margin: 0 0 6px 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+  color: var(--amber); font-weight: normal;
+}
+
+/* Top HUD */
+#hud-top {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  padding: 6px 12px; border: 1px solid var(--border); background: var(--panel);
+}
+#hud-top .title {
+  color: var(--amber); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
+}
+#hud-top .sub { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
+#hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+.stat .lbl { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
+.stat .val { font-size: 16px; color: var(--green); transition: color .3s; }
+.stat.flash .val { animation: stat-flash .6s ease-out; }
+.stat .val.warn { color: var(--amber); }
+.stat .val.bad  { color: var(--red); }
+@keyframes stat-flash { 0% { color: #fff; text-shadow: 0 0 10px #fff; } 100% { color: var(--green); } }
+.hud-buttons { display: flex; gap: 6px; }
+.icon-btn {
+  background: transparent; border: 1px solid var(--border); color: var(--green);
+  width: 30px; height: 30px; cursor: pointer; font-size: 14px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.icon-btn:hover { border-color: var(--green); background: rgba(0,255,65,0.08); }
+.icon-btn.warn { color: var(--red); border-color: var(--red); }
+#mute-btn { background-repeat: no-repeat; background-position: center; background-size: 16px; }
+#mute-btn[aria-pressed="false"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300ff41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'%3E%3C/path%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'%3E%3C/path%3E%3C/svg%3E"); }
+#mute-btn[aria-pressed="true"]  { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300aa2a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cline x1='23' y1='9' x2='17' y2='15'%3E%3C/line%3E%3Cline x1='17' y1='9' x2='23' y2='15'%3E%3C/line%3E%3C/svg%3E"); }
+
+/* Screen pulse + phase toast */
+#screen-pulse {
+  position: fixed; inset: 0; z-index: 8000; pointer-events: none; opacity: 0;
+}
+#screen-pulse.on { animation: pulse-fade .6s ease-out; }
+@keyframes pulse-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
+#phase-toast {
+  position: fixed; left: 0; right: 0; top: 40%; z-index: 8500; pointer-events: none;
+  text-align: center; padding: 14px 0; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(0,20,0,0.92) 20%, rgba(0,20,0,0.92) 80%, transparent);
+  color: var(--amber); font-size: 26px; letter-spacing: 6px; text-transform: uppercase;
+  text-shadow: 0 0 14px rgba(255,176,0,0.8), 0 0 30px rgba(255,176,0,0.4);
+}
+#phase-toast.on { animation: toast-pop 1.3s var(--ease-out-quart); }
+@keyframes toast-pop {
+  0% { opacity: 0; transform: scaleX(0.6); } 12% { opacity: 1; transform: scaleX(1); }
+  75% { opacity: 1; } 100% { opacity: 0; }
+}
+
+/* ============================================================
+   DICE
+   ============================================================ */
+.die {
+  display: inline-grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+  width: var(--die); height: var(--die); padding: 4px; gap: 1px;
+  background: #050805; border: 2px solid; border-radius: 6px; cursor: default;
+  position: relative; vertical-align: middle; flex: none;
+  transition: transform .3s var(--ease-out-quart), box-shadow .2s, opacity .3s;
+}
+.die .pip { border-radius: 50%; opacity: 0; background: currentColor; }
+.die.v-1 .pip:nth-child(5),
+.die.v-2 .pip:nth-child(3), .die.v-2 .pip:nth-child(7),
+.die.v-3 .pip:nth-child(3), .die.v-3 .pip:nth-child(5), .die.v-3 .pip:nth-child(7),
+.die.v-4 .pip:nth-child(1), .die.v-4 .pip:nth-child(3), .die.v-4 .pip:nth-child(7), .die.v-4 .pip:nth-child(9),
+.die.v-5 .pip:nth-child(1), .die.v-5 .pip:nth-child(3), .die.v-5 .pip:nth-child(5), .die.v-5 .pip:nth-child(7), .die.v-5 .pip:nth-child(9),
+.die.v-6 .pip:nth-child(1), .die.v-6 .pip:nth-child(3), .die.v-6 .pip:nth-child(4), .die.v-6 .pip:nth-child(6), .die.v-6 .pip:nth-child(7), .die.v-6 .pip:nth-child(9)
+{ opacity: 1; }
+.die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
+.die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
+.die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(0,255,65,0.45); }
+.die.tmp { border-style: dashed; }
+.die.tmp::after {
+  content: ""; position: absolute; right: -4px; top: -4px; width: 9px; height: 9px; border-radius: 50%;
+  border: 1px solid #000; background: var(--orig, #fff);
+}
+.die.o-red::after { --orig: var(--red); } .die.o-yellow::after { --orig: var(--yellow); } .die.o-green::after { --orig: var(--green); }
+.die.v-1, .die.v-2 { background: #1a0505; }
+.die.clickable { cursor: pointer; }
+.die.clickable:hover { transform: translateY(-2px); }
+.die.target-ok { animation: target-pulse 1s ease-in-out infinite; }
+@keyframes target-pulse {
+  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,255,255,0.35); } 50% { box-shadow: 0 0 14px 4px rgba(255,255,255,0.8); }
+}
+.die.sel { outline: 3px solid var(--amber); outline-offset: 2px; }
+.die.dim { opacity: 0.3; }
+.die.bump { animation: die-bump .45s var(--ease-out-expo); }
+@keyframes die-bump { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.die.shake { animation: die-shake .45s ease-in-out; }
+@keyframes die-shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-4px) rotate(-6deg); } 75% { transform: translateX(4px) rotate(6deg); } }
+.die.rolling { animation: die-roll .4s linear; }
+@keyframes die-roll { 0% { transform: rotate(0) scale(0.8); } 100% { transform: rotate(360deg) scale(1); } }
+.die.leaving { position: absolute; pointer-events: none; transition: opacity .5s, transform .5s; opacity: 0; transform: scale(0.4); }
+.die-sm { --die: 26px; }
+.die-sm.die { padding: 3px; border-width: 1.5px; border-radius: 4px; }
+
+/* ============================================================
+   BOARD — quarantine segments, tools, staff
+   ============================================================ */
+#wards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.ward { border: 1px solid var(--border); background: var(--panel-2); padding: 4px 6px 6px; }
+.ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.ward .beds { display: flex; gap: 6px; justify-content: space-around; }
+.bed { display: flex; flex-direction: column; gap: 3px; }
+.slot {
+  width: calc(var(--die) + 8px); height: calc(var(--die) + 8px);
+  border: 1px dashed #234023; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.slot.t { border-color: #1c2e1c; background: rgba(0,255,65,0.03); }
+.slot.u::before, .slot.t::before {
+  position: absolute; left: 3px; top: 1px; font-size: 7px; letter-spacing: 1px; color: #2c4a2c;
+}
+.slot.u::before { content: "Q"; } .slot.t::before { content: "W"; }
+.slot.drop-ok { border-color: var(--amber); box-shadow: inset 0 0 8px rgba(255,176,0,0.3); cursor: pointer; }
+.slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
+
+.board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; min-width: 64px; }
+
+#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-bottom: 8px; }
+.dept-tile {
+  border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2);
+  padding: 5px 6px; min-height: 58px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
+  display: flex; flex-direction: column; justify-content: space-between;
+}
+.dept-tile .dn { font-size: 11px; color: var(--white); line-height: 1.2; }
+.dept-tile .dr { font-size: 10px; color: var(--text-dim); margin-top: 3px; letter-spacing: 0.5px; }
+.dept-tile.tag-red    { border-left-color: var(--red); }
+.dept-tile.tag-yellow { border-left-color: var(--yellow); }
+.dept-tile.tag-green  { border-left-color: var(--green); }
+.dept-tile.tag-any    { border-left-color: var(--cyan); }
+.dept-tile.tag-exp    { border-left-color: var(--blue); }
+.dept-tile.can { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,65,0.35); cursor: pointer; }
+.dept-tile.can:hover { background: rgba(0,255,65,0.08); }
+.dept-tile.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.5); }
+.dept-tile.used { opacity: 0.45; }
+.dept-tile.used::after { content: "USED"; position: absolute; right: 4px; top: 3px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
+.dept-tile.disabled { opacity: 0.35; border-style: dashed; }
+.dept-tile.returnable { border-color: var(--amber); cursor: pointer; }
+.dept-tile.new { animation: tile-in .4s var(--ease-out-quart); }
+@keyframes tile-in { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
+.dept-tile .meep-on { position: absolute; right: 4px; bottom: 4px; }
+
+.meeple {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border: 1px solid var(--border);
+  background: var(--panel-2); border-radius: 14px; cursor: default; font-size: 11px; transition: box-shadow .2s;
+}
+.meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
+.meeple .key { color: var(--text-dim); font-size: 9px; }
+.dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
+.dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); }
+.meeple.avail { cursor: pointer; border-color: var(--green-dark); }
+.meeple.avail:hover { box-shadow: 0 0 8px rgba(0,255,65,0.4); }
+.meeple.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.6); }
+.meeple.used { opacity: 0.4; text-decoration: line-through; }
+.meeple.off { opacity: 0.4; border-style: dashed; }
+.mini-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
+
+#specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.spec-card {
+  border: 1px solid var(--border); background: var(--panel-2); padding: 4px 6px; font-size: 10px; max-width: 200px;
+  border-top: 3px solid var(--border);
+}
+.spec-card .sn { color: var(--white); font-size: 11px; }
+.spec-card .sd { color: var(--text-dim); }
+.spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
+.spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
+.spec-card.tag-blue { border-top-color: var(--blue); }
+.spec-card.returnable { border-color: var(--amber); cursor: pointer; }
+.spec-card.clickable { cursor: pointer; }
+.spec-card.clickable:hover { border-color: var(--green); }
+.spec-card.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.5); }
+
+#tray { min-height: 44px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.token { display: inline-block; padding: 1px 6px; border: 1px solid; border-radius: 3px; font-size: 10px; letter-spacing: 1px; }
+.token.intel { color: var(--cyan); border-color: var(--cyan); }
+.token.breach { color: var(--red); border-color: var(--red); }
+.badge { display: inline-block; font-size: 9px; padding: 0 4px; border: 1px solid var(--amber); color: var(--amber); letter-spacing: 1px; }
+
+/* ============================================================
+   CENTER — queues, display, reports, activation controls
+   ============================================================ */
+.center-title { color: var(--amber); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+#queues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.queue {
+  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; min-width: 66px;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s;
+}
+.queue .qn { color: var(--amber); font-size: 14px; letter-spacing: 1px; }
+.queue .qsum { font-size: 9px; color: var(--text-dim); }
+.queue.pickable { cursor: pointer; border-color: var(--green); }
+.queue.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); }
+.queue.taken { opacity: 0.5; }
+.queue.blocked { opacity: 0.4; border-style: dashed; }
+.queue .qby { font-size: 9px; color: var(--amber); letter-spacing: 1px; text-align: center; }
+.queue .qcmd { position: absolute; right: -6px; top: -8px; }
+
+#display { display: flex; flex-direction: column; gap: 8px; }
+#display .disp-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.dept-tile.pickable, .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
+.dept-tile.pickable:hover, .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
+.stack-info { font-size: 10px; color: var(--text-dim); }
+
+.keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
+
+.rule-card { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.05); padding: 6px 8px; margin-bottom: 8px; font-size: 11px; }
+.rule-card .rn { color: var(--amber); font-size: 12px; }
+.act-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+#reports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.report {
+  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; font-size: 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+}
+.report .rp { color: var(--amber); font-size: 14px; }
+.report .rneed { display: flex; gap: 3px; }
+.report.top { opacity: 0.55; }
+.report.done-able { border-color: var(--green); cursor: pointer; box-shadow: 0 0 8px rgba(0,255,65,0.35); }
+.report.empty { border-style: dashed; opacity: 0.3; }
+.report-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
+
+.colour-pick { display: flex; gap: 8px; margin-top: 8px; }
+.colour-btn { width: 44px; height: 30px; border: 2px solid; background: #000; cursor: pointer; }
+.colour-btn.red { border-color: var(--red); color: var(--red); } .colour-btn.yellow { border-color: var(--yellow); color: var(--yellow); }
+.colour-btn.green { border-color: var(--green); color: var(--green); }
+.colour-btn:hover { background: rgba(255,255,255,0.08); }
+
+.admin-pick { display: flex; gap: 8px; }
+.admin-card { flex: 1; border: 1px solid var(--green-dark); padding: 8px; cursor: pointer; background: var(--panel-2); }
+.admin-card:hover { border-color: var(--green); box-shadow: 0 0 10px rgba(0,255,65,0.4); }
+.admin-card .an { color: var(--white); font-size: 12px; margin-bottom: 4px; }
+.admin-card .ad { font-size: 10px; color: var(--text-dim); }
+
+.collection { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.coll-slot { width: 46px; height: 46px; border: 2px dashed; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.coll-slot.red { border-color: var(--red); color: var(--red); } .coll-slot.yellow { border-color: var(--yellow); color: var(--yellow); } .coll-slot.green { border-color: var(--green); color: var(--green); }
+.coll-slot.filled { border-style: solid; background: rgba(255,255,255,0.06); }
+
+.summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 11px; }
+.summary-grid .k { color: var(--text-dim); }
+
+/* ============================================================
+   SIDE — rivals + SIEM log
+   ============================================================ */
+#rivals { display: flex; flex-direction: column; gap: 6px; }
+.rival-card { border: 1px solid var(--border); background: var(--panel-2); padding: 5px 7px; font-size: 10px; }
+.rival-card .rn { color: var(--white); font-size: 11px; display: flex; justify-content: space-between; }
+.rival-card .rn .sc { color: var(--amber); }
+.rival-card .rl { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-dim); margin-top: 2px; }
+.rival-card .rs { color: var(--text-dim); font-style: italic; margin-top: 2px; }
+.rival-card .rdice { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
+.rival-card.cmd .rn::after { content: "CMD"; font-size: 8px; color: var(--amber); border: 1px solid var(--amber); padding: 0 3px; margin-left: 4px; }
+.rival-card.turn { border-color: var(--amber); }
+
+#siem { flex: 1; min-height: 120px; display: flex; flex-direction: column; }
+#log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; font-size: 11px; }
+#log-list li { padding: 2px 0; border-bottom: 1px solid #0f1f0f; animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
+@keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
+#log-list li.warn { color: var(--amber); } #log-list li.bad { color: var(--red); } #log-list li.good { color: var(--green); } #log-list li.sys { color: var(--text-dim); }
+#log-list li .ts { color: #2c5a2c; margin-right: 4px; }
+
+/* ============================================================
+   ACTIONS bar + buttons
+   ============================================================ */
+#actions { display: flex; flex-direction: column; gap: 6px; }
+#phase-display { color: var(--amber); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+#phase-instructions { font-size: 12px; min-height: 32px; color: var(--white); }
+#action-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+.action-btn {
+  background: transparent; color: var(--green); border: 1px solid var(--green-dark); padding: 6px 12px;
+  cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s;
+}
+.action-btn:hover:not(:disabled) { background: rgba(0,255,65,0.12); border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,65,0.4); }
+.action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.action-btn.primary { border-color: var(--amber); color: var(--amber); }
+.action-btn.primary:hover:not(:disabled) { background: rgba(255,176,0,0.12); box-shadow: 0 0 8px rgba(255,176,0,0.4); }
+.action-btn.danger { border-color: var(--red); color: var(--red); }
+.action-btn.sm { padding: 3px 8px; font-size: 10px; }
+.action-btn .k { color: var(--text-dim); font-size: 9px; margin-left: 4px; }
+
+/* ============================================================
+   MODAL + HELP + MENU
+   ============================================================ */
+#modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9500; display: none;
+  align-items: center; justify-content: center; padding: 16px; animation: modal-bg-in .2s;
+}
+#modal-overlay.open { display: flex; }
+@keyframes modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
+#modal-content {
+  background: var(--panel); border: 1px solid var(--green-dark); padding: 20px 24px; max-width: 760px; width: 100%;
+  max-height: 92vh; overflow-y: auto; box-shadow: 0 0 30px rgba(0,255,65,0.2); animation: modal-in .25s var(--ease-out-quart);
+}
+@keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
+#modal-content h2 { color: var(--amber); letter-spacing: 3px; font-weight: normal; margin: 0 0 8px; font-size: 20px; text-align: center; }
+#modal-content h4 { color: var(--amber); font-weight: normal; letter-spacing: 1px; margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; }
+#modal-content p, #modal-content li { font-size: 12px; }
+#modal-content ul { padding-left: 18px; margin: 4px 0; }
+.modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+.menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
+.presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.preset-btn.on { background: rgba(255,176,0,0.15); border-color: var(--amber); color: var(--amber); }
+.rule-row { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
+.rule-row .rl { color: var(--white); }
+.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 1 / -1; margin-top: -2px; }
+.rule-row .rv { color: var(--amber); min-width: 90px; text-align: right; }
+.rule-row input[type="range"] { width: 100%; accent-color: var(--green); }
+.rules-head { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.help-tab.on { color: var(--amber); border-color: var(--border); }
+.help-panel { display: none; } .help-panel.on { display: block; }
+.help-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #0f1f0f; vertical-align: top; }
+.help-table th { color: var(--amber); font-weight: normal; }
+.score-table { font-size: 12px; border-collapse: collapse; margin: 8px auto; }
+.score-table td { padding: 3px 10px; border-bottom: 1px solid #0f1f0f; }
+.score-table .tot { color: var(--amber); font-size: 14px; }
+.grade { text-align: center; font-size: 40px; color: var(--amber); text-shadow: 0 0 20px rgba(255,176,0,0.6); margin: 6px 0; }
+.tut-step { min-height: 90px; }
+
+/* ============================================================
+   A11Y, touch, motion, mobile
+   ============================================================ */
+*:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (pointer: coarse) {
+  .action-btn, .icon-btn { min-height: 44px; }
+  .meeple { min-height: 36px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  body::before, body::after { display: none; }
+}
+@media (max-width: 1400px) { :root { --die: 34px; } }
+@media (max-width: 960px) {
+  body { overflow: auto; }
+  #app {
+    height: auto; grid-template-columns: 1fr; grid-template-rows: auto;
+    grid-template-areas: "hud" "actions" "center" "board" "side";
+  }
+  #board, #center { overflow: visible; }
+  #actions { position: sticky; top: 0; z-index: 100; background: var(--bg); }
+  #wards { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header id="hud-top">
+    <div>
+      <div class="title">PumaTriage</div>
+      <div class="sub">INCIDENT RESPONSE · DICE</div>
+    </div>
+    <div class="stats" id="hud-stats"></div>
+    <div class="hud-buttons">
+      <button class="icon-btn" id="btn-help" onclick="showHowToPlay()" aria-label="How to play" title="How to play (H)">?</button>
+      <button class="icon-btn" id="mute-btn" onclick="toggleMute()" aria-label="Toggle sound" aria-pressed="false" title="Toggle sound (M)"></button>
+      <button class="icon-btn" id="newgame-btn" onclick="newGameClick()" aria-label="New game" title="New game" style="width:auto;padding:0 8px;font-size:11px;">NEW</button>
+    </div>
+  </header>
+
+  <section id="board" class="panel" aria-label="Your SOC"></section>
+  <section id="center" class="panel" aria-label="Shared area"></section>
+  <section id="actions" class="panel" aria-label="Actions">
+    <div id="phase-display"></div>
+    <div id="phase-instructions"></div>
+    <div id="action-buttons"></div>
+  </section>
+  <aside id="side">
+    <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
+    <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
+  </aside>
+</div>
+<div id="screen-pulse"></div>
+<div id="phase-toast" aria-hidden="true"></div>
+<div id="modal-overlay" role="dialog" aria-modal="true"><div id="modal-content"></div></div>
+<div id="announcements" class="sr-only" aria-live="polite"></div>
+
+<script>
+/* ============================================================
+   CONSTANTS & THEME
+   The rules mirror the Dice Hospital base game one-for-one.
+   Theme mapping: Hospital→SOC, Patient→Host, Discharge→Restore,
+   Fatality→Breach, Ward→Quarantine segment, Nurse→Analyst,
+   Department→Tool, Ambulance→Escalation queue, Blood bag→Intel
+   token, Administrator→CISO Directive, Medical Report→Audit
+   Report, Round→Shift.
+   Dice colours are just colours, exactly as in the original.
+   Anything NOT in the base game is an add-on switched on through
+   the house-rules panel (see SLIDER_DEFS below).
+   ============================================================ */
+const COLOURS = ["red", "yellow", "green"];
+const COLOUR_ORDER = { red: 0, yellow: 1, green: 2 };
+const COLOUR_NAME = { red: "Red", yellow: "Yellow", green: "Green", white: "White", blue: "Blue" };
+const COLOUR_ABBR = { red: "R", yellow: "Y", green: "G" };
+
+const ROUNDS = 8;
+const WARDS = 4;                 // 4 wards on the starting board
+const BEDS = 3;                  // 3 beds per ward — 12 patient spaces total
+const DISCHARGE_THRESHOLD = 7;   // a patient healed to 7+ is discharged
+const FATALITY_PENALTY = 2;      // −2 per fatality token at game end
+const BLOOD_BAG_POINTS = 1;      // +1 per blood bag at game end
+const EMPTY_WARDS_BONUS = 5;     // all four wards empty after Phase 5
+const START_VALUES = [3, 4, 5];  // starting patients are set to 3, 4, 5
+const CRISIS_VALUES = [3, 3, 4, 5, 5];  // Opening Crisis variant
+const SOLO_KEEP_BONUS_BELOW = 9; // solo: kept dice total < 9 → blood bag
+const SOLO_DRAW = 4;
+const SPEC_PARTIAL_OK = false;   // specialist follow-ups must be fully resolvable, like departments
+const ADMIN_MOST_TIES_COUNT = true; // "discharged the most" — ties still count
+
+// Discharge points: 1st=1, 2nd–6th=2 each, 7th–8th=3, 9th–10th=4, 11th–12th=5. Index = count.
+const DISCHARGE_POINTS = [0, 1, 3, 5, 7, 9, 11, 14, 17, 21, 25, 30, 35];
+function dischargePoints(n) {
+  if (n < DISCHARGE_POINTS.length) return DISCHARGE_POINTS[n];
+  return DISCHARGE_POINTS[DISCHARGE_POINTS.length - 1] + 5 * (n - (DISCHARGE_POINTS.length - 1));
+}
+
+// Dice per colour by table size. The box has 21 of each; 3p removes 3, 2p removes 6, solo removes 10.
+const DICE_PER_COLOUR = { 2: 15, 3: 18, 4: 21, solo: 11 };
+
+// The starting board shows 9 department spaces of 6 types. The rulebook
+// doesn't spell out the multiset; this is the assumed layout. Adjust here.
+const START_DEPTS = ["ccu", "ccu", "oncology", "oncology", "pharmacy", "pharmacy", "intensive", "imaging", "clinic"];
+
+const NURSES_AT_START = 3;
+const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
+const SKILL_NAMES = ["Intern", "Resident", "Attending"];
+
+/* ============================================================
+   RULE TABLES
+   Every entry carries a trailing comment naming the Dice
+   Hospital original. Targeting is data: sel = { n, min?, colour?,
+   values?, rel? } and either heal:n or op:"reroll"|"recolour"|"flip".
+   ============================================================ */
+const DEPT_DEFS = {
+  // ---- starting departments (printed on every board) ----
+  ccu:        { name: "Sandbox",         tag: "red",    base: true, sel: { n: 1, colour: "red" },    heal: 1 },   // Critical Care Unit
+  oncology:   { name: "Forensics Lab",   tag: "yellow", base: true, sel: { n: 1, colour: "yellow" }, heal: 1 },   // Oncology
+  pharmacy:   { name: "Patch Console",   tag: "green",  base: true, sel: { n: 1, colour: "green" },  heal: 1 },   // Pharmacy
+  intensive:  { name: "War Room",        tag: "any",    base: true, sel: { n: 1, values: [1, 2] },    heal: 1 },   // Intensive Care
+  imaging:    { name: "SIEM Console",    tag: "any",    base: true, sel: { n: 1, values: [3, 4] },    heal: 1 },   // Imaging
+  clinic:     { name: "Help Desk",       tag: "any",    base: true, sel: { n: 1, values: [5, 6] },    heal: 1 },   // Clinic
+  // ---- department improvements (2 each in the stack) ----
+  opTheatre:  { name: "Reimage Station", tag: "red",    sel: { n: 1, colour: "red" },    heal: 3 },                          // Operating Theatre
+  cardiology: { name: "Kill-Chain Lab",  tag: "red",    sel: { n: 3, colour: "red", rel: "consecutive" }, heal: 1 },         // Cardiology
+  anaesthesia:{ name: "Decryptor",       tag: "red",    sel: { n: 3, colour: "red", rel: "sameValue" },   heal: 1 },         // Anaesthesia
+  crash:      { name: "Backup Restore",  tag: "any",    sel: { n: 1, values: [1, 2] },    heal: 4 },                          // Crash Centre
+  ent:        { name: "Config Baseline", tag: "green",  sel: { n: 1, colour: "green" },  heal: 3 },                          // Ear, Nose & Throat
+  immunology: { name: "Scanner Sweep",   tag: "green",  sel: { n: 3, colour: "green", rel: "consecutive" }, heal: 1 },       // Immunology
+  allergy:    { name: "Patch Tuesday",   tag: "green",  sel: { n: 3, colour: "green", rel: "sameValue" },   heal: 1 },       // Allergy Centre
+  ortho:      { name: "MFA Rollout",     tag: "yellow", sel: { n: 1, colour: "yellow" }, heal: 3 },                          // Orthopaedics
+  urology:    { name: "Credential Rotation", tag: "yellow", sel: { n: 3, colour: "yellow", rel: "consecutive" }, heal: 1 },  // Urology
+  renal:      { name: "Log Review",      tag: "yellow", sel: { n: 3, colour: "yellow", rel: "sameValue" },   heal: 1 },      // Renal Medicine
+  radiology:  { name: "EDR Sweep",       tag: "any",    sel: { n: 3, values: [1, 2, 3] }, heal: 1 },                         // Radiology
+  triageCtr:  { name: "Triage Desk",     tag: "any",    sel: { n: 2, values: [1, 2, 3] }, heal: 2 },                         // Triage Centre
+  // ---- Experimental Medicine mini-expansion (add-on) ----
+  drugTrial:  { name: "Beta Agent",      tag: "exp", addon: "experimental", sel: { n: 2 }, op: "reroll" },                   // Drug Trial Centre
+  physio:     { name: "Retagging Desk",  tag: "exp", addon: "experimental", sel: { n: 2, min: 1 }, op: "recolour" },         // Physiotherapy
+  expTherapy: { name: "Rollback Snapshot", tag: "exp", addon: "experimental", sel: { n: 1 }, op: "flip" },                   // Experimental Therapy
+  training:   { name: "Tabletop Exercise", tag: "exp", addon: "experimental", sel: { n: 2, rel: "sameValue" }, heal: 1 },    // Training Department
+};
+const IMPROVEMENT_DEPTS = ["opTheatre", "cardiology", "anaesthesia", "crash", "ent", "immunology", "allergy", "ortho", "urology", "renal", "radiology", "triageCtr"];
+const EXPERIMENTAL_DEPTS = ["drugTrial", "physio", "expTherapy", "training"];
+
+// Specialists. colour = meeple colour. when = trigger, then = follow-up.
+//   from: healedOf:c | otherOf:c | otherValueEqPre:c | other | any
+const SPEC_DEFS = {
+  surgeon:      { name: "Incident Responder", colour: "red",    when: { healedColour: "red" },    then: { from: "healedOf:red",    n: 1, heal: 1 } },  // Surgeon
+  anaesthetist: { name: "Reverse Engineer",   colour: "red",    when: { healedColour: "red" },    then: { from: "otherOf:red",     n: 1, heal: 1 } },  // Anaesthetist
+  cardiologist: { name: "Threat Hunter",      colour: "red",    when: { healedColour: "red" },    then: { from: "otherValueEqPre:red", n: 1, heal: 1 } }, // Cardiologist
+  pharmacist:   { name: "Patch Engineer",     colour: "green",  when: { healedColour: "green" },  then: { from: "healedOf:green",  n: 1, heal: 1 } },  // Pharmacist
+  virologist:   { name: "Vuln Researcher",    colour: "green",  when: { healedColour: "green" },  then: { from: "otherOf:green",   n: 1, heal: 1 } },  // Virologist
+  microbiologist:{ name: "Config Auditor",    colour: "green",  when: { healedColour: "green" },  then: { from: "otherValueEqPre:green", n: 1, heal: 1 } }, // Microbiologist
+  haematologist:{ name: "IAM Engineer",       colour: "yellow", when: { healedColour: "yellow" }, then: { from: "healedOf:yellow", n: 1, heal: 1 } },  // Haematologist
+  urologist:    { name: "Forensic Examiner",  colour: "yellow", when: { healedColour: "yellow" }, then: { from: "otherOf:yellow",  n: 1, heal: 1 } },  // Urologist
+  radiologist:  { name: "Network Engineer",   colour: "yellow", when: { healedColour: "yellow" }, then: { from: "otherValueEqPre:yellow", n: 1, heal: 1 } }, // Radiologist
+  triageNurse:  { name: "Triage Lead",        colour: "white",  when: { healedAny: true },        then: { from: "other", n: 2, values: [1, 2, 3], heal: 1 } }, // Triage Nurse
+  paramedic:    { name: "First Responder",    colour: "blue",   when: { healedAny: true },        then: { from: "other", n: 1, values: [1, 2, 3], heal: 2 } }, // Paramedic
+  gp:           { name: "Help Desk Lead",     colour: "blue",   when: { healedAny: true },        then: { from: "other", n: 1, values: [4, 5, 6], heal: 1 } }, // General Practitioner
+  // ---- Kickstarter promo specialists (add-on) ----
+  consultant:   { name: "Consultant",         colour: "blue",   addon: "promo", special: "copy" },                                   // Consultant
+  admissions:   { name: "Intake Coordinator", colour: "white",  addon: "promo", when: { dischargedAny: true }, then: { choice: "admissions" } }, // Admissions Nurse
+  // ---- Experimental Medicine specialists (add-on) ----
+  pathologist:  { name: "Postmortem Lead",    colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { choice: "pathologist" } },        // Pathologist
+  expChemist:   { name: "Chaos Engineer",     colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { from: "other", n: 1, op: "reroll" } }, // Experimental Chemist
+  registrar:    { name: "Compliance Officer", colour: "white",  addon: "experimental", when: { dischargedAny: true }, then: { op: "score", n: 1 } },        // Registrar
+  medStudent:   { name: "Intern",             colour: "white",  addon: "experimental", when: { healedAny: true }, then: { from: "other", n: 1, heal: 1, and: { n: 1, heal: -1 } } }, // Medical Student
+  physioTh:     { name: "Intel Analyst",      colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { from: "any", n: 1, op: "recolour" } }, // Physiotherapist
+  haemTech:     { name: "Intel Broker",       colour: "white",  addon: "experimental", when: { dischargedAny: true }, then: { op: "bloodBag" } },            // Haematology Technician
+};
+const BASE_SPECS = ["surgeon", "anaesthetist", "cardiologist", "pharmacist", "virologist", "microbiologist", "haematologist", "urologist", "radiologist", "triageNurse", "paramedic", "gp"];
+const PROMO_SPECS = ["consultant", "admissions"];
+const EXPERIMENTAL_SPECS = ["pathologist", "expChemist", "registrar", "medStudent", "physioTh", "haemTech"];
+
+// Hospital Administrators → CISO Directives. Deal 2, keep 1.
+const ADMIN_DEFS = {
+  redTwo:     { name: "Red Priority",         kind: "colourTwo", colour: "red" },     // ≥2 red discharged this round → +1
+  yellowTwo:  { name: "Yellow Priority",      kind: "colourTwo", colour: "yellow" },
+  greenTwo:   { name: "Green Priority",       kind: "colourTwo", colour: "green" },
+  eachColour: { name: "Defense in Depth",     kind: "eachColour" },                   // one of each colour → +1
+  redShield:  { name: "Red Containment",      kind: "shield", colour: "red" },        // 1 neglected red does not deteriorate
+  yellowShield:{ name: "Yellow Containment",  kind: "shield", colour: "yellow" },
+  greenShield:{ name: "Green Containment",    kind: "shield", colour: "green" },
+  most:       { name: "Executive Visibility", kind: "most" },                         // discharged the most this round → +1
+};
+function adminDesc(id) {
+  const a = ADMIN_DEFS[id];
+  switch (a.kind) {
+    case "colourTwo": return `Restore at least two ${a.colour} hosts in a shift: +1 reputation.`;
+    case "eachColour": return "Restore at least one host of each colour in a shift: +1 reputation.";
+    case "shield": return `One queued ${a.colour} host does not degrade from dwell time each shift.`;
+    case "most": return "Restore the most hosts in a shift: +1 reputation.";
+  }
+  return "";
+}
+
+// Medical Report cards → Audit Reports (solo). Colour combos + points.
+// The originals aren't printed in the rulebook; these are designed to be similar in spirit.
+const REPORT_DEFS = [
+  { need: { red: 2 }, pts: 3 }, { need: { yellow: 2 }, pts: 3 }, { need: { green: 2 }, pts: 3 },
+  { need: { red: 1, yellow: 1, green: 1 }, pts: 4 },
+  { need: { red: 2, yellow: 1 }, pts: 5 }, { need: { red: 2, green: 1 }, pts: 5 },
+  { need: { yellow: 2, red: 1 }, pts: 5 }, { need: { yellow: 2, green: 1 }, pts: 5 },
+  { need: { green: 2, red: 1 }, pts: 5 }, { need: { green: 2, yellow: 1 }, pts: 5 },
+  { need: { red: 3 }, pts: 6 }, { need: { yellow: 3 }, pts: 6 }, { need: { green: 3 }, pts: 6 },
+  { need: { red: 2, yellow: 2 }, pts: 7 }, { need: { green: 2, yellow: 1, red: 1 }, pts: 7 },
+];
+
+// Event cards → Incident Events (add-on). PumaTriage originals; the
+// rulebook only says the deck exists. Revealed at the start of shifts 2+.
+const EVENT_DEFS = {
+  budgetFreeze: { name: "Budget Freeze",      desc: "No improvements this shift. The display stays as it is." , skipImprove: true },
+  vendorAdvisory:{ name: "Vendor Advisory",   desc: "Every SOC gains 1 intel token.", intelAll: true },
+  alertStorm:   { name: "Alert Storm",        desc: "Each escalation queue carries 4 hosts this shift (solo: draw 5, keep 3).", extraDie: true },
+  quietNight:   { name: "Quiet Night",        desc: "No dwell-time degradation this shift.", neglectMod: 0 },
+  persistence:  { name: "Persistence",        desc: "Dwell time degrades queued hosts by 2 this shift.", neglectMod: 2 },
+  boardReview:  { name: "Board Review",       desc: "Whoever restores the most hosts this shift gains +2 reputation.", mostBonus: 2 },
+  staffShortage:{ name: "Staff Shortage",     desc: "One analyst per SOC is out sick this shift.", staffShortage: true },
+  playbook:     { name: "Automated Playbook", desc: "At the start of activation each SOC heals its lowest-value host 1 step.", autoHeal: true },
+  audit:        { name: "Compliance Audit",   desc: "Each breach this shift costs 1 extra reputation.", breachExtra: 1 },
+  backupWindow: { name: "Backup Window",      desc: "At the start of activation, every host at 6 is restored immediately.", backupWindow: true },
+};
+
+/* ============================================================
+   HOUSE RULES
+   The "Standard" preset is the base game. Everything with
+   addon: true is layered on top and off by default.
+   ============================================================ */
+const SLIDER_DEFS = {
+  mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
+  rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, unit: " rivals", showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
+  rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
+  admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Deal 2, keep 1 (base rule; the rulebook suggests skipping them on a first game)" },
+  tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
+  // Add-ons
+  promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
+  experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Experimental Medicine mini-expansion: 4 extra tools, 6 extra specialists" },
+  events:      { label: "Incident Events",   min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "An event card each shift from shift 2 (PumaTriage originals)" },
+  crisis:      { label: "Inherited Mess",    min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Opening Crisis: start with 5 hosts at 3, 3, 4, 5, 5" },
+  epidemic:    { label: "Worm Outbreak",     min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Nationwide Epidemic: one extra rolled host per SOC every intake" },
+  superbug:    { label: "Persistent Threat", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Resistant Superbug: dwell time degrades queued hosts by 2" },
+  collections: { label: "MSSP Handover",     min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Final Round Collections: hand matching leftover hosts to outside providers for +1 each, −1 per host left" },
+  soloDblFat:  { label: "Double breach penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: breaches cost 4 instead of 2" },
+  soloDblRep:  { label: "Double report penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: incomplete Audit Reports subtract double" },
+};
+const ADDONS_OFF = { promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
+const DIFFICULTY_PRESETS = {
+  easy:   { label: "Beginner", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
+  normal: { label: "Standard", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
+  solo:   { label: "Solo",     sliders: { mode: 0, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
+  hard:   { label: "Hard",     sliders: { mode: 1, rivals: 3, rivalSkill: 2, admins: 1, tutorial: 0, ...ADDONS_OFF, crisis: 1, epidemic: 1, superbug: 1 } },
+};
+let houseRules = { ...DIFFICULTY_PRESETS.normal.sliders };
+
+function resolveConfig(h = houseRules) {
+  const solo = h.mode === 0;
+  const players = solo ? 1 : 1 + h.rivals;
+  return {
+    solo, players,
+    rivalSkill: h.rivalSkill,
+    admins: !solo && !!h.admins,
+    tutorial: !!h.tutorial,
+    promo: !!h.promo,
+    experimental: !!h.experimental,
+    events: !!h.events,
+    crisis: !!h.crisis,
+    epidemic: !!h.epidemic,
+    superbug: !!h.superbug,
+    collections: !solo && !!h.collections,
+    soloDblFat: solo && !!h.soloDblFat,
+    soloDblRep: solo && !!h.soloDblRep,
+    dicePerColour: solo ? DICE_PER_COLOUR.solo : DICE_PER_COLOUR[players],
+    ambulances: solo ? 0 : players + 1,
+    displaySize: solo ? 1 : players - 1,
+  };
+}
+
+/* ============================================================
+   RNG & UTILS
+   All rule randomness goes through rnd() so a seed replays a game.
+   ============================================================ */
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+function rnd() {
+  if (!G) return Math.random();
+  G.rng = (G.rng + 0x6D2B79F5) | 0;
+  let t = Math.imul(G.rng ^ (G.rng >>> 15), 1 | G.rng);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+}
+function rint(n) { return Math.floor(rnd() * n); }
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = rint(i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; } // flavour only, never rules
+function combos(arr, k) {
+  const out = [];
+  const rec = (start, cur) => {
+    if (cur.length === k) { out.push(cur.slice()); return; }
+    for (let i = start; i < arr.length; i++) { cur.push(arr[i]); rec(i + 1, cur); cur.pop(); }
+  };
+  rec(0, []);
+  return out;
+}
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function sum(arr) { return arr.reduce((a, b) => a + b, 0); }
+function plural(n, s, p) { return n === 1 ? s : (p || s + "s"); }
+
+/* ============================================================
+   GAME STATE & SETUP
+   G is pure JSON and is saved verbatim. UI holds everything
+   transient. Dice objects live in exactly one place at a time;
+   the bag is just counts.
+   ============================================================ */
+let G = null;
+const WAIT = "wait", ANIM = "anim", NEXT = "next";
+
+const UI = {
+  sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
+  eventQueue: [], queueTimer: null, animating: false, headless: false, simulating: false,
+  flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
+  reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
+};
+const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
+// Mutates in place: handlers hold a reference to UI.sel across a reset.
+function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Object.assign(UI.sel, clone(SEL_DEFAULTS)); }
+function resetRuntime() {
+  resetSel();
+  UI.legalTargets = new Set(); UI.legalByDept = {};
+  UI.undo = []; UI.undoBarrier = 0;
+  UI.eventQueue = []; UI.animating = false;
+  if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
+  UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
+}
+
+function makeDie(colour, value) { return { uid: G.nextUid++, colour, value, tmpColour: null, treated: false }; }
+function effColour(die) { return die.tmpColour || die.colour; }
+function bagTotal() { return G.bag.red + G.bag.yellow + G.bag.green; }
+function drawDieFromBag() {
+  const total = bagTotal();
+  if (total <= 0) return null;
+  let r = rint(total);
+  for (const c of COLOURS) {
+    if (r < G.bag[c]) { G.bag[c]--; return makeDie(c, 1); }
+    r -= G.bag[c];
+  }
+  return null;
+}
+function returnToBag(die) { if (!UI.simulating) G.bag[die.colour]++; }
+function rollValue() {           // re-roll 1s and 6s, as the intake rule says
+  let v;
+  do { v = 1 + rint(6); } while (v === 1 || v === 6);
+  return v;
+}
+function rollAny() { return 1 + rint(6); } // experimental re-rolls accept any face
+
+function makePlayer(id, name, isBot, skill) {
+  const wards = [];
+  for (let w = 0; w < WARDS; w++) { const beds = []; for (let b = 0; b < BEDS; b++) beds.push({ u: null, t: null }); wards.push(beds); }
+  const meeples = [];
+  for (let i = 0; i < NURSES_AT_START; i++) meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false });
+  const departments = START_DEPTS.map(type => ({ uid: G.nextUid++, type, used: false, improvement: false, idleRounds: 0 }));
+  return {
+    id, name, isBot, skill, wards, meeples, departments, specialists: [], admin: null, adminChoice: null,
+    bloodBags: 0, fatalities: 0, score: 0, dischargedThisRound: [], dischargedTotal: 0, lastDischarges: 0,
+    pendingDice: [], consultantCopy: null, botSummary: "", ambulance: null, breachesThisRound: 0,
+    collected: 0, startDice: [],
+  };
+}
+
+function buildStacks(cfg) {
+  // Departments: base = 2 of each of 12. Experimental changes the mix per the mini-expansion rules.
+  let depts;
+  if (cfg.experimental) {
+    const setA = IMPROVEMENT_DEPTS.slice(), setB = IMPROVEMENT_DEPTS.slice();
+    if (cfg.players <= 3) depts = setA;               // 2–3p: remove one full set
+    else { shuffle(setB); depts = setA.concat(setB.slice(0, 4)); } // 4p: remove 8 at random from one set
+    for (const t of EXPERIMENTAL_DEPTS) depts.push(t, t);
+  } else {
+    depts = [];
+    for (const t of IMPROVEMENT_DEPTS) depts.push(t, t);
+  }
+  // Specialists: base = 2 of each of 12. Experimental: 1 of each base + 2 of each expansion.
+  let specs = [];
+  if (cfg.experimental) {
+    specs = BASE_SPECS.slice();
+    for (const t of EXPERIMENTAL_SPECS) specs.push(t, t);
+  } else {
+    for (const t of BASE_SPECS) specs.push(t, t);
+  }
+  if (cfg.promo) {
+    // Each promo card replaces a random specialist card in the deck.
+    for (const t of PROMO_SPECS) { specs.splice(rint(specs.length), 1); specs.push(t); }
+  }
+  return { deptStack: shuffle(depts), specStack: shuffle(specs) };
+}
+
+function newGame(seed) {
+  const cfg = resolveConfig();
+  resetRuntime();
+  G = {
+    version: 1, mode: cfg.solo ? "solo" : "rivals", houseRules: { ...houseRules }, cfg,
+    rng: (seed === undefined ? (Math.random() * 4294967296) : seed) >>> 0,
+    round: 1, phase: "setup", step: "admin", actor: 0, cursor: 0, nextUid: 1,
+    players: [], firstPlayer: 0, turnOrder: [],
+    bag: { red: cfg.dicePerColour, yellow: cfg.dicePerColour, green: cfg.dicePerColour },
+    ambulances: [], deptStack: [], deptDisplay: [], specStack: [], specDisplay: [], adminDeck: [],
+    extraChoice: null, solo: null, events: null, currentEvent: null,
+    roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
+  };
+  for (let i = 0; i < cfg.players; i++) G.players.push(makePlayer(i, PLAYER_NAMES[i], i > 0, cfg.rivalSkill));
+  G.turnOrder = G.players.map(p => p.id);
+  G.firstPlayer = cfg.solo ? 0 : rint(cfg.players);
+  const stacks = buildStacks(cfg);
+  G.deptStack = stacks.deptStack; G.specStack = stacks.specStack;
+  for (let i = 1; i <= cfg.ambulances; i++) G.ambulances.push({ num: i, dice: [], takenBy: null });
+  if (cfg.admins) {
+    G.adminDeck = shuffle(Object.keys(ADMIN_DEFS));
+    for (const p of G.players) p.adminChoice = [G.adminDeck.pop(), G.adminDeck.pop()];
+  }
+  if (cfg.solo) {
+    const deck = shuffle(REPORT_DEFS.map((_, i) => i));
+    G.solo = { reportDeck: deck, display: [[], []], completed: [] };
+    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) G.solo.display[r].push(deck.pop());
+  }
+  if (cfg.events) G.events = { deck: shuffle(Object.keys(EVENT_DEFS)), current: null };
+  // Starting patients: each player draws 3 (5 in Opening Crisis) and sets them to 3/4/5.
+  const vals = cfg.crisis ? CRISIS_VALUES : START_VALUES;
+  for (const p of G.players) {
+    p.startDice = [];
+    vals.forEach(v => { const d = drawDieFromBag(); d.value = v; p.startDice.push(d); });
+  }
+  refillDisplay(true);
+  log(`New game: ${cfg.solo ? "solo score-chase" : (cfg.players - 1) + " rival SOC" + (cfg.players > 2 ? "s" : "")}. Shift 1 of ${ROUNDS}.`, "sys");
+  if (!cfg.solo) log(`${G.players[G.firstPlayer].name} ${G.firstPlayer === 0 ? "are" : "is"} Incident Commander for shift 1.`, "sys");
+  return G;
+}
+
+// Display sizes: players−1 face-up of each, plus the 2-player extra pick.
+function displaySizes() {
+  const cfg = G.cfg;
+  if (cfg.solo) return { dept: 1, spec: 1 };
+  return {
+    dept: cfg.displaySize + (G.extraChoice === "dept" ? 1 : 0),
+    spec: cfg.displaySize + (G.extraChoice === "spec" ? 1 : 0),
+  };
+}
+function refillDisplay(initial) {
+  if (G.cfg.solo) return; // solo reveals one of each during the improvement phase itself
+  const sz = displaySizes();
+  G.deptDisplay = G.deptDisplay.filter(Boolean);
+  G.specDisplay = G.specDisplay.filter(Boolean);
+  while (G.deptDisplay.length < sz.dept && G.deptStack.length) G.deptDisplay.push(G.deptStack.pop());
+  while (G.specDisplay.length < sz.spec && G.specStack.length) G.specDisplay.push(G.specStack.pop());
+}
+function recycleDisplay() {
+  // Unclaimed tiles/cards go to the bottom of their stacks in random order.
+  const d = shuffle(G.deptDisplay.filter(Boolean)), s = shuffle(G.specDisplay.filter(Boolean));
+  G.deptStack.unshift(...d); G.specStack.unshift(...s);
+  G.deptDisplay = []; G.specDisplay = [];
+}
+
+function human() { return G.players[0]; }
+function beds(p) { const out = []; p.wards.forEach((w, wi) => w.forEach((b, bi) => out.push({ b, wi, bi }))); return out; }
+function boardDice(p) { const out = []; for (const { b } of beds(p)) { if (b.u) out.push(b.u); if (b.t) out.push(b.t); } return out; }
+function untreatedDice(p) { return beds(p).filter(x => x.b.u).map(x => x.b.u); }
+function emptyBeds(p) { return beds(p).filter(x => !x.b.u && !x.b.t); }
+function findBed(p, uid) { for (const x of beds(p)) if ((x.b.u && x.b.u.uid === uid) || (x.b.t && x.b.t.uid === uid)) return x; return null; }
+function findDie(p, uid) { return boardDice(p).find(d => d.uid === uid) || null; }
+function placeDie(p, die) {
+  const e = emptyBeds(p)[0];
+  if (!e) return false;
+  e.b.u = die; die.treated = false; die.tmpColour = null;
+  return true;
+}
+function removeDie(p, uid) {
+  const x = findBed(p, uid);
+  if (!x) return null;
+  const die = x.b.u && x.b.u.uid === uid ? x.b.u : x.b.t;
+  if (x.b.u === die) x.b.u = null; else x.b.t = null;
+  return die;
+}
+function meepleOf(p, uid) { return p.meeples.find(m => m.uid === uid); }
+function deptOf(p, uid) { return p.departments.find(d => d.uid === uid); }
+function specOf(p, uid) { return p.specialists.find(s => s.uid === uid); }
+function specDefForMeeple(p, m) {
+  if (m.kind !== "spec") return null;
+  const s = specOf(p, m.specUid);
+  if (!s) return null;
+  if (s.type === "consultant") return p.consultantCopy ? SPEC_DEFS[p.consultantCopy] : null;
+  return SPEC_DEFS[s.type];
+}
+function meepleLabel(p, m) {
+  if (m.kind === "nurse") return "Analyst";
+  const s = specOf(p, m.specUid);
+  return s ? SPEC_DEFS[s.type].name : "Specialist";
+}
+function addSpecialist(p, type) {
+  const s = { uid: G.nextUid++, type, meepleUid: null, idleRounds: 0 };
+  const m = { uid: G.nextUid++, kind: "spec", specUid: s.uid, colour: SPEC_DEFS[type].colour, used: false, deptUid: null, off: false };
+  s.meepleUid = m.uid;
+  p.specialists.push(s); p.meeples.push(m);
+  return s;
+}
+function addDepartment(p, type) {
+  const d = { uid: G.nextUid++, type, used: false, improvement: true, idleRounds: 0 };
+  p.departments.push(d);
+  return d;
+}
+function totalDiceOnTable() {
+  let n = bagTotal();
+  for (const p of G.players) n += boardDice(p).length + p.pendingDice.length + p.dischargedThisRound.length + p.startDice.length;
+  for (const a of G.ambulances) n += a.dice.length;
+  return n;
+}
+
+/* ============================================================
+   SAVE / LOAD
+   ============================================================ */
+const SAVE_KEY = "pumatriage_save_v1";
+const TUTORIAL_KEY = "pumatriage_tutorial_v1";
+function saveGame() {
+  if (!G || G.gameOver || UI.headless) return;
+  try { localStorage.setItem(SAVE_KEY, JSON.stringify({ v: 1, G })); }
+  catch (e) { /* quota or private mode — the game still plays, it just won't resume */ }
+}
+function hasSave() {
+  try { const s = JSON.parse(localStorage.getItem(SAVE_KEY) || "null"); return s && s.G && !s.G.gameOver ? s.G : null; }
+  catch (e) { return null; }
+}
+function loadGame() {
+  const saved = hasSave();
+  if (!saved) return false;
+  resetRuntime();
+  G = saved;
+  houseRules = { ...G.houseRules };
+  return true;
+}
+function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+/* ============================================================
+   RULES ENGINE
+   Pure functions over a player + G. Nothing here touches the DOM,
+   so the same code drives the human, the bots and the headless sims.
+   ============================================================ */
+function selPool(sel, dice) {
+  return dice.filter(d => (!sel.colour || effColour(d) === sel.colour) && (!sel.values || sel.values.includes(d.value)));
+}
+function matchesSel(sel, dice) {
+  const min = sel.min !== undefined ? sel.min : sel.n;
+  if (dice.length < min || dice.length > sel.n) return false;
+  for (const d of dice) {
+    if (sel.colour && effColour(d) !== sel.colour) return false;
+    if (sel.values && !sel.values.includes(d.value)) return false;
+  }
+  if (sel.rel === "sameValue" && !dice.every(d => d.value === dice[0].value)) return false;
+  if (sel.rel === "consecutive") {
+    const vs = dice.map(d => d.value).sort((a, b) => a - b);
+    for (let i = 1; i < vs.length; i++) if (vs[i] !== vs[i - 1] + 1) return false;
+  }
+  return true;
+}
+function legalSets(sel, dice) {
+  const pool = selPool(sel, dice), min = sel.min !== undefined ? sel.min : sel.n, out = [];
+  for (let k = sel.n; k >= min; k--) {
+    if (pool.length < k || k === 0) continue;
+    for (const c of combos(pool, k)) if (matchesSel(sel, c)) out.push(c);
+  }
+  return out;
+}
+function firstLegalSet(sel, dice) {
+  const pool = selPool(sel, dice), min = sel.min !== undefined ? sel.min : sel.n;
+  for (let k = sel.n; k >= min; k--) {
+    if (pool.length < k || k === 0) continue;
+    if (!sel.rel) return pool.slice(0, k);
+    for (const c of combos(pool, k)) if (matchesSel(sel, c)) return c;
+  }
+  return null;
+}
+function canActivate(dept, p) {
+  if (dept.used) return false;
+  return firstLegalSet(DEPT_DEFS[dept.type].sel, boardDice(p)) !== null;
+}
+// Dice that can still be part of a legal set containing everything already selected.
+function narrowTargets(sel, dice, selectedUids) {
+  const out = new Set();
+  for (const set of legalSets(sel, dice)) {
+    if (selectedUids.every(u => set.some(d => d.uid === u))) for (const d of set) out.add(d.uid);
+  }
+  return out;
+}
+function selComplete(sel, selectedDice) { return matchesSel(sel, selectedDice); }
+
+function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [] }; }
+function markTreated(p, die) {
+  const x = findBed(p, die.uid);
+  if (x && x.b.u === die) { x.b.t = die; x.b.u = null; }
+  die.treated = true;
+}
+function heal(p, die, n, ctx) {
+  for (let i = 0; i < n; i++) {
+    const pre = die.value;
+    die.value++;
+    markTreated(p, die);
+    ctx.healed.push({ uid: die.uid, pre, post: die.value, colour: effColour(die) });
+    if (die.value >= DISCHARGE_THRESHOLD) { discharge(p, die, ctx); return; }
+  }
+}
+function deteriorate(p, die, n, ctx) {
+  die.value -= n;
+  markTreated(p, die);
+  if (die.value <= 0) fatality(p, die, ctx);
+}
+function discharge(p, die, ctx) {
+  removeDie(p, die.uid);
+  p.dischargedThisRound.push({ uid: die.uid, colour: die.colour, value: die.value });
+  p.dischargedTotal++;
+  if (ctx) ctx.discharged.push(die.uid);
+}
+function fatality(p, die, ctx) {
+  removeDie(p, die.uid);
+  returnToBag(die);
+  p.fatalities++;
+  p.breachesThisRound++;
+  if (ctx) ctx.fatalities++;
+}
+
+// Department effect. opt.colours = { uid: colour } for recolour ops.
+function resolveDept(p, dept, dice, ctx, opt = {}) {
+  const def = DEPT_DEFS[dept.type];
+  dept.used = true;
+  dept.idleRounds = 0;
+  if (def.heal) {
+    for (const d of dice) heal(p, d, def.heal, ctx);
+  } else if (def.op === "reroll") {
+    ctx.random = true;
+    for (const d of dice) {
+      const pre = d.value; d.value = rollAny(); markTreated(p, d);
+      if (d.value > pre) ctx.healed.push({ uid: d.uid, pre, post: d.value, colour: effColour(d) });
+    }
+  } else if (def.op === "recolour") {
+    for (const d of dice) { d.tmpColour = (opt.colours && opt.colours[d.uid]) || d.colour; markTreated(p, d); }
+  } else if (def.op === "flip") {
+    for (const d of dice) {
+      const pre = d.value; d.value = 7 - d.value; markTreated(p, d);
+      if (d.value > pre) ctx.healed.push({ uid: d.uid, pre, post: d.value, colour: effColour(d) });
+    }
+  }
+  return ctx;
+}
+function activateDept(p, m, dept, dice, opt) {
+  const ctx = newCtx();
+  m.used = true; m.deptUid = dept.uid;
+  ctx.meepleUid = m.uid; ctx.deptUid = dept.uid;
+  resolveDept(p, dept, dice, ctx, opt);
+  return ctx;
+}
+
+// ---- specialist follow-ups ----
+function specEligible(def, ctx) {
+  if (!def || !def.when) return false;
+  if (def.when.healedColour) return ctx.healed.some(h => h.colour === def.when.healedColour);
+  if (def.when.healedAny) return ctx.healed.length > 0;
+  if (def.when.dischargedAny) return ctx.discharged.length > 0;
+  return false;
+}
+function specPool(then, ctx, p) {
+  const board = boardDice(p);
+  const healedUids = new Set(ctx.healed.map(h => h.uid));
+  const [kind, c] = (then.from || "any").split(":");
+  let pool;
+  switch (kind) {
+    case "healedOf": pool = board.filter(d => healedUids.has(d.uid) && effColour(d) === c); break;
+    case "otherOf": pool = board.filter(d => !healedUids.has(d.uid) && effColour(d) === c); break;
+    case "otherValueEqPre": {
+      const pres = new Set();
+      const seen = new Set();
+      for (const h of ctx.healed) if (h.colour === c && !seen.has(h.uid)) { seen.add(h.uid); pres.add(h.pre); }
+      pool = board.filter(d => !healedUids.has(d.uid) && pres.has(d.value));
+      break;
+    }
+    case "other": pool = board.filter(d => !healedUids.has(d.uid)); break;
+    default: pool = board;
+  }
+  if (then.values) pool = pool.filter(d => then.values.includes(d.value));
+  return pool;
+}
+// What a specialist can do right now: { kind:"sets", sets } | { kind:"choice", choice } | { kind:"auto" } | null
+function specOptions(def, ctx, p) {
+  if (!specEligible(def, ctx)) return null;
+  const t = def.then;
+  if (t.choice === "admissions") return { kind: "choice", choice: "admissions", count: ctx.discharged.length };
+  if (t.choice === "pathologist") return p.fatalities > 0 ? { kind: "choice", choice: "pathologist" } : null;
+  if (t.op === "score" || t.op === "bloodBag") return { kind: "auto" };
+  const pool = specPool(t, ctx, p);
+  let sets = legalSets({ n: t.n, min: SPEC_PARTIAL_OK ? 1 : t.n }, pool);
+  if (t.and) {
+    // Intern: heal one, deteriorate a different one. Sets are [healTarget, deteriorateTarget].
+    const out = [];
+    for (const s of sets) for (const d of pool) if (d.uid !== s[0].uid) out.push([s[0], d]);
+    sets = out;
+  }
+  if (!sets.length) return null;
+  return { kind: "sets", sets, needColour: t.op === "recolour" };
+}
+function applySpec(p, def, ctx, dice, opt = {}) {
+  const t = def.then;
+  ctx.specFired = true;
+  if (t.op === "score") { p.score += t.n; ctx.notes.push(`${def.name}: +${t.n} reputation`); return; }
+  if (t.op === "bloodBag") { p.bloodBags++; ctx.notes.push(`${def.name}: +1 intel token`); return; }
+  if (t.choice === "pathologist") { if (opt.yes && p.fatalities > 0) { p.fatalities--; p.bloodBags++; ctx.notes.push(`${def.name}: breach record closed, +1 intel`); } return; }
+  if (t.choice === "admissions") {
+    if (opt.mode === "return" && opt.uid) { const d = removeDie(p, opt.uid); if (d) { returnToBag(d); ctx.notes.push(`${def.name}: ${COLOUR_NAME[d.colour]} host handed off`); } }
+    else if (opt.mode === "admit") { const d = drawDieFromBag(); if (d) { d.value = rollValue(); ctx.random = true; if (!placeDie(p, d)) returnToBag(d); else ctx.notes.push(`${def.name}: new ${d.colour} host admitted at ${d.value}`); } }
+    return;
+  }
+  if (t.op === "reroll") { const d = dice[0]; const pre = d.value; d.value = rollAny(); markTreated(p, d); ctx.random = true; ctx.notes.push(`${def.name}: host re-rolled ${pre}→${d.value}`); return; }
+  if (t.op === "recolour") { const d = dice[0]; d.tmpColour = opt.colour || d.colour; markTreated(p, d); ctx.notes.push(`${def.name}: host retagged ${COLOUR_NAME[d.tmpColour]}`); return; }
+  if (t.and) {
+    const [h, x] = dice;
+    heal(p, h, t.heal, ctx);
+    deteriorate(p, x, -t.and.heal, ctx);
+    ctx.notes.push(`${def.name}: +1 and −1`);
+    return;
+  }
+  for (const d of dice) heal(p, d, t.heal, ctx);
+  ctx.notes.push(`${def.name}: +${t.heal} to ${dice.length} ${plural(dice.length, "host")}`);
+}
+
+// ---- end-of-round rules ----
+function currentEvent() { return G.events && G.events.current ? EVENT_DEFS[G.events.current] : null; }
+function runNeglect(p) {
+  const ev = currentEvent();
+  let dmg = G.cfg.superbug ? 2 : 1;
+  if (ev && ev.neglectMod !== undefined) dmg = ev.neglectMod;
+  const results = [];
+  let shieldUid = null;
+  if (p.admin && ADMIN_DEFS[p.admin].kind === "shield") {
+    const c = ADMIN_DEFS[p.admin].colour;
+    const cands = untreatedDice(p).filter(d => d.colour === c).sort((a, b) => a.value - b.value);
+    if (cands.length) shieldUid = cands[0].uid;
+  }
+  for (const die of untreatedDice(p)) {
+    if (dmg === 0) break;
+    if (die.uid === shieldUid) { results.push({ uid: die.uid, colour: die.colour, shielded: true }); continue; }
+    const pre = die.value;
+    die.value -= dmg;
+    if (die.value <= 0) { fatality(p, die, null); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
+    else results.push({ uid: die.uid, colour: die.colour, pre, post: die.value });
+  }
+  return results;
+}
+function dischargeCounts(p) {
+  const c = { red: 0, yellow: 0, green: 0 };
+  for (const d of p.dischargedThisRound) c[d.colour]++;
+  return c;
+}
+function scoreDischarges(p) {
+  const n = p.dischargedThisRound.length;
+  const pts = dischargePoints(n);
+  const notes = [];
+  let bonus = 0;
+  if (emptyBeds(p).length === WARDS * BEDS) { bonus += EMPTY_WARDS_BONUS; notes.push(`all segments clear +${EMPTY_WARDS_BONUS}`); }
+  if (p.admin) {
+    const a = ADMIN_DEFS[p.admin], c = dischargeCounts(p);
+    if (a.kind === "colourTwo" && c[a.colour] >= 2) { bonus += 1; notes.push(`${a.name} +1`); }
+    if (a.kind === "eachColour" && c.red && c.yellow && c.green) { bonus += 1; notes.push(`${a.name} +1`); }
+  }
+  p.score += pts + bonus;
+  p.lastDischarges = n;
+  return { n, pts, bonus, notes };
+}
+function reportCountsAvailable() { return G.reportPool || { red: 0, yellow: 0, green: 0 }; }
+function reportCompletable(id, pool) {
+  const r = REPORT_DEFS[id];
+  return COLOURS.every(c => (pool[c] || 0) >= (r.need[c] || 0));
+}
+function completableReports() {
+  if (!G.solo || G.reportsDone) return [];
+  const pool = reportCountsAvailable();
+  const out = [];
+  G.solo.display[1].forEach((id, col) => { if (id !== null && id !== undefined && reportCompletable(id, pool)) out.push(col); });
+  return out;
+}
+function reportLabel(id) {
+  const r = REPORT_DEFS[id];
+  return COLOURS.filter(c => r.need[c]).map(c => `${r.need[c]}${COLOUR_ABBR[c]}`).join(" + ") + ` = ${r.pts}`;
+}
+
+function finalScore() {
+  const cfg = G.cfg;
+  for (const p of G.players) {
+    const b = { base: p.score, fatalities: -p.fatalities * FATALITY_PENALTY * (cfg.soloDblFat ? 2 : 1), bloodBags: p.bloodBags * BLOOD_BAG_POINTS, reports: 0, collections: 0, leftover: 0 };
+    if (cfg.solo) {
+      const inc = G.solo.display.flat().filter(id => id !== null && id !== undefined);
+      b.reports = -sum(inc.map(id => REPORT_DEFS[id].pts)) * (cfg.soloDblRep ? 2 : 1);
+      b.incompleteReports = inc.length;
+    }
+    if (cfg.collections) { b.collections = p.collected; b.leftover = -boardDice(p).length; }
+    b.total = b.base + b.fatalities + b.bloodBags + b.reports + b.collections + b.leftover;
+    p.breakdown = b;
+    p.total = b.total;
+  }
+  const ranked = G.players.slice().sort((a, b) =>
+    b.total - a.total ||
+    boardDice(a).length - boardDice(b).length ||
+    sum(boardDice(b).map(d => d.value)) - sum(boardDice(a).map(d => d.value)));
+  const top = ranked[0];
+  const shared = ranked.filter(p => p.total === top.total && boardDice(p).length === boardDice(top).length && sum(boardDice(p).map(d => d.value)) === sum(boardDice(top).map(d => d.value)));
+  G.final = { ranking: ranked.map(p => p.id), winners: shared.map(p => p.id) };
+  return G.final;
+}
+
+/* ============================================================
+   PHASE MACHINE
+   STEP[phase][step]() mutates G, sets the next phase/step and
+   returns WAIT (human input), ANIM (presentation events queued)
+   or NEXT (keep going). Bots never WAIT. Resume = advance().
+   ============================================================ */
+const PHASE_NAMES = { setup: "Setup", intake: "Intake", improve: "Improvement", activate: "Activation", neglect: "Dwell Time", discharge: "Restoration", shift: "Shift Change", final: "Final Accounting", gameover: "Game Over" };
+function go(phase, step) { G.phase = phase; G.step = step; }
+function animate(events) {
+  if (UI.headless || UI.reducedMotion) return NEXT;
+  UI.eventQueue = events.concat([{ type: "callback", fn: advance }]);
+  UI.animating = true;
+  processEventQueue();
+  return ANIM;
+}
+function playersFrom(startId) {
+  const n = G.players.length, out = [];
+  for (let i = 0; i < n; i++) out.push(G.players[(startId + i) % n]);
+  return out;
+}
+function playersInTurnOrder() { return G.turnOrder.map(id => G.players[id]); }
+
+function advance() {
+  if (!G || G.gameOver) return;
+  if (UI.animating || UI.advancing) { UI.needAdvance = true; return; }
+  UI.advancing = true;
+  let guard = 0;
+  try {
+    for (;;) {
+      if (++guard > 2000) { console.error("Phase machine runaway at", G.phase, G.step); break; }
+      const fn = STEP[G.phase] && STEP[G.phase][G.step];
+      if (!fn) { console.error("Unknown step", G.phase, G.step); break; }
+      const r = fn();
+      if (r === WAIT) {
+        if (UI.autoHuman && !G.gameOver) { botAnswerWait(); continue; }
+        break;
+      }
+      if (r === ANIM) { UI.advancing = false; return; }
+    }
+  } finally { UI.advancing = false; }
+  commit();
+}
+function commit() {
+  saveGame();
+  if (UI.headless) { assertInvariants(); return; }
+  updateAll();
+}
+
+const STEP = {
+  setup: {
+    admin() {
+      if (!G.cfg.admins) { go("setup", "startDice"); return NEXT; }
+      for (const p of G.players) {
+        if (p.admin || !p.adminChoice) continue;
+        if (p.isBot) { applyAdmin(p, botPickAdmin(p)); continue; }
+        G.actor = p.id; return WAIT;
+      }
+      go("setup", "startDice"); return NEXT;
+    },
+    startDice() {
+      for (const p of G.players) {
+        if (!p.startDice.length) continue;
+        if (p.isBot) { applyStartConfirm(p); continue; }
+        G.actor = p.id; return WAIT;
+      }
+      go("setup", "extraReveal"); return NEXT;
+    },
+    extraReveal() { return stepExtraReveal("intake", "draw"); },
+  },
+  intake: {
+    draw() {
+      if (G.events && G.round >= 2 && !G.events.current) revealEvent();
+      const ev = currentEvent();
+      const extra = ev && ev.extraDie ? 1 : 0;
+      if (G.cfg.solo) {
+        const p = human();
+        for (let i = 0; i < SOLO_DRAW + extra; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); p.pendingDice.push(d); }
+        if (G.cfg.epidemic) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.epidemicDie = d.uid; p.pendingDice.push(d); } }
+        go("intake", "keep");
+        return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#center .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
+      }
+      const per = 3 + extra;
+      const dice = [];
+      for (const a of G.ambulances) for (let i = 0; i < per; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
+      // Lowest values fill the lowest-numbered queue first. Same value: colour order, then draw order.
+      dice.sort((a, b) => a.value - b.value || COLOUR_ORDER[a.colour] - COLOUR_ORDER[b.colour] || a.uid - b.uid);
+      const ambs = G.ambulances.slice().sort((a, b) => a.num - b.num);
+      let i = 0;
+      for (const a of ambs) { a.dice = dice.slice(i, i + per); a.takenBy = null; i += per; }
+      if (G.cfg.epidemic) for (const p of G.players) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.pendingDice.push(d); } }
+      G.cursor = 0;
+      go("intake", "pick");
+      log(`Shift ${G.round}: ${G.ambulances.length} escalation queues rolled in.`, "sys");
+      return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#queues .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
+    },
+    keep() {
+      const p = human();
+      if (p.pendingDice.length > 3 && !p.keptThisRound) { G.actor = 0; return WAIT; }
+      p.keptThisRound = false;
+      G.cursor = 0;
+      go("intake", "place"); return NEXT;
+    },
+    pick() {
+      const n = G.players.length;
+      while (G.cursor < n) {
+        const p = G.players[(G.firstPlayer + G.cursor) % n];
+        if (p.ambulance !== null) { G.cursor++; continue; }
+        if (p.isBot) { applyPickAmbulance(p, botPickAmbulance(p)); continue; }
+        G.actor = p.id; return WAIT;
+      }
+      // Everyone has a queue. Leftover dice go back in the bag; lowest queue = intel token + Incident Commander.
+      for (const a of G.ambulances) if (a.takenBy === null) { for (const d of a.dice) returnToBag(d); a.dice = []; }
+      G.turnOrder = G.players.slice().sort((a, b) => a.ambulance - b.ambulance).map(p => p.id);
+      const lowest = playersInTurnOrder()[0];
+      lowest.bloodBags++;
+      if (G.firstPlayer !== lowest.id) log(`${lowest.name} took the lowest queue: +1 intel token and the Incident Commander role.`, "warn");
+      else log(`${lowest.name} took the lowest queue: +1 intel token, stays Incident Commander.`, "warn");
+      G.firstPlayer = lowest.id;
+      for (const p of G.players) { const a = G.ambulances.find(x => x.num === p.ambulance); if (a) { p.pendingDice.push(...a.dice); a.dice = []; } }
+      G.cursor = 0;
+      go("intake", "place"); return NEXT;
+    },
+    place() {
+      for (const p of playersInTurnOrder()) {
+        if (!p.pendingDice.length) continue;
+        const free = emptyBeds(p).length;
+        if (p.pendingDice.length > free) {
+          const shortage = p.pendingDice.length - free;
+          if (p.isBot) { for (const uid of botChooseFatalities(p, shortage)) { const d = findDie(p, uid); if (d) fatality(p, d, null); } log(`${p.name} ran out of quarantine space: ${shortage} ${plural(shortage, "breach", "breaches")}.`, "bad"); }
+          else { G.overflow = { pid: p.id, shortage, marked: [] }; G.actor = 0; return WAIT; }
+        }
+        const n = p.pendingDice.length;
+        for (const d of p.pendingDice) placeDie(p, d);
+        p.pendingDice = [];
+        if (!p.isBot) log(`${n} new ${plural(n, "host")} admitted to quarantine.`, "sys");
+      }
+      const ev = currentEvent();
+      G.cursor = 0;
+      if (ev && ev.skipImprove) { log(`${ev.name}: no improvements this shift.`, "warn"); go("activate", "start"); }
+      else go("improve", "take");
+      return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 350 }]);
+    },
+  },
+  improve: {
+    take() {
+      if (G.cfg.solo) {
+        const p = human();
+        if (p.took) { go("improve", "return"); return NEXT; }
+        if (!G.deptDisplay.length && !G.specDisplay.length) {
+          if (G.deptStack.length) G.deptDisplay = [G.deptStack.pop()];
+          if (G.specStack.length) G.specDisplay = [G.specStack.pop()];
+        }
+        if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; go("improve", "return"); return NEXT; }
+        G.actor = 0; return WAIT;
+      }
+      for (const p of playersInTurnOrder()) {
+        if (p.took) continue;
+        if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; continue; }
+        if (p.isBot) { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; continue; }
+        G.actor = p.id; return WAIT;
+      }
+      go("improve", "return"); return NEXT;
+    },
+    return() {
+      for (const p of playersInTurnOrder()) {
+        if (p.returnDone) continue;
+        if (p.isBot) { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); continue; }
+        G.actor = p.id; return WAIT;
+      }
+      go("activate", "start"); return NEXT;
+    },
+  },
+  activate: {
+    start() {
+      const ev = currentEvent();
+      if (ev && !G.eventApplied) {
+        G.eventApplied = true;
+        for (const p of G.players) {
+          if (ev.intelAll) p.bloodBags++;
+          if (ev.staffShortage) { const m = p.meeples.find(x => x.kind === "nurse" && !x.off); if (m) m.off = true; }
+          if (ev.autoHeal) { const ds = boardDice(p).sort((a, b) => a.value - b.value); if (ds.length) heal(p, ds[0], 1, newCtx()); }
+          if (ev.backupWindow) for (const d of boardDice(p).filter(x => x.value === 6)) discharge(p, d, null);
+        }
+        if (ev.intelAll || ev.staffShortage || ev.autoHeal || ev.backupWindow) log(`${ev.name} applied.`, "warn");
+      }
+      go("activate", "consultant"); return NEXT;
+    },
+    consultant() {
+      for (const p of G.players) {
+        const c = p.specialists.find(s => s.type === "consultant");
+        if (!c || p.consultantDone) continue;
+        const others = p.specialists.filter(s => s.type !== "consultant");
+        if (!others.length) { p.consultantDone = true; continue; }
+        if (p.isBot) { applyConsultant(p, botConsultant(p)); continue; }
+        G.actor = p.id; return WAIT;
+      }
+      go("activate", "human"); return NEXT;
+    },
+    human() {
+      const p = human();
+      if (p.actDone) { go("activate", "bots"); return NEXT; }
+      G.actor = 0; return WAIT;
+    },
+    bots() {
+      for (const p of G.players) if (p.isBot && !p.actDone) { botActivate(p); p.actDone = true; }
+      go("neglect", "run");
+      return animate([{ type: "render" }, { type: "wait", delay: 500 }]);
+    },
+  },
+  neglect: {
+    run() {
+      const fx = [];
+      for (const p of G.players) {
+        const res = runNeglect(p);
+        p.neglectResults = res;
+        const dead = res.filter(r => r.dead).length, hit = res.filter(r => !r.dead && !r.shielded).length;
+        if (!p.isBot) {
+          if (dead) log(`Dwell time: ${dead} ${plural(dead, "host")} lost. ${plural(dead, "Breach", "Breaches")} logged.`, "bad");
+          else if (hit) log(`Dwell time: ${hit} queued ${plural(hit, "host")} degraded.`, "warn");
+          else if (res.some(r => r.shielded)) log("Dwell time: containment held.", "good");
+          else log("Dwell time: nothing left in the queue to degrade.", "good");
+          if (dead) fx.push({ type: "pulse", colour: "rgba(255,51,51,0.35)" }, { type: "sfx", name: "breach" });
+          else if (hit) fx.push({ type: "sfx", name: "degrade" });
+        } else if (dead) log(`${p.name}: ${dead} ${plural(dead, "breach", "breaches")} from dwell time.`, "sys");
+      }
+      const ev = currentEvent();
+      if (ev && ev.breachExtra) for (const p of G.players) if (p.breachesThisRound) p.score -= ev.breachExtra * p.breachesThisRound;
+      go("discharge", G.cfg.solo ? "reports" : "score");
+      return animate([{ type: "render" }, { type: "fx", sel: "#wards .slot.u .die", cls: "shake" }, ...fx, { type: "wait", delay: 700 }]);
+    },
+  },
+  discharge: {
+    reports() {
+      if (!G.reportPool) G.reportPool = dischargeCounts(human());
+      if (completableReports().length) { G.actor = 0; return WAIT; }
+      go("discharge", "score"); return NEXT;
+    },
+    score() {
+      const ev = currentEvent();
+      const results = G.players.map(p => ({ p, r: scoreDischarges(p) }));
+      const max = Math.max(...results.map(x => x.r.n));
+      if (max > 0) for (const { p, r } of results) {
+        if (r.n === max && p.admin && ADMIN_DEFS[p.admin].kind === "most") { p.score += 1; r.notes.push("Executive Visibility +1"); }
+        if (r.n === max && ev && ev.mostBonus) { p.score += ev.mostBonus; r.notes.push(`${ev.name} +${ev.mostBonus}`); }
+      }
+      for (const { p, r } of results) {
+        if (!p.isBot) {
+          if (r.n) log(`Restored ${r.n} ${plural(r.n, "host")} this shift: +${r.pts} reputation${r.notes.length ? " (" + r.notes.join(", ") + ")" : ""}.`, "good");
+          else log(`No hosts restored this shift.${r.notes.length ? " " + r.notes.join(", ") + "." : ""}`, "warn");
+        } else if (r.n) log(`${p.name} restored ${r.n}: +${r.pts + r.bonus}.`, "sys");
+        for (const d of p.dischargedThisRound) G.bag[d.colour]++;
+        p.dischargedThisRound = [];
+      }
+      G.reportPool = null; G.reportsDone = false;
+      if (G.round >= ROUNDS) go("final", G.cfg.collections ? "collections" : "score");
+      else go("shift", "run");
+      return animate([{ type: "render" }, { type: "sfx", name: "score" }, { type: "wait", delay: 600 }]);
+    },
+  },
+  shift: {
+    run() {
+      for (const p of G.players) {
+        for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
+        for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
+        for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
+        p.ambulance = null; p.took = false; p.returnDone = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
+        p.breachesThisRound = 0; p.neglectResults = null; p.botSummary = "";
+      }
+      for (const a of G.ambulances) { a.dice = []; a.takenBy = null; }
+      if (G.events && G.events.current) { G.events.current = null; }
+      G.eventApplied = false;
+      recycleDisplay();
+      G.round++;
+      log(`Shift ${G.round} begins.`, "sys");
+      go("shift", "extraReveal"); return NEXT;
+    },
+    extraReveal() { return stepExtraReveal("intake", "draw"); },
+  },
+  final: {
+    collections() {
+      if (!G.collections) {
+        const n = G.players.length;
+        const ambs = [];
+        for (let i = 0; i < n; i++) ambs.push({ num: i + 1, slots: [0, 1, 2].map(() => ({ colour: COLOURS[rint(3)], value: 2 + rint(4), uid: null })) });
+        G.collections = { ambs, order: playersFrom(G.firstPlayer).map(p => p.id), cursor: 0, passed: {} };
+        log("MSSP Handover: outside providers will take matching hosts.", "warn");
+      }
+      const C = G.collections;
+      let guard = 0;
+      while (guard++ < 200) {
+        const open = C.ambs.flatMap(a => a.slots).filter(s => !s.uid);
+        if (!open.length || C.order.every(id => C.passed[id])) break;
+        const pid = C.order[C.cursor % C.order.length];
+        const p = G.players[pid];
+        if (C.passed[pid]) { C.cursor++; continue; }
+        const legal = collectionMoves(p);
+        if (!legal.length) { C.passed[pid] = true; C.cursor++; continue; }
+        if (p.isBot) { const mv = botCollection(p, legal); if (mv) applyCollect(p, mv.uid, mv.amb, mv.slot); else { C.passed[pid] = true; C.cursor++; } continue; }
+        G.actor = pid; return WAIT;
+      }
+      go("final", "score"); return NEXT;
+    },
+    score() {
+      finalScore();
+      G.gameOver = true;
+      clearSave();
+      const w = G.final.winners.map(id => G.players[id].name);
+      log(G.cfg.solo ? `Final reputation: ${human().total}.` : `${w.join(" and ")} ${w.length > 1 ? "share the win" : (w[0] === "You" ? "win" : "wins")}.`, "good");
+      go("gameover", "done");
+      if (!UI.headless) setTimeout(() => showGameOver(), 400);
+      return NEXT;
+    },
+  },
+  gameover: { done() { return WAIT; } },
+};
+
+function stepExtraReveal(nextPhase, nextStep) {
+  if (G.players.length === 2) {
+    if (G.extraChoice === null) {
+      const fp = G.players[G.firstPlayer];
+      if (fp.isBot) { applyExtraChoice(botExtraChoice(fp)); }
+      else { G.actor = fp.id; return WAIT; }
+    }
+  }
+  refillDisplay();
+  G.extraChoice = G.players.length === 2 ? G.extraChoice : null;
+  go(nextPhase, nextStep);
+  return NEXT;
+}
+function revealEvent() {
+  if (!G.events.deck.length) G.events.deck = shuffle(Object.keys(EVENT_DEFS));
+  G.events.current = G.events.deck.pop();
+  const ev = EVENT_DEFS[G.events.current];
+  log(`Incident event: ${ev.name} — ${ev.desc}`, "warn");
+}
+function collectionMoves(p) {
+  const out = [];
+  if (!G.collections) return out;
+  G.collections.ambs.forEach((a, ai) => a.slots.forEach((s, si) => {
+    if (s.uid) return;
+    for (const d of boardDice(p)) if (d.colour === s.colour && d.value === s.value) out.push({ uid: d.uid, amb: ai, slot: si });
+  }));
+  return out;
+}
+
+// ---- appliers: mutate + set the next step, shared by UI handlers and bots ----
+function applyAdmin(p, id) {
+  p.admin = id; p.adminChoice = null;
+  if (!p.isBot) log(`CISO Directive: ${ADMIN_DEFS[id].name}.`, "sys");
+}
+function swapStartValues(p, uidA, uidB) {
+  const a = p.startDice.find(d => d.uid === uidA), b = p.startDice.find(d => d.uid === uidB);
+  if (a && b) { const t = a.value; a.value = b.value; b.value = t; }
+}
+function applyStartConfirm(p) {
+  for (const d of p.startDice) placeDie(p, d);
+  p.startDice = [];
+}
+function applyExtraChoice(kind) {
+  G.extraChoice = kind;
+  // The 2-player extra reveal is a fresh draw on top of the standard display.
+  const fp = G.players[G.firstPlayer];
+  log(`${fp.name} reveal${fp.isBot ? "s" : ""} an extra ${kind === "dept" ? "tool" : "specialist"}.`, "sys");
+}
+function applyKeep(p, uids) {
+  const kept = p.pendingDice.filter(d => uids.includes(d.uid));
+  const dropped = p.pendingDice.filter(d => !uids.includes(d.uid) && d.uid !== p.epidemicDie);
+  const epi = p.pendingDice.filter(d => d.uid === p.epidemicDie);
+  for (const d of dropped) returnToBag(d);
+  p.pendingDice = kept.concat(epi);
+  p.epidemicDie = null;
+  const total = sum(kept.map(d => d.value));
+  if (total < SOLO_KEEP_BONUS_BELOW) { p.bloodBags++; log(`Kept ${kept.map(d => d.value).join("+")} = ${total} (< ${SOLO_KEEP_BONUS_BELOW}): +1 intel token.`, "good"); }
+  else log(`Kept ${kept.map(d => d.value).join("+")} = ${total}.`, "sys");
+  p.keptThisRound = true;
+}
+function canPickAmbulance(p, num) {
+  const a = G.ambulances.find(x => x.num === num);
+  if (!a || a.takenBy !== null || p.ambulance !== null) return false;
+  if (p.id === G.firstPlayer && num === 1) return false;
+  return true;
+}
+function applyPickAmbulance(p, num) {
+  const a = G.ambulances.find(x => x.num === num);
+  a.takenBy = p.id; p.ambulance = num;
+  G.cursor++;
+  log(`${p.name} ${p.isBot ? "takes" : "take"} queue #${num} (${a.dice.map(d => d.value).join(", ")}).`, p.isBot ? "sys" : "good");
+}
+function applyOverflow() {
+  const O = G.overflow; if (!O) return;
+  const p = G.players[O.pid];
+  for (const uid of O.marked) { const d = findDie(p, uid); if (d) fatality(p, d, null); }
+  log(`Quarantine full: ${O.marked.length} existing ${plural(O.marked.length, "host")} written off as ${plural(O.marked.length, "a breach", "breaches")}.`, "bad");
+  G.overflow = null;
+}
+function applyTake(p, kind, idx) {
+  const item = kind === "dept" ? G.deptDisplay[idx] : G.specDisplay[idx];
+  if (!item) return false;
+  if (kind === "dept") { G.deptDisplay[idx] = null; addDepartment(p, item); }
+  else { G.specDisplay[idx] = null; addSpecialist(p, item); }
+  p.took = true;
+  const name = kind === "dept" ? DEPT_DEFS[item].name : SPEC_DEFS[item].name;
+  log(`${p.name} ${p.isBot ? "adds" : "add"} ${kind === "dept" ? "the " + name + " tool" : "a " + name}.`, p.isBot ? "sys" : "good");
+  if (G.cfg.solo) recycleDisplay();
+  return true;
+}
+function applyReturn(p, kind, uid) {
+  p.returnDone = true;
+  if (!kind) return;
+  if (kind === "dept") {
+    const i = p.departments.findIndex(d => d.uid === uid && d.improvement);
+    if (i < 0) return;
+    G.deptStack.unshift(p.departments[i].type);
+    log(`${p.name} ${p.isBot ? "returns" : "return"} ${DEPT_DEFS[p.departments[i].type].name} for an intel token.`, "sys");
+    p.departments.splice(i, 1);
+  } else {
+    const i = p.specialists.findIndex(s => s.uid === uid);
+    if (i < 0) return;
+    const s = p.specialists[i];
+    G.specStack.unshift(s.type);
+    p.meeples = p.meeples.filter(m => m.uid !== s.meepleUid);
+    log(`${p.name} ${p.isBot ? "returns" : "return"} the ${SPEC_DEFS[s.type].name} for an intel token.`, "sys");
+    p.specialists.splice(i, 1);
+  }
+  p.bloodBags++;
+}
+function applyConsultant(p, specUid) {
+  const s = specUid ? specOf(p, specUid) : null;
+  p.consultantCopy = s ? s.type : null;
+  p.consultantDone = true;
+  if (s && !p.isBot) log(`Consultant is shadowing the ${SPEC_DEFS[s.type].name} this shift.`, "sys");
+}
+function applyEndActivation(p) { p.actDone = true; }
+function applyCompleteReport(col) {
+  const id = G.solo.display[1][col];
+  if (id === null || id === undefined) return false;
+  const pool = reportCountsAvailable();
+  if (!reportCompletable(id, pool)) return false;
+  const r = REPORT_DEFS[id];
+  for (const c of COLOURS) pool[c] -= (r.need[c] || 0);
+  G.solo.completed.push(id);
+  human().score += r.pts;
+  log(`Audit Report filed (${reportLabel(id)}): +${r.pts} reputation.`, "good");
+  // The card above slides down. The rulebook doesn't refill the top row, so the display shrinks.
+  G.solo.display[1][col] = G.solo.display[0][col];
+  G.solo.display[0][col] = null;
+  return true;
+}
+function applyReportsDone() { G.reportsDone = true; }
+function applyCollect(p, uid, ai, si) {
+  const d = removeDie(p, uid);
+  if (!d) return;
+  const s = G.collections.ambs[ai].slots[si];
+  s.uid = uid; s.by = p.id;
+  returnToBag(d);
+  p.collected++;
+  G.collections.cursor++;
+  log(`${p.name} hand${p.isBot ? "s" : ""} a ${d.colour} host at ${d.value} to provider #${ai + 1}: +1.`, "sys");
+}
+function applyPass(p) { G.collections.passed[p.id] = true; G.collections.cursor++; }
+
+// ---- activation (shared by human FSM and bots) ----
+function pushUndo() {
+  UI.undo.push(JSON.stringify(G));
+  if (UI.undo.length > 40) { UI.undo.shift(); if (UI.undoBarrier > 0) UI.undoBarrier--; }
+}
+function canUndo() { return G && G.phase === "activate" && G.step === "human" && UI.undo.length > UI.undoBarrier; }
+function undo() {
+  if (!canUndo()) return;
+  G = JSON.parse(UI.undo.pop());
+  resetSel();
+  log("Undo.", "sys");
+  commit();
+}
+function describeHealCtx(p, who, deptName, ctx) {
+  const parts = [];
+  const byUid = {};
+  for (const h of ctx.healed) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
+  for (const uid in byUid) { const h = byUid[uid]; parts.push(`${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`); }
+  return `${who} on ${deptName}: ${parts.length ? parts.join(", ") : "no change"}${ctx.notes.length ? "; " + ctx.notes.join("; ") : ""}.`;
+}
+function useIntelHeal(p, die) {
+  if (p.bloodBags <= 0) return null;
+  p.bloodBags--;
+  const ctx = newCtx();
+  heal(p, die, 1, ctx);
+  return ctx;
+}
+function useIntelRecolour(p, die, colour) {
+  if (p.bloodBags <= 0) return false;
+  p.bloodBags--;
+  die.tmpColour = colour;
+  markTreated(p, die);
+  return true;
+}
+
+// ---- invariants for headless sims ----
+function assertInvariants() {
+  const expected = G.cfg.dicePerColour * 3;
+  const got = totalDiceOnTable();
+  if (got !== expected) throw new Error(`Dice conservation broken: ${got} vs ${expected} at ${G.phase}.${G.step} round ${G.round}`);
+  const seen = new Set();
+  for (const p of G.players) for (const d of boardDice(p)) {
+    if (seen.has(d.uid)) throw new Error("Duplicate die uid " + d.uid);
+    seen.add(d.uid);
+    if (d.value < 1 || d.value > 6) throw new Error("Die value out of range " + d.value);
+  }
+  for (const p of G.players) for (const { b } of beds(p)) if (b.u && b.t) throw new Error("Bed holds two patients");
+}
+/* ============================================================
+   HUMAN INPUT
+   Every handler validates the phase/step, mutates through an
+   applier, then calls advance(). The activation phase is a small
+   state machine in UI.sel: idle → meepleSel → targeting → (colour)
+   → spec/choice → idle.
+   ============================================================ */
+function inPhase(ph, st) { return !!G && !G.gameOver && G.phase === ph && (!st || G.step === st) && !UI.animating; }
+
+function onAdminPick(id) { if (!inPhase("setup", "admin")) return; applyAdmin(human(), id); advance(); }
+function onStartDie(uid) {
+  const s = UI.sel, p = human();
+  if (s.pending === uid) s.pending = null;
+  else if (s.pending) { swapStartValues(p, s.pending, uid); s.pending = null; sfx("place"); }
+  else s.pending = uid;
+  updateAll();
+}
+function onStartConfirm() { if (!inPhase("setup", "startDice")) return; applyStartConfirm(human()); resetSel(); advance(); }
+function onExtraChoice(kind) { if (!(inPhase("setup", "extraReveal") || inPhase("shift", "extraReveal"))) return; applyExtraChoice(kind); advance(); }
+function onKeepToggle(uid) {
+  const s = UI.sel, p = human();
+  if (uid === p.epidemicDie) return;
+  const i = s.dice.indexOf(uid);
+  if (i >= 0) s.dice.splice(i, 1); else if (s.dice.length < 3) s.dice.push(uid);
+  updateAll();
+}
+function onKeepConfirm() { if (!inPhase("intake", "keep") || UI.sel.dice.length !== 3) return; applyKeep(human(), UI.sel.dice.slice()); resetSel(); advance(); }
+function onQueueClick(num) { if (!inPhase("intake", "pick") || !canPickAmbulance(human(), num)) return; sfx("place"); applyPickAmbulance(human(), num); advance(); }
+function onOverflowToggle(uid) {
+  const O = G.overflow; if (!O) return;
+  const p = human();
+  if (!findDie(p, uid)) return;
+  const i = O.marked.indexOf(uid);
+  if (i >= 0) O.marked.splice(i, 1); else if (O.marked.length < O.shortage) O.marked.push(uid);
+  updateAll();
+}
+function onOverflowConfirm() { const O = G.overflow; if (!inPhase("intake", "place") || !O || O.marked.length !== O.shortage) return; applyOverflow(); advance(); }
+function onDisplayClick(kind, idx) { if (!inPhase("improve", "take")) return; if (!applyTake(human(), kind, idx)) return; sfx("place"); advance(); }
+function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; applyReturn(human(), kind, uid); advance(); }
+function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
+function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
+function onConsultantSkip() { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), null); advance(); }
+function onReportClick(col) { if (!inPhase("discharge", "reports")) return; if (applyCompleteReport(col)) { sfx("score"); saveGame(); updateAll(); } }
+function onReportsBest() { if (!inPhase("discharge", "reports")) return; let c; while ((c = bestReport()) !== null) applyCompleteReport(c); sfx("score"); saveGame(); updateAll(); }
+function onReportsDone() { if (!inPhase("discharge", "reports")) return; applyReportsDone(); advance(); }
+function onCollectDie(uid) {
+  if (!inPhase("final", "collections")) return;
+  const mv = collectionMoves(human()).find(m => m.uid === uid);
+  if (!mv) return;
+  applyCollect(human(), mv.uid, mv.amb, mv.slot); advance();
+}
+function onCollectPass() { if (!inPhase("final", "collections")) return; applyPass(human()); advance(); }
+
+// ---- activation FSM ----
+function onMeepleClick(uid) {
+  if (!inPhase("activate", "human")) return;
+  const p = human(), m = meepleOf(p, uid), s = UI.sel;
+  if (!m || m.used || m.off) return;
+  if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
+  if (s.meepleUid === uid && s.state === "meepleSel") resetSel();
+  else { resetSel(); s.state = "meepleSel"; UI.sel.meepleUid = uid; }
+  computeLegal(); updateAll();
+}
+function onDeptClick(uid) {
+  if (inPhase("improve", "return")) { const d = deptOf(human(), uid); if (d && d.improvement) onReturnClick("dept", uid); return; }
+  if (!inPhase("activate", "human")) return;
+  const p = human(), dept = deptOf(p, uid), s = UI.sel;
+  if (!dept || dept.used) return;
+  if (s.state !== "meepleSel" && s.state !== "targeting") return;
+  if (!canActivate(dept, p)) return;
+  if (s.state === "targeting" && s.deptUid === uid) return;
+  s.state = "targeting"; s.deptUid = uid; s.dice = [];
+  const sets = legalSets(DEPT_DEFS[dept.type].sel, boardDice(p));
+  if (sets.length === 1) s.dice = sets[0].map(d => d.uid);
+  computeLegal(); updateAll();
+}
+function onSpecCardClick(uid) {
+  if (inPhase("improve", "return")) { onReturnClick("spec", uid); return; }
+  if (inPhase("activate", "consultant")) { const s = specOf(human(), uid); if (s && s.type !== "consultant") onConsultantPick(uid); return; }
+}
+function toggleDie(list, uid) { const i = list.indexOf(uid); if (i >= 0) list.splice(i, 1); else list.push(uid); }
+function onDieClick(uid) {
+  if (!G || UI.animating) return;
+  if (inPhase("setup", "startDice")) return onStartDie(uid);
+  if (inPhase("intake", "keep")) return onKeepToggle(uid);
+  if (inPhase("intake", "place") && G.overflow) return onOverflowToggle(uid);
+  if (inPhase("final", "collections")) return onCollectDie(uid);
+  if (!inPhase("activate", "human")) return;
+  const p = human(), s = UI.sel, die = findDie(p, uid);
+  if (!die) return;
+  switch (s.state) {
+    case "targeting":
+    case "spec":
+      if (!UI.legalTargets.has(uid)) return;
+      toggleDie(s.dice, uid);
+      break;
+    case "intelHeal": {
+      pushUndo();
+      const ctx = useIntelHeal(p, die);
+      log(describeHealCtx(p, "Intel token", "the host", ctx), "good");
+      sfx(ctx.discharged.length ? "discharge" : "heal");
+      s.state = "idle";
+      afterAction();
+      return;
+    }
+    case "intelRecolour":
+      s.pending = uid; s.state = "intelColour";
+      break;
+    case "admReturn": {
+      const o = s.specOpts;
+      applySpec(p, s.spec, s.ctx, [], { mode: "return", uid });
+      o.count--;
+      if (o.count > 0) s.state = "choice"; else { finishSpecLog(); afterAction(); return; }
+      break;
+    }
+    default: return;
+  }
+  computeLegal(); updateAll();
+}
+function selectedDice() { return UI.sel.dice.map(u => findDie(human(), u)).filter(Boolean); }
+function targetsComplete() {
+  const p = human(), s = UI.sel;
+  if (s.state === "targeting") { const dept = deptOf(p, s.deptUid); return dept && matchesSel(DEPT_DEFS[dept.type].sel, selectedDice()); }
+  if (s.state === "spec") {
+    const o = s.specOpts, dice = selectedDice();
+    return o.sets.some(set => set.length === dice.length && (o.ordered ? set.every((d, i) => d.uid === dice[i].uid) : set.every(d => dice.some(x => x.uid === d.uid))));
+  }
+  return false;
+}
+function confirmTargets() {
+  if (!inPhase("activate", "human") || !targetsComplete()) return;
+  const p = human(), s = UI.sel;
+  if (s.state === "targeting") {
+    const def = DEPT_DEFS[deptOf(p, s.deptUid).type];
+    if (def.op === "recolour") { s.state = "colour"; s.colourFor = "dept"; s.colourQueue = s.dice.slice(); s.colours = {}; updateAll(); return; }
+    runActivation({});
+  } else if (s.state === "spec") {
+    if (s.specOpts.needColour) { s.state = "colour"; s.colourFor = "spec"; s.colourQueue = s.dice.slice(); s.colours = {}; updateAll(); return; }
+    finishSpec({});
+  }
+}
+function onColourPick(c) {
+  const s = UI.sel, p = human();
+  if (s.state === "intelColour") {
+    const die = findDie(p, s.pending);
+    if (die) { pushUndo(); useIntelRecolour(p, die, c); log(`Intel token: ${COLOUR_NAME[die.colour]} host retagged as ${COLOUR_NAME[c]} for this shift.`, "good"); sfx("intel"); }
+    s.pending = null; s.state = s.deptUid ? "targeting" : "idle";
+    if (s.state === "targeting") { const dept = deptOf(p, s.deptUid); if (!dept || !canActivate(dept, p)) { s.state = "meepleSel"; s.deptUid = null; } s.dice = s.dice.filter(u => findDie(p, u)); }
+    computeLegal(); updateAll(); return;
+  }
+  if (s.state !== "colour") return;
+  const uid = s.colourQueue.shift();
+  s.colours[uid] = c;
+  if (s.colourQueue.length) { updateAll(); return; }
+  if (s.colourFor === "spec") finishSpec({ colour: c }); else runActivation({ colours: s.colours });
+}
+function runActivation(opt) {
+  const p = human(), s = UI.sel;
+  const m = meepleOf(p, s.meepleUid), dept = deptOf(p, s.deptUid), dice = selectedDice();
+  if (!m || !dept) { resetSel(); updateAll(); return; }
+  pushUndo();
+  const ctx = activateDept(p, m, dept, dice, opt);
+  if (ctx.random) UI.undoBarrier = UI.undo.length;
+  log(describeHealCtx(p, meepleLabel(p, m), DEPT_DEFS[dept.type].name, ctx), "good");
+  sfx(ctx.discharged.length ? "discharge" : "heal");
+  s.ctx = ctx;
+  const def = specDefForMeeple(p, m);
+  if (def && !def.special) {
+    const o = specOptions(def, ctx, p);
+    if (o) {
+      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(); }
+      else {
+        s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
+        o.ordered = !!def.then.and;
+        if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
+        computeLegal(); updateAll(); return;
+      }
+    }
+  }
+  afterAction();
+}
+function finishSpecLog() {
+  const s = UI.sel;
+  if (s.ctx && s.ctx.notes.length) { log(s.ctx.notes.join("; ") + ".", "good"); s.ctx.notes = []; }
+  if (s.ctx && s.ctx.random) UI.undoBarrier = UI.undo.length;
+}
+function finishSpec(opt) {
+  const p = human(), s = UI.sel;
+  applySpec(p, s.spec, s.ctx, selectedDice(), opt);
+  sfx(s.ctx.discharged.length ? "discharge" : "heal");
+  finishSpecLog();
+  afterAction();
+}
+function onSpecChoice(mode) {
+  if (!inPhase("activate", "human") || UI.sel.state !== "choice") return;
+  const p = human(), s = UI.sel, o = s.specOpts;
+  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); afterAction(); return; }
+  if (o.choice === "admissions") {
+    if (mode === "return") { if (!boardDice(p).length) return; s.state = "admReturn"; computeLegal(); updateAll(); return; }
+    if (mode === "admit") { if (!emptyBeds(p).length) return; applySpec(p, s.spec, s.ctx, [], { mode: "admit" }); }
+    o.count--;
+    if (mode !== "skip" && o.count > 0) { updateAll(); return; }
+    finishSpecLog(); afterAction();
+  }
+}
+function skipSpec() { if (!inPhase("activate", "human")) return; if (!["spec", "choice", "admReturn"].includes(UI.sel.state)) return; finishSpecLog(); afterAction(); }
+function afterAction() { resetSel(); saveGame(); computeLegal(); updateAll(); }
+function onIntelHeal() {
+  if (!inPhase("activate", "human") || human().bloodBags <= 0) return;
+  const s = UI.sel;
+  if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
+  if (s.state === "intelHeal") { s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); }
+  else { s.prevState = s.state; s.state = "intelHeal"; }
+  computeLegal(); updateAll();
+}
+function onIntelRecolour() {
+  if (!inPhase("activate", "human") || human().bloodBags <= 0) return;
+  const s = UI.sel;
+  if (s.state === "intelRecolour") { s.state = "targeting"; }
+  else if (s.state === "targeting") s.state = "intelRecolour";
+  else return;
+  computeLegal(); updateAll();
+}
+function cancelSel() {
+  const s = UI.sel;
+  if (!inPhase("activate", "human")) return;
+  switch (s.state) {
+    case "targeting": s.state = "meepleSel"; s.deptUid = null; s.dice = []; break;
+    case "intelHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); break;
+    case "intelRecolour": case "intelColour": s.state = "targeting"; s.pending = null; break;
+    case "colour": if (s.colourFor === "spec") { s.state = "spec"; } else { s.state = "targeting"; } s.colourQueue = null; break;
+    case "meepleSel": resetSel(); break;
+    default: return;
+  }
+  computeLegal(); updateAll();
+}
+function endActivation() {
+  if (!inPhase("activate", "human")) return;
+  const p = human();
+  if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
+  const idle = p.meeples.filter(m => !m.used && !m.off).length && p.departments.some(d => canActivate(d, p));
+  if (idle && !UI.endConfirm) {
+    UI.endConfirm = true;
+    setTimeout(() => { UI.endConfirm = false; if (G) updatePhaseUI(); }, 3000);
+    updatePhaseUI(); return;
+  }
+  UI.endConfirm = false;
+  applyEndActivation(p);
+  resetSel(); UI.undo = []; UI.undoBarrier = 0;
+  log("Activation complete. Waiting on dwell time.", "sys");
+  advance();
+}
+function computeLegal() {
+  UI.legalTargets = new Set(); UI.legalByDept = {};
+  if (!G || G.phase !== "activate" || G.step !== "human") return;
+  const p = human(), s = UI.sel;
+  for (const d of p.departments) UI.legalByDept[d.uid] = canActivate(d, p);
+  if (s.state === "targeting") {
+    const dept = deptOf(p, s.deptUid);
+    if (dept) UI.legalTargets = narrowTargets(DEPT_DEFS[dept.type].sel, boardDice(p), s.dice);
+  } else if (s.state === "spec") {
+    const o = s.specOpts;
+    for (const set of o.sets) {
+      const ok = o.ordered ? s.dice.every((u, i) => set[i] && set[i].uid === u) : s.dice.every(u => set.some(d => d.uid === u));
+      if (!ok) continue;
+      if (o.ordered) { if (set[s.dice.length]) UI.legalTargets.add(set[s.dice.length].uid); for (const u of s.dice) UI.legalTargets.add(u); }
+      else for (const d of set) UI.legalTargets.add(d.uid);
+    }
+  } else if (["intelHeal", "intelRecolour", "admReturn"].includes(s.state)) {
+    for (const d of boardDice(p)) UI.legalTargets.add(d.uid);
+  }
+}
+
+// Keyboard: digits pick analysts, Enter confirms, Esc cancels, U undo, E end, B intel, H help, M mute.
+function setupInput() {
+  document.getElementById("app").addEventListener("click", e => {
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    dispatchAct(el);
+  });
+  document.getElementById("app").addEventListener("keydown", e => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const el = e.target.closest("[data-act]");
+    if (!el) return;
+    e.preventDefault(); dispatchAct(el);
+  });
+  document.addEventListener("keydown", e => {
+    if (e.target && ["INPUT", "TEXTAREA", "SELECT"].includes(e.target.tagName)) return;
+    const modalOpen = document.getElementById("modal-overlay").classList.contains("open");
+    if (e.key === "Escape") { if (modalOpen) { if (document.getElementById("modal-content").dataset.dismissable === "1") closeModal(); } else cancelSel(); return; }
+    if (modalOpen) return;
+    if (e.key === "h" || e.key === "H" || e.key === "?") { showHowToPlay(); return; }
+    if (e.key === "m" || e.key === "M") { toggleMute(); return; }
+    if (!G || G.gameOver) return;
+    if (e.key === "Enter") { const b = document.querySelector("#action-buttons .action-btn.primary:not(:disabled)"); if (b) { b.click(); e.preventDefault(); } return; }
+    if (e.key === "u" || e.key === "U") { undo(); return; }
+    if (e.key === "e" || e.key === "E") { endActivation(); return; }
+    if (e.key === "b" || e.key === "B") { onIntelHeal(); return; }
+    if (/^[1-9]$/.test(e.key) && inPhase("activate", "human")) {
+      const ms = human().meeples.filter(m => !m.off);
+      const m = ms[parseInt(e.key, 10) - 1];
+      if (m) onMeepleClick(m.uid);
+    }
+  });
+}
+function dispatchAct(el) {
+  const a = el.dataset.act, uid = el.dataset.uid ? parseInt(el.dataset.uid, 10) : null, idx = el.dataset.idx !== undefined ? parseInt(el.dataset.idx, 10) : null;
+  switch (a) {
+    case "die": onDieClick(uid); break;
+    case "meeple": onMeepleClick(uid); break;
+    case "dept": onDeptClick(uid); break;
+    case "spec": onSpecCardClick(uid); break;
+    case "queue": onQueueClick(idx); break;
+    case "dispDept": onDisplayClick("dept", idx); break;
+    case "dispSpec": onDisplayClick("spec", idx); break;
+    case "admin": onAdminPick(el.dataset.id); break;
+    case "report": onReportClick(idx); break;
+    case "colour": onColourPick(el.dataset.colour); break;
+    case "extra": onExtraChoice(el.dataset.kind); break;
+  }
+}
+
+/* ============================================================
+   AI RIVALS
+   Greedy simulate-and-score. Deterministic through rnd() so a
+   seed replays. Skill: 0 random-ish, 1 mostly best, 2 best.
+   ============================================================ */
+const V_PIP = [0, -6, -3, 0, 1, 2, 3];
+const V_DISCHARGE = 12, V_FATALITY = 8, V_BLOOD = 3, V_TREATED = 1;
+function boardValue(p) {
+  let v = 0;
+  for (const d of boardDice(p)) v += V_PIP[d.value] + (d.treated ? V_TREATED : 0);
+  return v + V_DISCHARGE * p.dischargedThisRound.length - V_FATALITY * p.fatalities + V_BLOOD * p.bloodBags + p.score;
+}
+function botPick(options, skill) {
+  if (!options.length) return null;
+  options.sort((a, b) => b.score - a.score);
+  if (skill === 0) return options[rint(options.length)];
+  if (skill === 1 && options.length > 1 && rnd() < 0.25) return options[1];
+  return options[0];
+}
+function colourCounts(dice) { const c = { red: 0, yellow: 0, green: 0 }; for (const d of dice) c[d.colour]++; return c; }
+function topColour(dice) { const c = colourCounts(dice); return COLOURS.slice().sort((a, b) => c[b] - c[a])[0]; }
+function botPickAdmin(p) {
+  if (p.skill === 0) return p.adminChoice[rint(2)];
+  const top = topColour(p.startDice.length ? p.startDice : boardDice(p));
+  const scored = p.adminChoice.map(id => { const a = ADMIN_DEFS[id]; let s = 1; if (a.colour === top) s += 2; if (a.kind === "most") s += 1.5; if (a.kind === "eachColour") s += 1; return { id, score: s }; });
+  return botPick(scored, 2).id;
+}
+function botExtraChoice(p) {
+  const usable = p.departments.filter(d => !d.used).length;
+  return p.meeples.length >= usable ? "dept" : (rnd() < 0.5 ? "dept" : "spec");
+}
+function botKeep(p) {
+  const cands = p.pendingDice.filter(d => d.uid !== p.epidemicDie);
+  const opts = combos(cands, 3).map(set => {
+    const total = sum(set.map(d => d.value));
+    return { score: sum(set.map(d => V_PIP[d.value] + 2)) + (total < SOLO_KEEP_BONUS_BELOW ? V_BLOOD : 0), set };
+  });
+  return botPick(opts, p.skill).set.map(d => d.uid);
+}
+function botPickAmbulance(p) {
+  const free = emptyBeds(p).length;
+  const open = G.ambulances.filter(a => canPickAmbulance(p, a.num));
+  const lowestOpen = Math.min(...G.ambulances.filter(a => a.takenBy === null).map(a => a.num));
+  const opts = open.map(a => ({
+    num: a.num,
+    score: sum(a.dice.map(d => V_PIP[d.value] + 1)) - V_FATALITY * Math.max(0, a.dice.length - free) + (a.num === lowestOpen ? V_BLOOD + 2 : 0) + 0.3 * (G.ambulances.length - a.num),
+  }));
+  return botPick(opts, p.skill).num;
+}
+function botChooseFatalities(p, k) {
+  const tools = colourCounts([]);
+  for (const d of p.departments) if (COLOURS.includes(DEPT_DEFS[d.type].tag)) tools[DEPT_DEFS[d.type].tag]++;
+  return boardDice(p).slice().sort((a, b) => V_PIP[a.value] - V_PIP[b.value] || tools[a.colour] - tools[b.colour]).slice(0, k).map(d => d.uid);
+}
+function deptPower(def) { return def.heal ? def.heal * def.sel.n : 2 * def.sel.n; }
+function botPickImprovement(p) {
+  const opts = [];
+  const board = boardDice(p);
+  const usableDepts = p.departments.filter(d => firstLegalSet(DEPT_DEFS[d.type].sel, board)).length;
+  const need = p.meeples.length >= usableDepts ? 1.5 : 0.8;
+  G.deptDisplay.forEach((t, idx) => {
+    if (!t) return;
+    const def = DEPT_DEFS[t];
+    const usable = firstLegalSet(def.sel, board) ? 1 : (def.sel.n >= 3 ? 0.35 : 0.6);
+    opts.push({ kind: "dept", idx, score: deptPower(def) * usable * need + rnd() * 0.5 });
+  });
+  const tags = colourCounts([]);
+  for (const d of p.departments) if (COLOURS.includes(DEPT_DEFS[d.type].tag)) tags[DEPT_DEFS[d.type].tag]++;
+  G.specDisplay.forEach((t, idx) => {
+    if (!t) return;
+    const def = SPEC_DEFS[t];
+    let aff = 1;
+    if (COLOURS.includes(def.colour)) aff = 2 * tags[def.colour] / Math.max(1, p.departments.length) + 0.5;
+    if (def.special === "copy") aff = p.specialists.length ? 1.5 : 0.3;
+    opts.push({ kind: "spec", idx, score: 6 * (p.meeples.length < p.departments.length ? 1 : 0.6) + aff + rnd() * 0.5 });
+  });
+  return botPick(opts, p.skill);
+}
+function botReturnDecision(p) {
+  if (p.bloodBags > 0 || p.skill === 0) return null;
+  const d = p.departments.find(x => x.improvement && x.idleRounds >= 2);
+  return d ? { kind: "dept", uid: d.uid } : null;
+}
+function botConsultant(p) {
+  const others = p.specialists.filter(s => s.type !== "consultant");
+  if (!others.length) return null;
+  const c = colourCounts(boardDice(p));
+  others.sort((a, b) => (c[SPEC_DEFS[b.type].colour] || 1.5) - (c[SPEC_DEFS[a.type].colour] || 1.5));
+  return others[0].uid;
+}
+function botColour(p) {
+  const tags = colourCounts([]);
+  for (const d of p.departments) if (!d.used && COLOURS.includes(DEPT_DEFS[d.type].tag)) tags[DEPT_DEFS[d.type].tag]++;
+  return COLOURS.slice().sort((a, b) => tags[b] - tags[a])[0];
+}
+function botOpt(p, dept, dice) {
+  const def = DEPT_DEFS[dept.type];
+  if (def.op !== "recolour") return {};
+  const c = botColour(p), colours = {};
+  for (const d of dice) colours[d.uid] = c;
+  return { colours };
+}
+function botApplySpec(p, def, ctx, o) {
+  if (o.kind === "auto") { applySpec(p, def, ctx, []); return; }
+  if (o.kind === "choice") {
+    if (o.choice === "pathologist") { applySpec(p, def, ctx, [], { yes: true }); return; }
+    if (o.choice === "admissions") {
+      const bad = untreatedDice(p).filter(d => d.value <= 2).sort((a, b) => a.value - b.value)[0];
+      if (bad) applySpec(p, def, ctx, [], { mode: "return", uid: bad.uid });
+      else if (!UI.simulating && emptyBeds(p).length >= 2) applySpec(p, def, ctx, [], { mode: "admit" });
+      return;
+    }
+  }
+  let best = null, bestV = -Infinity;
+  for (const set of o.sets.slice(0, 30)) {
+    const wasSim = UI.simulating; UI.simulating = true;
+    const pc = clone(p), cc = clone(ctx);
+    applySpec(pc, def, cc, set.map(d => findDie(pc, d.uid)), { colour: botColour(pc) });
+    const v = boardValue(pc);
+    UI.simulating = wasSim;
+    if (v > bestV) { bestV = v; best = set; }
+  }
+  if (best) applySpec(p, def, ctx, best, { colour: botColour(p) });
+}
+function simulateAction(p, m, dept, dice) {
+  UI.simulating = true;
+  const pc = clone(p);
+  const mc = meepleOf(pc, m.uid), dc = deptOf(pc, dept.uid), dicec = dice.map(d => findDie(pc, d.uid));
+  const ctx = activateDept(pc, mc, dc, dicec, botOpt(pc, dc, dicec));
+  const def = specDefForMeeple(pc, mc);
+  if (def && !def.special) { const o = specOptions(def, ctx, pc); if (o) botApplySpec(pc, def, ctx, o); }
+  const v = boardValue(pc);
+  UI.simulating = false;
+  return v;
+}
+function botActivate(p) {
+  const parts = [];
+  let guard = 0;
+  while (guard++ < 14) {
+    const before = boardValue(p);
+    const opts = [];
+    const board = boardDice(p);
+    const meeples = p.meeples.filter(m => !m.used && !m.off);
+    const nurse = meeples.find(m => m.kind === "nurse");
+    const reps = meeples.filter(m => m.kind === "spec");
+    if (nurse) reps.push(nurse);
+    for (const m of reps) {
+      for (const dept of p.departments.filter(d => !d.used)) {
+        const def = DEPT_DEFS[dept.type];
+        let sets = legalSets(def.sel, board);
+        if (sets.length > 24) sets = shuffle(sets).slice(0, 24);
+        for (const set of sets) opts.push({ score: simulateAction(p, m, dept, set) - before + rnd() * 0.01, m, dept, set });
+      }
+    }
+    const good = opts.filter(o => o.score > 0.05);
+    const best = botPick(good, p.skill === 1 ? 1 : (p.skill === 0 ? 0 : 2));
+    if (!best) break;
+    const ctx = activateDept(p, best.m, best.dept, best.set, botOpt(p, best.dept, best.set));
+    const def = specDefForMeeple(p, best.m);
+    if (def && !def.special) { const o = specOptions(def, ctx, p); if (o) botApplySpec(p, def, ctx, o); }
+    parts.push(DEPT_DEFS[best.dept.type].name + (ctx.discharged.length ? " ✓" : ""));
+  }
+  botBloodBag(p);
+  const n = p.dischargedThisRound.length;
+  p.botSummary = parts.length ? `${parts.join(", ")} — ${n} restored` : "Nothing to work on";
+  if (!UI.headless) log(`${p.name}: ${p.botSummary}.`, "sys");
+}
+function botBloodBag(p) {
+  let guard = 0;
+  while (p.bloodBags > 0 && guard++ < 10) {
+    const six = boardDice(p).find(d => d.value === 6);
+    if (six) { useIntelHeal(p, six); continue; }
+    const dying = untreatedDice(p).filter(d => d.value === 1)[0];
+    if (dying && (G.round >= ROUNDS || p.skill >= 1)) { useIntelHeal(p, dying); continue; }
+    if (G.round >= ROUNDS) { const d = boardDice(p).sort((a, b) => b.value - a.value)[0]; if (d && d.value >= 5) { useIntelHeal(p, d); continue; } }
+    break;
+  }
+}
+function botCollection(p, legal) {
+  if (!legal.length) return null;
+  const withVal = legal.map(m => ({ m, v: findDie(p, m.uid).value }));
+  withVal.sort((a, b) => a.v - b.v);
+  return withVal[0].m;
+}
+function bestReport() {
+  const cs = completableReports();
+  if (!cs.length) return null;
+  cs.sort((a, b) => REPORT_DEFS[G.solo.display[1][b]].pts - REPORT_DEFS[G.solo.display[1][a]].pts);
+  return cs[0];
+}
+// Answers the human's WAIT with bot logic — used by the headless harness and demo mode.
+function botAnswerWait() {
+  const p = human();
+  if (p.skill === undefined || p.skill === null) p.skill = 2;
+  const ph = G.phase, st = G.step;
+  if (ph === "setup" && st === "admin") applyAdmin(p, botPickAdmin(p));
+  else if (ph === "setup" && st === "startDice") applyStartConfirm(p);
+  else if (st === "extraReveal") applyExtraChoice(botExtraChoice(p));
+  else if (ph === "intake" && st === "keep") applyKeep(p, botKeep(p));
+  else if (ph === "intake" && st === "pick") applyPickAmbulance(p, botPickAmbulance(p));
+  else if (ph === "intake" && st === "place") { G.overflow.marked = botChooseFatalities(p, G.overflow.shortage); applyOverflow(); }
+  else if (ph === "improve" && st === "take") { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; }
+  else if (ph === "improve" && st === "return") { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); }
+  else if (ph === "activate" && st === "consultant") applyConsultant(p, botConsultant(p));
+  else if (ph === "activate" && st === "human") { botActivate(p); applyEndActivation(p); }
+  else if (ph === "discharge" && st === "reports") { let c; while ((c = bestReport()) !== null) applyCompleteReport(c); applyReportsDone(); }
+  else if (ph === "final" && st === "collections") { const mv = botCollection(p, collectionMoves(p)); if (mv) applyCollect(p, mv.uid, mv.amb, mv.slot); else applyPass(p); }
+  else throw new Error("autoHuman: unhandled wait " + ph + "." + st);
+}
+/* ============================================================
+   EVENT QUEUE & ANIMATION
+   Presentation only: state is already final when events run.
+   The last event is always a callback that re-enters advance().
+   ============================================================ */
+function processEventQueue() {
+  UI.queueTimer = null;
+  if (!G || !UI.eventQueue.length) { UI.animating = false; return; }
+  UI.animating = true;
+  const evt = UI.eventQueue.shift();
+  let delay = evt.delay || 0;
+  switch (evt.type) {
+    case "render": updateAll(); break;
+    case "log": log(evt.msg, evt.level); break;
+    case "sfx": sfx(evt.name); break;
+    case "fx": document.querySelectorAll(evt.sel).forEach((el, i) => { el.classList.remove(evt.cls); void el.offsetWidth; el.style.animationDelay = (i * (evt.stagger || 0)) + "ms"; el.classList.add(evt.cls); }); break;
+    case "pulse": screenPulse(evt.colour); break;
+    case "wait": break;
+    case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
+  }
+  if (UI.reducedMotion) delay = Math.min(delay, 30);
+  UI.queueTimer = setTimeout(processEventQueue, delay);
+}
+function screenPulse(colour) {
+  const el = document.getElementById("screen-pulse");
+  el.style.background = colour;
+  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+}
+function showPhaseToast(text) {
+  const el = document.getElementById("phase-toast");
+  el.textContent = text;
+  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  if (UI.phaseToastTimer) clearTimeout(UI.phaseToastTimer);
+  UI.phaseToastTimer = setTimeout(() => el.classList.remove("on"), 1400);
+}
+// FLIP: remember where every die was, rebuild the DOM, then slide each survivor from its old spot.
+function snapshotRects() {
+  UI.flipRects = new Map();
+  if (UI.reducedMotion) return;
+  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, el.getBoundingClientRect()); });
+}
+function playFlip() {
+  if (UI.reducedMotion || !UI.flipRects.size) return;
+  document.querySelectorAll("#app .die[data-uid]").forEach(el => {
+    const old = UI.flipRects.get(el.dataset.uid);
+    if (!old) { el.classList.add("bump"); return; }
+    const now = el.getBoundingClientRect();
+    const dx = old.left - now.left, dy = old.top - now.top;
+    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    el.style.transition = "none";
+    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    void el.offsetWidth;
+    el.style.transition = "";
+    el.style.transform = "";
+  });
+  UI.flipRects = new Map();
+}
+
+/* ============================================================
+   AUDIO — Web Audio, procedural, no assets
+   ============================================================ */
+let _audioCtx = null;
+function getAudioCtx() {
+  if (UI.muted) return null;
+  try {
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === "suspended") _audioCtx.resume();
+    return _audioCtx;
+  } catch (e) { return null; }
+}
+function playTone(freq, type, duration, gain, delay) {
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  try {
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    const t = ctx.currentTime + (delay || 0);
+    o.type = type; o.frequency.setValueAtTime(freq, t);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t); o.stop(t + duration + 0.02);
+  } catch (e) {}
+}
+const SFX = {
+  roll:      () => { for (let i = 0; i < 5; i++) playTone(180 + Math.random() * 220, "square", 0.05, 0.05, i * 0.06); },
+  place:     () => playTone(520, "triangle", 0.08, 0.08),
+  heal:      () => { playTone(440, "sine", 0.1, 0.1); playTone(660, "sine", 0.12, 0.08, 0.08); },
+  discharge: () => { playTone(523, "square", 0.1, 0.08); playTone(659, "square", 0.1, 0.08, 0.1); playTone(880, "square", 0.2, 0.1, 0.2); },
+  breach:    () => { playTone(140, "sawtooth", 0.3, 0.12); playTone(90, "sawtooth", 0.4, 0.1, 0.15); },
+  degrade:   () => playTone(220, "sawtooth", 0.15, 0.06),
+  score:     () => { playTone(660, "triangle", 0.08, 0.08); playTone(990, "triangle", 0.15, 0.08, 0.09); },
+  phase:     () => playTone(330, "sine", 0.12, 0.05),
+  intel:     () => { playTone(784, "sine", 0.08, 0.07); playTone(1046, "sine", 0.12, 0.07, 0.07); },
+  win:       () => [523, 659, 784, 1046].forEach((f, i) => playTone(f, "square", 0.25, 0.1, i * 0.15)),
+  lose:      () => [392, 330, 262, 196].forEach((f, i) => playTone(f, "sawtooth", 0.3, 0.1, i * 0.2)),
+};
+function sfx(name) { if (UI.muted || !SFX[name]) return; SFX[name](); }
+function toggleMute() {
+  UI.muted = !UI.muted;
+  const b = document.getElementById("mute-btn");
+  if (b) b.setAttribute("aria-pressed", UI.muted ? "true" : "false");
+  try { localStorage.setItem("pumatriage_muted_v1", UI.muted ? "1" : "0"); } catch (e) {}
+}
+
+/* ============================================================
+   LOG & FLAVOR
+   ============================================================ */
+const FLAVOR = {
+  win: ["Incident closed. Board's happy. Nobody remembers your name, which is the goal.", "Ransomware negotiators are bored. That's on you.", "Zero data loss. Frame the report; nobody will read it."],
+  lose: ["The breach notification template got a workout.", "Insurance called. They have questions.", "Time to update the résumé. Lead with the wins."],
+  solo: ["Score recorded. The auditors have been notified.", "Another shift survived. The queue never ends.", "Log it, learn from it, roll again."],
+};
+function log(msg, level) {
+  if (!G) return;
+  G.log.push(msg);
+  if (G.log.length > 200) G.log.shift();
+  if (UI.headless) return;
+  const list = document.getElementById("log-list");
+  if (!list) return;
+  const li = document.createElement("li");
+  li.textContent = msg;
+  let cls = level || "";
+  if (!cls) {
+    if (/breach|lost|written off|compromis/i.test(msg)) cls = "bad";
+    else if (/restored|\+\d|filed|intel token/i.test(msg)) cls = "good";
+    else if (/degrad|event|full|no improvements/i.test(msg)) cls = "warn";
+  }
+  if (cls) li.className = cls;
+  const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = `S${G.round}`;
+  li.prepend(ts);
+  list.prepend(li);
+  while (list.children.length > 60) list.removeChild(list.lastChild);
+  const ann = document.getElementById("announcements");
+  if (ann) ann.textContent = msg;
+}
+function rebuildLog() {
+  const list = document.getElementById("log-list");
+  if (!list) return;
+  list.innerHTML = "";
+  const round = G.round;
+  G.log.slice(-60).forEach(msg => { const li = document.createElement("li"); li.className = "sys"; li.textContent = msg; list.prepend(li); });
+}
+/* ============================================================
+   RENDERING
+   DOM rebuilt by string templating. updateAll() is the one entry
+   point; FLIP keeps dice visually continuous across rebuilds.
+   ============================================================ */
+function updateAll() {
+  if (UI.headless || !G) return;
+  snapshotRects();
+  renderBoard(); renderCenter(); renderRivals(); updateHUD(); updatePhaseUI();
+  playFlip();
+}
+function pips() { return '<span class="pip"></span>'.repeat(9); }
+function renderDie(die, opts = {}) {
+  const c = effColour(die);
+  const cls = ["die", "c-" + c, "v-" + die.value];
+  if (die.tmpColour) cls.push("tmp", "o-" + die.colour);
+  if (die.treated) cls.push("treated");
+  if (opts.small) cls.push("die-sm");
+  if (opts.cls) cls.push(opts.cls);
+  const label = `${COLOUR_NAME[c]} host at ${die.value}${die.tmpColour ? ", retagged from " + COLOUR_NAME[die.colour] : ""}${die.treated ? ", worked" : ""}${opts.aria || ""}`;
+  const act = opts.act ? ' data-act="die" role="button" tabindex="0"' : ' role="img"';
+  return `<div class="${cls.join(" ")}" data-uid="${die.uid}"${act} aria-label="${esc(label)}" title="${esc(label)}">${pips()}</div>`;
+}
+function renderPlainDie(colour, value, extra) { return `<span class="die die-sm c-${colour} v-${value} ${extra || ""}" role="img" aria-label="${colour} ${value}">${pips()}</span>`; }
+function dieState(uid) {
+  const s = UI.sel;
+  let cls = "", act = false;
+  if (G.phase === "activate" && G.step === "human") {
+    if (["targeting", "spec", "intelHeal", "intelRecolour", "admReturn"].includes(s.state)) {
+      if (UI.legalTargets.has(uid)) { cls += " target-ok clickable"; act = true; } else cls += " dim";
+      if (s.dice.includes(uid)) cls += " sel";
+      if (s.dice.includes(uid) && s.specOpts && s.specOpts.ordered) cls += " sel";
+    }
+  } else if (G.phase === "intake" && G.step === "place" && G.overflow) {
+    act = true; cls += " clickable";
+    if (G.overflow.marked.includes(uid)) cls += " sel";
+  } else if (G.phase === "final" && G.step === "collections" && G.actor === 0 && !G.gameOver) {
+    if (collectionMoves(human()).some(m => m.uid === uid)) { cls += " target-ok clickable"; act = true; }
+  }
+  return { cls, act };
+}
+function deptRule(def) {
+  const sel = def.sel;
+  const colourWord = sel.colour ? COLOUR_NAME[sel.colour].toLowerCase() : "";
+  const vals = sel.values ? " at " + sel.values.join("/") : "";
+  const n = sel.min !== undefined && sel.min !== sel.n ? `${sel.min}–${sel.n}` : `${sel.n}`;
+  const rel = sel.rel === "sameValue" ? ", same value" : sel.rel === "consecutive" ? ", consecutive" : "";
+  const what = `${n} ${colourWord} ${plural(sel.n, "host")}${vals}${rel}`.replace(/\s+/g, " ").trim();
+  const eff = def.heal ? `+${def.heal}${sel.n > 1 ? " each" : ""}` : def.op === "reroll" ? "re-roll" : def.op === "recolour" ? "retag" : "flip face";
+  return `${what} → ${eff}`;
+}
+function deptDesc(def) {
+  const sel = def.sel;
+  const colourWord = sel.colour ? COLOUR_NAME[sel.colour].toLowerCase() + " " : "";
+  const vals = sel.values ? ` at value ${sel.values.join(" or ")}` : "";
+  const rel = sel.rel === "sameValue" ? " of the same value" : sel.rel === "consecutive" ? " of consecutive values" : "";
+  const n = sel.min !== undefined && sel.min !== sel.n ? `up to ${sel.n}` : `exactly ${sel.n}`;
+  const what = sel.n === 1 && sel.min === undefined ? `one ${colourWord}host${vals}` : `${n} different ${colourWord}hosts${vals}${rel}`;
+  if (def.heal) return `Heal ${what} ${def.heal} ${plural(def.heal, "step")}${sel.n > 1 ? " each" : ""}.`;
+  if (def.op === "reroll") return `Re-roll ${what}. You must accept the new result. Both count as worked.`;
+  if (def.op === "recolour") return `Change the colour of ${what} until the end of the shift. They count as worked.`;
+  if (def.op === "flip") return `Flip ${what} to the opposite face (1↔6, 2↔5, 3↔4). It counts as worked.`;
+  return "";
+}
+function specDesc(def) {
+  if (def.special === "copy") return "At the start of activation, copy the ability of another specialist you employ for this shift.";
+  const t = def.then;
+  const trig = def.when.healedColour ? `When it heals a ${def.when.healedColour} host` : def.when.dischargedAny ? "When it restores a host" : "When it heals a host";
+  if (t.choice === "admissions") return trig + ": hand off another host to the bag, or admit a newly rolled host.";
+  if (t.choice === "pathologist") return trig + ": you may close one breach record to gain an intel token.";
+  if (t.op === "score") return trig + `: +${t.n} reputation.`;
+  if (t.op === "bloodBag") return trig + ": +1 intel token.";
+  if (t.op === "reroll") return trig + ": re-roll a different host (it counts as worked; it may get worse).";
+  if (t.op === "recolour") return trig + ": retag any host's colour for the rest of the shift (it counts as worked).";
+  if (t.and) return trig + ": heal a different host 1 step and degrade another 1 step. Both count as worked.";
+  const [kind, c] = t.from.split(":");
+  const vals = t.values ? ` at ${t.values.join("/")}` : "";
+  const target = kind === "healedOf" ? `one of those ${c} hosts` : kind === "otherOf" ? `a different ${c} host` : kind === "otherValueEqPre" ? `a different host of any colour whose value equals what the ${c} host was before healing` : `${t.n === 2 ? "two different hosts" : "a different host"}${vals}`;
+  return `${trig}: heal ${target} ${t.heal} ${plural(t.heal, "step")}${t.n === 2 ? " each" : ""}.`;
+}
+function renderDeptTile(type, cls, attrs, inner) {
+  const def = DEPT_DEFS[type];
+  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} title="${esc(deptDesc(def))}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner || ""}</div>`;
+}
+function renderSpecCard(type, cls, attrs) {
+  const def = SPEC_DEFS[type];
+  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${esc(specDesc(def))}</div></div>`;
+}
+function renderMeeple(p, m, key) {
+  const s = UI.sel, cls = [];
+  const live = G.phase === "activate" && G.step === "human";
+  if (m.used) cls.push("used");
+  if (m.off) cls.push("off");
+  if (live && !m.used && !m.off) cls.push("avail");
+  if (s.meepleUid === m.uid && live) cls.push("sel");
+  const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "");
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div>`;
+}
+
+function renderBoard() {
+  const p = human(), el = document.getElementById("board"), s = UI.sel;
+  const live = G.phase === "activate" && G.step === "human";
+  const returning = G.phase === "improve" && G.step === "return" && !UI.animating;
+  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}</h3>`;
+  html += '<div id="wards">';
+  p.wards.forEach((w, wi) => {
+    const n = w.filter(b => b.u || b.t).length;
+    html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
+    for (const b of w) {
+      html += '<div class="bed">';
+      for (const k of ["u", "t"]) {
+        const d = b[k];
+        const x = d ? dieState(d.uid) : null;
+        html += `<div class="slot ${k}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div></div>';
+  });
+  html += '</div>';
+  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
+  for (const d of p.departments) {
+    const cls = [];
+    if (d.used) cls.push("used");
+    if (live && (s.state === "meepleSel" || s.state === "targeting")) { if (UI.legalByDept[d.uid] && !d.used) cls.push("can"); else if (!d.used) cls.push("disabled"); }
+    if (live && s.deptUid === d.uid) cls.push("sel");
+    if (returning && d.improvement) cls.push("returnable");
+    if (d.uid >= G.nextUid - 2) cls.push("new");
+    const m = p.meeples.find(x => x.deptUid === d.uid);
+    const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
+    const clickable = cls.includes("can") || cls.includes("returnable");
+    html += renderDeptTile(d.type, cls.join(" "), `data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}"`, inner);
+  }
+  html += '</div>';
+  html += '<div class="board-row"><span class="lbl">Analysts</span>';
+  let key = 0;
+  for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
+  html += '</div>';
+  if (p.specialists.length) {
+    html += '<div class="board-row"><span class="lbl">Specialists</span></div><div id="specs">';
+    for (const sp of p.specialists) {
+      const cls = [];
+      if (returning) cls.push("returnable");
+      if (G.phase === "activate" && G.step === "consultant" && sp.type !== "consultant") cls.push("clickable");
+      if (p.consultantCopy === sp.type && sp.type !== "consultant") cls.push("sel");
+      html += renderSpecCard(sp.type, cls.join(" "), `data-act="spec" data-uid="${sp.uid}" role="button" tabindex="0"`);
+    }
+    html += '</div>';
+  }
+  html += '<div class="board-row"><span class="lbl">Status</span><div id="tray">';
+  html += `<span class="token intel" title="Intel tokens: heal any host 1 step or retag its colour during activation. +1 reputation each at the end.">INTEL ×${p.bloodBags}</span>`;
+  html += `<span class="token breach" title="Breach records: −${FATALITY_PENALTY} reputation each at the end.">BREACH ×${p.fatalities}</span>`;
+  if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
+  if (p.dischargedThisRound.length) {
+    html += '<span class="stack-info">Restored:</span>';
+    for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`;
+  }
+  html += '</div></div>';
+  el.innerHTML = html;
+}
+
+function renderCenter() {
+  const el = document.getElementById("center");
+  const p = human(), s = UI.sel, ph = G.phase, st = G.step;
+  let html = "";
+  const ev = currentEvent();
+  if (ev) html += `<div class="rule-card"><div class="rn">Incident event: ${esc(ev.name)}</div>${esc(ev.desc)}</div>`;
+  if (ph === "setup" && st === "admin") {
+    html += '<div class="center-title">CISO Directive — keep one</div><div class="admin-pick">';
+    for (const id of p.adminChoice) html += `<div class="admin-card" data-act="admin" data-id="${id}" role="button" tabindex="0"><div class="an">${esc(ADMIN_DEFS[id].name)}</div><div class="ad">${esc(adminDesc(id))}</div></div>`;
+    html += '</div>';
+  } else if (ph === "setup" && st === "startDice") {
+    html += '<div class="center-title">Starting hosts</div><div class="keep-row">';
+    for (const d of p.startDice) html += renderDie(d, { act: true, cls: s.pending === d.uid ? "sel clickable" : "clickable" });
+    html += '</div><div class="hint">Click two hosts to swap their values. Colour is just colour.</div>';
+  } else if (st === "extraReveal" && G.actor === 0 && G.players.length === 2) {
+    html += '<div class="center-title">Extra reveal</div>' + renderDisplay(false);
+  } else if (ph === "intake" && (st === "draw" || st === "pick")) {
+    html += '<div class="center-title">Escalation queues</div><div id="queues">';
+    const myTurn = st === "pick" && G.actor === 0 && !UI.animating && p.ambulance === null;
+    for (const a of G.ambulances.slice().sort((x, y) => x.num - y.num)) {
+      const taken = a.takenBy !== null;
+      const blocked = myTurn && !canPickAmbulance(p, a.num);
+      const cls = taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "";
+      const attrs = myTurn && !blocked ? `data-act="queue" data-idx="${a.num}" role="button" tabindex="0"` : "";
+      html += `<div class="queue ${cls}" ${attrs} aria-label="Queue ${a.num}${taken ? ", taken by " + G.players[a.takenBy].name : ""}">${a.num === 1 && G.players[G.firstPlayer] ? '' : ''}<div class="qn">#${a.num}</div>`;
+      for (const d of a.dice) html += renderDie(d, { small: true });
+      if (!a.dice.length && !taken) html += '<div class="qsum">—</div>';
+      if (a.dice.length) html += `<div class="qsum">Σ ${sum(a.dice.map(d => d.value))}</div>`;
+      if (taken) html += `<div class="qby">${esc(G.players[a.takenBy].name)}</div>`;
+      html += '</div>';
+    }
+    html += '</div>';
+    if (st === "pick" && G.actor === 0 && p.id === G.firstPlayer) html += '<div class="hint">As Incident Commander you may not take queue #1.</div>';
+    html += '<div class="hint">The lowest-numbered queue taken hands its owner an intel token and the Incident Commander role.</div>';
+  } else if (ph === "intake" && st === "keep") {
+    const total = sum(s.dice.map(u => { const d = p.pendingDice.find(x => x.uid === u); return d ? d.value : 0; }));
+    html += '<div class="center-title">Rolled hosts — keep 3</div><div class="keep-row">';
+    for (const d of p.pendingDice) html += renderDie(d, { act: d.uid !== p.epidemicDie, cls: (s.dice.includes(d.uid) ? "sel " : "") + (d.uid === p.epidemicDie ? "" : "clickable") });
+    html += `</div><div class="hint">Kept total: ${total}${s.dice.length === 3 ? (total < SOLO_KEEP_BONUS_BELOW ? " — below 9, +1 intel token" : "") : ""}${p.epidemicDie ? " · the extra Worm Outbreak host is admitted regardless" : ""}</div>`;
+  } else if (ph === "intake" && st === "place" && G.overflow) {
+    const O = G.overflow;
+    html += `<div class="center-title">Quarantine full</div><div class="keep-row">`;
+    for (const d of p.pendingDice) html += renderDie(d);
+    html += `</div><div class="hint">${p.pendingDice.length} incoming, ${emptyBeds(p).length} free ${plural(emptyBeds(p).length, "slot")}. Mark ${O.shortage} existing ${plural(O.shortage, "host")} on your board to write off. Marked: ${O.marked.length}/${O.shortage}.</div>`;
+  } else if (ph === "improve") {
+    html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
+  } else if (ph === "activate" && st === "consultant") {
+    html += '<div class="center-title">Consultant</div><div class="hint">Click one of your specialists on the board for the Consultant to shadow this shift.</div>';
+  } else if (ph === "activate" && st === "human") {
+    html += renderActivationPanel();
+  } else if (ph === "discharge" && st === "reports") {
+    html += '<div class="center-title">Audit Reports</div>' + renderReports(true);
+  } else if (ph === "final" && st === "collections") {
+    html += '<div class="center-title">Outside providers</div><div class="collection">';
+    G.collections.ambs.forEach((a, ai) => {
+      html += `<div class="queue"><div class="qn">#${a.num}</div>`;
+      for (const sl of a.slots) html += `<div class="coll-slot ${sl.colour} ${sl.uid ? "filled" : ""}" title="${sl.colour} ${sl.value}">${sl.value}</div>`;
+      html += '</div>';
+    });
+    html += '</div><div class="hint">Hand a host whose colour and value match an open slot: +1 each. Every host left at the end costs 1.</div>';
+  } else if (ph === "gameover") {
+    html += '<div class="center-title">Shift log closed</div><div class="hint">Open the summary from the actions bar, or start a new game.</div>';
+  } else {
+    html += '<div class="center-title">Table</div>';
+    html += `<div class="summary-grid"><span class="k">Bag</span><span>${renderPlainDie("red", 1)} ${G.bag.red} &nbsp; ${renderPlainDie("yellow", 1)} ${G.bag.yellow} &nbsp; ${renderPlainDie("green", 1)} ${G.bag.green}</span>`;
+    html += `<span class="k">Tool stack</span><span>${G.deptStack.length}</span><span class="k">Specialist deck</span><span>${G.specStack.length}</span></div>`;
+    if (ph === "activate" && st === "bots") html += '<div class="hint">Rival SOCs are working their queues.</div>';
+  }
+  el.innerHTML = html;
+}
+function renderDisplay(pickable) {
+  let html = '<div id="display">';
+  const dd = G.deptDisplay, sd = G.specDisplay;
+  html += '<div class="disp-row">';
+  dd.forEach((t, i) => { if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""); });
+  html += '</div><div class="disp-row">';
+  sd.forEach((t, i) => { if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""); });
+  html += '</div>';
+  if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
+  html += `<div class="stack-info">Tool stack ${G.deptStack.length} · Specialist deck ${G.specStack.length}</div></div>`;
+  return html;
+}
+function renderReports(clickable) {
+  if (!G.solo) return "";
+  const cs = clickable ? completableReports() : [];
+  let html = '<div id="reports">';
+  for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) {
+    const id = G.solo.display[r][c];
+    if (id === null || id === undefined) { html += '<div class="report empty">—</div>'; continue; }
+    const def = REPORT_DEFS[id];
+    const can = r === 1 && cs.includes(c);
+    html += `<div class="report ${r === 0 ? "top" : ""} ${can ? "done-able" : ""}" ${can ? `data-act="report" data-idx="${c}" role="button" tabindex="0"` : ""} aria-label="Audit report ${reportLabel(id)}"><div class="rp">${def.pts}</div><div class="rneed">`;
+    for (const col of COLOURS) for (let i = 0; i < (def.need[col] || 0); i++) html += `<span class="mini-dot dot c-${col}"></span>`;
+    html += `</div><div>${r === 0 ? "next" : "open"}</div></div>`;
+  }
+  html += '</div>';
+  if (clickable) {
+    const pool = reportCountsAvailable();
+    html += `<div class="hint">Restored this shift and unassigned: ${COLOURS.map(c => `${pool[c]} ${c}`).join(", ")}. Only the bottom row can be filed.</div>`;
+  }
+  if (G.solo.completed.length) html += `<div class="report-list"><span class="stack-info">Filed: ${G.solo.completed.length}</span></div>`;
+  return html;
+}
+function renderActivationPanel() {
+  const p = human(), s = UI.sel;
+  let html = '<div class="center-title">Activation</div>';
+  const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
+  const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
+  if (m) {
+    const def = specDefForMeeple(p, m);
+    html += `<div class="rule-card"><div class="rn">${esc(meepleLabel(p, m))}</div>${def ? esc(specDesc(def)) : "Places on any one unused tool to trigger it."}</div>`;
+  }
+  if (dept) {
+    const def = DEPT_DEFS[dept.type];
+    html += `<div class="rule-card"><div class="rn">${esc(def.name)}</div>${esc(deptDesc(def))}<div class="hint">Selected ${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""}.</div></div>`;
+  }
+  if (s.state === "spec" || s.state === "choice" || s.state === "admReturn") {
+    html += `<div class="rule-card"><div class="rn">${esc(s.spec.name)} follow-up</div>${esc(specDesc(s.spec))}</div>`;
+    if (s.state === "choice") {
+      const o = s.specOpts;
+      html += '<div class="act-controls">';
+      if (o.choice === "pathologist") html += `<button class="action-btn primary" onclick="onSpecChoice('yes')">Close a breach record (+1 intel)</button><button class="action-btn" onclick="onSpecChoice('no')">No thanks</button>`;
+      if (o.choice === "admissions") html += `<button class="action-btn" onclick="onSpecChoice('return')" ${boardDice(p).length ? "" : "disabled"}>Hand off a host</button><button class="action-btn" onclick="onSpecChoice('admit')" ${emptyBeds(p).length ? "" : "disabled"}>Admit a new host</button><button class="action-btn" onclick="onSpecChoice('skip')">Skip</button><div class="hint">${o.count} ${plural(o.count, "trigger")} left.</div>`;
+      html += '</div>';
+    }
+  }
+  if (s.state === "colour" || s.state === "intelColour") {
+    html += '<div class="rule-card"><div class="rn">Pick a colour</div>' + (s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}.` : "The token retags this host for the rest of the shift.") + '<div class="colour-pick">';
+    for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
+    html += '</div></div>';
+  }
+  html += '<div class="act-controls">';
+  const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
+  html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
+  html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
+  html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
+  html += '</div>';
+  const idle = p.meeples.filter(x => !x.used && !x.off).length;
+  const usable = p.departments.filter(d => canActivate(d, p)).length;
+  html += `<div class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} with valid targets · ${p.bloodBags} intel</div>`;
+  return html;
+}
+function renderRivals() {
+  const wrap = document.getElementById("rivals-panel"), el = document.getElementById("rivals");
+  if (G.cfg.solo) {
+    wrap.querySelector("h3").textContent = "Audit Reports";
+    el.innerHTML = renderReports(false) + `<div class="hint">Incomplete reports subtract their value at the end${G.cfg.soloDblRep ? " (doubled)" : ""}.</div>`;
+    return;
+  }
+  wrap.querySelector("h3").textContent = "Rival SOCs";
+  let html = "";
+  for (const p of G.players.slice(1)) {
+    const dice = boardDice(p);
+    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : ""].join(" ");
+    html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
+    html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
+    html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, d.treated ? "treated" : "")).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
+    if (p.botSummary) html += `<div class="rs">${esc(p.botSummary)}</div>`;
+    html += '</div>';
+  }
+  el.innerHTML = html;
+}
+function updateHUD() {
+  const p = human();
+  const stats = [
+    ["Shift", `${Math.min(G.round, ROUNDS)}/${ROUNDS}`],
+    ["Reputation", p.score, p.score < 0 ? "bad" : ""],
+    ["Intel", p.bloodBags],
+    ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
+    ["Restored", p.dischargedTotal],
+    ["Bag", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
+  ];
+  const el = document.getElementById("hud-stats");
+  el.innerHTML = stats.map(([l, v, c]) => `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== v ? "flash" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span></div>`).join("");
+  for (const [l, v] of stats) UI.prevHUD[l] = v;
+}
+function promptFor() {
+  const p = human(), s = UI.sel, ph = G.phase, st = G.step;
+  const B = (label, fn, opt = {}) => ({ label, fn, ...opt });
+  if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("New game", "showMainMenu()")] };
+  if (UI.animating) return { text: "…", buttons: [] };
+  if (ph === "setup" && st === "admin") return { text: "The CISO hands you two directives. Keep one; it scores or shields for the whole game." };
+  if (ph === "setup" && st === "startDice") return { text: "Your first hosts arrive at 3, 4 and 5. Click two to swap their values, then confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
+  if (st === "extraReveal") return { text: "Two-SOC table: as Incident Commander, reveal one extra tool or one extra specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
+  if (ph === "intake" && st === "pick") return { text: "Choose an escalation queue. Low numbers carry sicker hosts but improve first and the lowest taken earns an intel token." };
+  if (ph === "intake" && st === "keep") return { text: "Keep 3 of the 4 rolled hosts. The 4th goes back in the bag. A kept total under 9 earns an intel token.", buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
+  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full. Mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} on your board to write off as ${plural(G.overflow.shortage, "a breach", "breaches")}.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "One tool and one specialist are revealed. Take one; the other goes to the bottom of its stack." : "Take one improvement: deploy a tool or hire a specialist. Specialists bring an extra pair of hands." };
+  if (ph === "improve" && st === "return") return { text: "Optionally return one of your improvements (even the one you just took) to the bottom of its stack for an intel token.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
+  if (ph === "activate" && st === "consultant") return { text: "Pick a specialist on your board for the Consultant to shadow.", buttons: [B("Skip", "onConsultantSkip()")] };
+  if (ph === "activate" && st === "human") {
+    const undoB = B("Undo", "undo()", { disabled: !canUndo() });
+    const endLabel = UI.endConfirm ? "Sure?" : "End activation";
+    const endB = B(endLabel, "endActivation()", { primary: !p.meeples.some(m => !m.used && !m.off) || !p.departments.some(d => canActivate(d, p)), danger: UI.endConfirm, key: "E" });
+    switch (s.state) {
+      case "idle": return { text: "Click an analyst, then a tool. Worked hosts move to the lower slot and skip dwell time. Hosts healed to 7 are restored.", buttons: [endB, undoB] };
+      case "meepleSel": return { text: "Now click a glowing tool. Dimmed tools have no valid targets.", buttons: [B("Cancel", "cancelSel()"), undoB] };
+      case "targeting": { const dept = deptOf(p, s.deptUid); const def = DEPT_DEFS[dept.type]; return { text: `${def.name}: ${deptDesc(def)} Click glowing hosts, then confirm.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] }; }
+      case "spec": return { text: `${s.spec.name}: ${specDesc(s.spec)} Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
+      case "choice": return { text: `${s.spec.name} triggered. Choose in the shared area.`, buttons: [B("Skip", "skipSpec()")] };
+      case "admReturn": return { text: "Click a host on your board to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
+      case "intelHeal": return { text: "Intel token: click any host to heal it 1 step. It counts as worked.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelRecolour": return { text: "Intel token: click the host to retag, then pick its new colour for this shift.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelColour": case "colour": return { text: "Pick the new colour in the shared area.", buttons: [B("Cancel", "cancelSel()")] };
+    }
+  }
+  if (ph === "discharge" && st === "reports") return { text: "File Audit Reports with this shift's restored hosts. Only the bottom row is open; filing one slides the card above it down.", buttons: [B("File best", "onReportsBest()"), B("Done", "onReportsDone()", { primary: true })] };
+  if (ph === "final" && st === "collections") return { text: "Hand a matching host to an outside provider, or pass for the rest of the handover.", buttons: [B("Pass", "onCollectPass()", { primary: !collectionMoves(p).length })] };
+  if (ph === "activate" && st === "bots") return { text: "Rival SOCs are working their queues." };
+  if (ph === "neglect") return { text: "Dwell time: every host still queued degrades." };
+  if (ph === "discharge") return { text: "Restorations are scored." };
+  return { text: "" };
+}
+function updatePhaseUI() {
+  if (!G) return;
+  const ph = G.phase;
+  document.getElementById("phase-display").textContent = `${PHASE_NAMES[ph] || ph}${G.gameOver ? "" : " · shift " + Math.min(G.round, ROUNDS)}`;
+  if (UI.prevPhase !== null && UI.prevPhase !== ph && !G.gameOver && ph !== "setup") { showPhaseToast(PHASE_NAMES[ph]); sfx("phase"); }
+  UI.prevPhase = ph;
+  const pr = promptFor();
+  document.getElementById("phase-instructions").textContent = pr.text || "";
+  document.getElementById("action-buttons").innerHTML = (pr.buttons || []).map(b =>
+    `<button class="action-btn ${b.primary ? "primary" : ""} ${b.danger ? "danger" : ""}" onclick="${b.fn}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}${b.key ? `<span class="k">${b.key}</span>` : ""}</button>`).join("");
+}
+/* ============================================================
+   MENUS & HOW TO PLAY
+   ============================================================ */
+let _prevFocus = null, _trapHandler = null;
+function openModal(dismissable) {
+  const ov = document.getElementById("modal-overlay"), mc = document.getElementById("modal-content");
+  mc.dataset.dismissable = dismissable ? "1" : "0";
+  _prevFocus = document.activeElement;
+  ov.classList.add("open");
+  const f = mc.querySelector("button, [href], input, [tabindex]:not([tabindex='-1'])");
+  if (f) f.focus();
+  if (_trapHandler) mc.removeEventListener("keydown", _trapHandler);
+  _trapHandler = e => {
+    if (e.key !== "Tab") return;
+    const els = Array.from(mc.querySelectorAll("button:not(:disabled), [href], input, [tabindex]:not([tabindex='-1'])"));
+    if (!els.length) return;
+    const first = els[0], last = els[els.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  mc.addEventListener("keydown", _trapHandler);
+}
+function closeModal() {
+  const ov = document.getElementById("modal-overlay");
+  ov.classList.remove("open");
+  if (_prevFocus && _prevFocus.focus) { try { _prevFocus.focus(); } catch (e) {} }
+}
+function renderRuleRow(key) {
+  const d = SLIDER_DEFS[key], v = houseRules[key];
+  const shown = d.toggle ? d.labels[v] : d.labels ? d.labels[v] : `${v}${d.unit || ""}`;
+  return `<div class="rule-row"><span class="rl">${esc(d.label)}${d.harder ? ' <span style="color:var(--red)">▲</span>' : ""}</span>
+    <input type="range" min="${d.min}" max="${d.max}" value="${v}" step="1" aria-label="${esc(d.label)}" oninput="setRule('${key}', this.value)">
+    <span class="rv">${esc(shown)}</span><span class="rd">${esc(d.desc || "")}</span></div>`;
+}
+function setRule(key, val) {
+  houseRules[key] = parseInt(val, 10);
+  showMainMenu(true);
+}
+function setPreset(id) { houseRules = { ...DIFFICULTY_PRESETS[id].sliders }; showMainMenu(true); }
+function currentPreset() {
+  for (const id in DIFFICULTY_PRESETS) {
+    const s = DIFFICULTY_PRESETS[id].sliders;
+    if (Object.keys(SLIDER_DEFS).every(k => (s[k] || 0) === (houseRules[k] || 0))) return id;
+  }
+  return null;
+}
+function showMainMenu(keepScroll) {
+  const mc = document.getElementById("modal-content");
+  const scroll = keepScroll ? mc.scrollTop : 0;
+  const preset = currentPreset();
+  const saved = hasSave();
+  const keys = Object.keys(SLIDER_DEFS).filter(k => !SLIDER_DEFS[k].showIf || SLIDER_DEFS[k].showIf(houseRules));
+  const base = keys.filter(k => !SLIDER_DEFS[k].addon), addons = keys.filter(k => SLIDER_DEFS[k].addon);
+  mc.innerHTML = `
+    <h2>PumaTriage</h2>
+    <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
+    ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
+    <div class="presets">${Object.keys(DIFFICULTY_PRESETS).map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</div>
+    <div class="rules-head">Table</div>
+    ${base.map(renderRuleRow).join("")}
+    <div class="rules-head">Add-ons — house rules, off in Standard</div>
+    ${addons.map(renderRuleRow).join("")}
+    <div class="modal-actions">
+      <button class="action-btn primary" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
+      <button class="action-btn" onclick="showHowToPlay('overview')">How to play</button>
+    </div>`;
+  openModal(!!G);
+  mc.scrollTop = scroll;
+}
+function startGame() {
+  clearSave();
+  closeModal();
+  UI.autoHuman = false; UI.headless = false;
+  newGame();
+  document.getElementById("log-list").innerHTML = "";
+  rebuildLog();
+  updateAll();
+  if (G.cfg.tutorial && !tutorialSeen()) { showTutorial(0); return; }
+  advance();
+}
+function resumeGame() {
+  if (!loadGame()) { showMainMenu(); return; }
+  closeModal();
+  UI.autoHuman = false; UI.headless = false;
+  document.getElementById("log-list").innerHTML = "";
+  rebuildLog();
+  computeLegal();
+  updateAll();
+  log("Session resumed.", "sys");
+  advance();
+}
+function newGameClick() {
+  const b = document.getElementById("newgame-btn");
+  if (!G || G.gameOver) { showMainMenu(); return; }
+  if (UI.newGameConfirmTimer) { clearTimeout(UI.newGameConfirmTimer); UI.newGameConfirmTimer = null; b.textContent = "NEW"; b.classList.remove("warn"); showMainMenu(); return; }
+  b.textContent = "SURE?"; b.classList.add("warn");
+  UI.newGameConfirmTimer = setTimeout(() => { UI.newGameConfirmTimer = null; b.textContent = "NEW"; b.classList.remove("warn"); }, 3000);
+}
+
+function showHowToPlay(tab) {
+  tab = tab || "overview";
+  const mc = document.getElementById("modal-content");
+  const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["keys", "Keys"], ["about", "About"]];
+  const panel = id => `class="help-panel ${tab === id ? "on" : ""}"`;
+  const closeAction = G ? "closeModal()" : "showMainMenu()";
+  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
+  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
+  const adminRows = Object.keys(ADMIN_DEFS).map(id => `<tr><td>${esc(ADMIN_DEFS[id].name)}</td><td>${esc(adminDesc(id))}</td></tr>`).join("");
+  const eventRows = Object.keys(EVENT_DEFS).map(id => `<tr><td>${esc(EVENT_DEFS[id].name)}</td><td>${esc(EVENT_DEFS[id].desc)}</td></tr>`).join("");
+  mc.innerHTML = `
+    <h2>How to Play</h2>
+    <div class="help-tabs">${tabs.map(([id, l]) => `<button class="help-tab ${tab === id ? "on" : ""}" onclick="showHowToPlay('${id}')">${l}</button>`).join("")}</div>
+    <div ${panel("overview")}>
+      <p>You run a Security Operations Center. Compromised hosts arrive as dice: the face is the host's <b>integrity</b>, from 1 (about to be lost) to 6 (nearly clean). Staff your tools with analysts to raise integrity. A host pushed past 6 is <b>restored</b> to production and scores reputation. A host that drops below 1 is a <b>breach</b> and costs reputation at the end.</p>
+      <p>Eight shifts. Most reputation wins. Dice colours are just colours: some tools and specialists only work on red, yellow or green hosts.</p>
+      <h4>Your SOC</h4>
+      <ul>
+        <li><b>Quarantine segments</b> Q1–Q4 hold 3 hosts each: 12 slots total. A host sits in the upper <b>Queued</b> slot until it is worked on, then moves to the lower <b>Worked</b> slot.</li>
+        <li><b>Tools</b> are staffed by placing one analyst or specialist. Each tool and each staff member acts once per shift. A tool can only be used if its whole effect can be resolved.</li>
+        <li><b>Analysts</b> (white) are your starting staff. <b>Specialists</b> are hired staff with a follow-up ability that triggers after the tool they staff.</li>
+        <li><b>Intel tokens</b>: during activation, spend one to heal any host 1 step or to retag a host's colour before a tool resolves on it. Unspent tokens are worth 1 reputation each at the end.</li>
+      </ul>
+      <h4>Scoring a shift</h4>
+      <p>Hosts restored in one shift score together: 1st = 1, 2nd–6th = 2 each, 7th–8th = 3 each, 9th–10th = 4 each, 11th–12th = 5 each. Restore 3 for 5 points, 6 for 11, 8 for 17. Clearing all four segments scores 5 more. At the end: −2 per breach, +1 per intel token.</p>
+    </div>
+    <div ${panel("shifts")}>
+      <ol>
+        <li><b>Intake.</b> Three hosts are rolled per escalation queue (1s and 6s re-rolled), lowest values into queue #1. Starting with the Incident Commander, each SOC takes one queue. The Commander may not take #1. Whoever takes the lowest-numbered queue gets an intel token and becomes Commander. If your segments cannot fit the new hosts, existing hosts are written off as breaches.</li>
+        <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token.</li>
+        <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool.</li>
+        <li><b>Dwell time.</b> Every host still Queued loses 1 integrity. A 1 that drops becomes a breach.</li>
+        <li><b>Restoration.</b> Score this shift's restored hosts. Directives apply here.</li>
+        <li><b>Shift change.</b> Staff return, Worked hosts move back to Queued, the display is recycled and refilled. Skipped after shift 8.</li>
+      </ol>
+    </div>
+    <div ${panel("tools")}><table class="help-table"><tr><th>Tool</th><th>Staff it to…</th></tr>${toolRows}</table><p class="hint">The starting SOC has 9 tool slots: two each of Sandbox, Forensics Lab and Patch Console, and one each of War Room, SIEM Console and Help Desk. Improvement tools come two of each in the stack.</p></div>
+    <div ${panel("specs")}><table class="help-table"><tr><th>Specialist</th><th>Follow-up</th></tr>${specRows}</table><p class="hint">Any staff member can staff any tool; colours only matter for the follow-up trigger.</p></div>
+    <div ${panel("solo")}>
+      <h4>CISO Directives (rivals mode)</h4>
+      <p>Each SOC is dealt two and keeps one.</p>
+      <table class="help-table">${adminRows}</table>
+      <h4>Solo score-chase</h4>
+      <ul>
+        <li>No queues. Each intake you roll 4 hosts and keep 3. If the kept total is under 9, take an intel token.</li>
+        <li>Each improvement phase reveals one tool and one specialist. Take one; the other goes to the bottom.</li>
+        <li>Six <b>Audit Reports</b> are dealt in two rows of three. During Restoration you may file bottom-row reports using this shift's restored hosts (each host counts for one report). The card above slides down and can be filed immediately.</li>
+        <li>Restorations score as normal. At the end, filed reports add their value; every report still on display subtracts its value.</li>
+      </ul>
+    </div>
+    <div ${panel("addons")}>
+      <table class="help-table">
+        <tr><td>Promo Specialists</td><td>Consultant (copies a specialist each shift) and Intake Coordinator replace two random specialists in the deck.</td></tr>
+        <tr><td>Beta Tooling</td><td>The Experimental Medicine set: Beta Agent, Retagging Desk, Rollback Snapshot, Tabletop Exercise, plus six specialists. The tool stack is rebuilt as the mini-expansion describes.</td></tr>
+        <tr><td>Incident Events</td><td>From shift 2, an event card each shift. These are PumaTriage originals.</td></tr>
+        <tr><td>Inherited Mess</td><td>Start with five hosts at 3, 3, 4, 5, 5.</td></tr>
+        <tr><td>Worm Outbreak</td><td>Every intake, each SOC also draws and rolls one extra host straight into quarantine.</td></tr>
+        <tr><td>Persistent Threat</td><td>Dwell time degrades queued hosts by 2.</td></tr>
+        <tr><td>MSSP Handover</td><td>After shift 8, outside providers show colour-and-value slots. Hand matching hosts over for +1 each; every host left costs 1.</td></tr>
+        <tr><td>Solo penalties</td><td>Double the breach penalty and/or the incomplete-report penalty.</td></tr>
+      </table>
+      <h4>Incident Events</h4>
+      <table class="help-table">${eventRows}</table>
+    </div>
+    <div ${panel("keys")}>
+      <ul>
+        <li><b>1–9</b> — select an analyst or specialist</li>
+        <li><b>Enter</b> — confirm the highlighted action</li>
+        <li><b>Escape</b> — cancel the current selection / close a dialog</li>
+        <li><b>U</b> — undo the last placement (not past a re-roll)</li>
+        <li><b>E</b> — end activation</li>
+        <li><b>B</b> — spend an intel token to heal</li>
+        <li><b>H</b> or <b>?</b> — this help</li>
+        <li><b>M</b> — toggle sound</li>
+        <li><b>Tab</b> — every host, tool and analyst is reachable by keyboard</li>
+      </ul>
+    </div>
+    <div ${panel("about")}>
+      <div style="text-align:center;padding:40px 20px;">
+        <p style="font-size:14px;color:var(--amber);margin-bottom:16px;">PumaTriage</p>
+        <p style="font-size:12px;margin-bottom:8px;">Incident Response Dice Game</p>
+        <p style="margin-bottom:24px;">Built by <a href="https://www.greykit.com" target="_blank" rel="noopener">greykit.com</a></p>
+        <p style="font-size:10px;color:var(--text-dim);">Inspired by Dice Hospital by Stanislav Kordonskiy and Mike Nudd / Alley Cat Games.<br>A one-for-one port of the base rules, re-themed for the SOC. Everything beyond the base game is an opt-in house rule.</p>
+      </div>
+    </div>
+    <div class="modal-actions"><button class="action-btn" onclick="${closeAction}">${G ? "Close" : "Back"}</button></div>`;
+  openModal(true);
+}
+function gradeFor(total) { return total >= 60 ? "S" : total >= 45 ? "A" : total >= 30 ? "B" : total >= 15 ? "C" : "F"; }
+function showGameOver() {
+  if (!G || !G.final) return;
+  const mc = document.getElementById("modal-content");
+  const won = G.final.winners.includes(0);
+  let html;
+  if (G.cfg.solo) {
+    const p = human(), b = p.breakdown;
+    sfx(b.total >= 30 ? "win" : "lose");
+    html = `<h2>Shift 8 closed</h2><div class="grade">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
+      <table class="score-table">
+        <tr><td>Restorations and filed reports</td><td>${b.base}</td></tr>
+        <tr><td>Breaches (${p.fatalities})</td><td>${b.fatalities}</td></tr>
+        <tr><td>Intel tokens (${p.bloodBags})</td><td>+${b.bloodBags}</td></tr>
+        <tr><td>Unfiled reports (${b.incompleteReports})</td><td>${b.reports}</td></tr>
+        <tr><td class="tot">Final reputation</td><td class="tot">${b.total}</td></tr>
+      </table>
+      <p style="text-align:center">${p.dischargedTotal} hosts restored over 8 shifts.</p>`;
+  } else {
+    sfx(won ? "win" : "lose");
+    html = `<h2>${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
+      <table class="help-table"><tr><th>#</th><th>SOC</th><th>Reputation</th><th>Breaches</th><th>Intel</th><th>Restored</th>${G.cfg.collections ? "<th>Handover</th>" : ""}<th>Total</th></tr>`;
+    G.final.ranking.forEach((id, i) => {
+      const p = G.players[id], b = p.breakdown;
+      html += `<tr style="${id === 0 ? "color:var(--amber)" : ""}"><td>${i + 1}</td><td>${esc(p.name)}</td><td>${b.base}</td><td>${b.fatalities}</td><td>+${b.bloodBags}</td><td>${p.dischargedTotal}</td>${G.cfg.collections ? `<td>${b.collections + b.leftover}</td>` : ""}<td><b>${b.total}</b></td></tr>`;
+    });
+    html += `</table><p class="hint">Ties break on fewer hosts left, then higher total integrity.</p>`;
+  }
+  mc.innerHTML = html + `<div class="modal-actions"><button class="action-btn primary" onclick="showMainMenu()">New game</button><button class="action-btn" onclick="closeModal()">Look at the board</button></div>`;
+  openModal(true);
+}
+
+/* ============================================================
+   TUTORIAL
+   ============================================================ */
+const TUTORIAL_STEPS = [
+  ["Welcome, Commander", "Compromised hosts arrive as dice. The face is integrity: 1 is nearly lost, 6 is nearly clean. Push a host past 6 and it is restored to production for reputation."],
+  ["Quarantine", "Your four segments hold three hosts each. New hosts land in the upper Queued slot. Anything still Queued at the end of a shift degrades by 1, and a 1 that degrades is a breach."],
+  ["Tools and staff", "During Activation, click an analyst, then a tool, then the glowing hosts it can work on. The host moves to its Worked slot and is safe from dwell time this shift."],
+  ["Colours", "Red, yellow and green are just colours. Some tools and specialists only work on one colour. An intel token can retag a host for a shift when you need a match."],
+  ["Improve", "Each shift you take one improvement: a tool gives you more ways to heal, a specialist gives you an extra pair of hands with a follow-up ability."],
+  ["Escalation queues", "Lower-numbered queues carry sicker hosts, but their owner improves first, and the lowest taken earns an intel token and the Commander role. Don't take more than you can house."],
+  ["Score", "Restoring several hosts in the same shift scores more per host. Plan a big Restoration rather than trickling. Eight shifts. Good luck."],
+];
+function tutorialSeen() { try { return localStorage.getItem(TUTORIAL_KEY) === "1"; } catch (e) { return false; } }
+function showTutorial(i) {
+  const mc = document.getElementById("modal-content");
+  if (i >= TUTORIAL_STEPS.length) { endTutorial(); return; }
+  const [t, body] = TUTORIAL_STEPS[i];
+  mc.innerHTML = `<h2>${esc(t)}</h2><div class="menu-tagline">Tutorial ${i + 1} of ${TUTORIAL_STEPS.length}</div><p class="tut-step">${esc(body)}</p>
+    <div class="modal-actions"><button class="action-btn primary" onclick="showTutorial(${i + 1})">${i + 1 === TUTORIAL_STEPS.length ? "Start" : "Next"}</button><button class="action-btn" onclick="endTutorial()">Skip</button></div>`;
+  openModal(false);
+}
+function endTutorial() {
+  try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch (e) {}
+  closeModal();
+  advance();
+}
+
+/* ============================================================
+   INIT & DEBUG HOOKS
+   ============================================================ */
+function init() {
+  setupInput();
+  try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+  document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
+  document.getElementById("center").innerHTML = '<div class="center-title">Table</div><div class="hint">Start a game from the menu.</div>';
+  showMainMenu();
+  console.log("%cPumaTriage", "color:#ffb000;font-size:16px;letter-spacing:3px");
+  console.log("%cReading the source? Good instinct. __PT.runSim(50) plays bot-vs-bot games headlessly.", "color:#00ff41");
+}
+window.__PT = {
+  get G() { return G; }, UI, newGame, advance, commit, legalSets, canActivate, matchesSel, boardDice, human,
+  setSeed(n) { if (G) G.rng = n >>> 0; },
+  autoHuman(on) { UI.autoHuman = !!on; if (on && G && !G.gameOver) advance(); },
+  runSim(n = 20, hr = null, seed = 1) {
+    const savedG = G, savedRules = houseRules, savedUI = { headless: UI.headless, autoHuman: UI.autoHuman };
+    if (hr) houseRules = { ...houseRules, ...hr };
+    UI.headless = true; UI.autoHuman = true;
+    const out = { games: 0, avgScore: 0, avgFatalities: 0, avgDischarges: 0, winsByIndex: {}, crashes: [], min: Infinity, max: -Infinity };
+    for (let s = seed; s < seed + n; s++) {
+      try {
+        newGame(s); human().skill = houseRules.rivalSkill; advance();
+        const h = human();
+        out.games++; out.avgScore += h.total; out.avgFatalities += h.fatalities; out.avgDischarges += h.dischargedTotal;
+        out.min = Math.min(out.min, h.total); out.max = Math.max(out.max, h.total);
+        for (const id of G.final.winners) out.winsByIndex[id] = (out.winsByIndex[id] || 0) + 1;
+      } catch (e) { out.crashes.push({ seed: s, error: e.message }); }
+    }
+    if (out.games) { out.avgScore /= out.games; out.avgFatalities /= out.games; out.avgDischarges /= out.games; }
+    G = savedG; houseRules = savedRules; UI.headless = savedUI.headless; UI.autoHuman = savedUI.autoHuman;
+    return out;
+  },
+  assertInvariants,
+};
+document.addEventListener("DOMContentLoaded", init);
+</script>
+</body>
+</html>
