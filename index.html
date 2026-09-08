@@ -135,6 +135,18 @@ body::after {
   75% { opacity: 1; } 100% { opacity: 0; }
 }
 
+#banner {
+  position: fixed; left: 0; right: 0; top: 34%; z-index: 8600; pointer-events: none; text-align: center; padding: 18px 0; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(0,30,5,0.94) 20%, rgba(0,30,5,0.94) 80%, transparent);
+  color: var(--green); font-size: 30px; letter-spacing: 5px; text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(0,255,65,0.8), 0 0 40px rgba(0,255,65,0.4);
+}
+#banner small { display: block; font-size: 12px; letter-spacing: 3px; color: var(--amber); margin-top: 4px; }
+#banner.on { animation: banner-pop 1.8s var(--ease-out-quart); }
+@keyframes banner-pop { 0% { opacity: 0; transform: translateY(10px) scale(0.96); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.win { color: var(--green) !important; text-shadow: 0 0 20px rgba(0,255,65,0.7), 0 0 40px rgba(0,255,65,0.3); animation: win-pulse 1.4s ease-in-out 3; }
+@keyframes win-pulse { 0%, 100% { text-shadow: 0 0 12px rgba(0,255,65,0.5); } 50% { text-shadow: 0 0 28px rgba(0,255,65,1), 0 0 60px rgba(0,255,65,0.5); } }
+
 /* ============================================================
    DICE
    ============================================================ */
@@ -455,7 +467,7 @@ details.addons summary::-webkit-details-marker { display: none; }
   #board, #center { overflow: visible; }
   #strip { top: 0; }
   #wards { grid-template-columns: 1fr; }
-  #phase-strip { margin-left: 0; width: 100%; overflow-x: auto; }
+  #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
 </style>
 </head>
@@ -485,6 +497,7 @@ details.addons summary::-webkit-details-marker { display: none; }
 </div>
 <div id="screen-pulse"></div>
 <div id="phase-toast" aria-hidden="true"></div>
+<div id="banner" aria-hidden="true"></div>
 <div id="modal-overlay" role="dialog" aria-modal="true"><div id="modal-content"></div></div>
 <div id="announcements" class="sr-only" aria-live="polite"></div>
 
@@ -661,7 +674,7 @@ const EVENT_DEFS = {
    ============================================================ */
 const SLIDER_DEFS = {
   mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
-  rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, unit: " rivals", showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
+  rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, labels: [null, "1 rival", "2 rivals", "3 rivals"], showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
   rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Deal 2, keep 1 (base rule; the rulebook suggests skipping them on a first game)" },
   tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
@@ -1517,7 +1530,9 @@ const STEP = {
       G.reportPool = null; G.reportsDone = false;
       if (G.round >= ROUNDS) go("final", G.cfg.collections ? "collections" : "score");
       else go("shift", "run");
-      return animate([{ type: "render" }, { type: "sfx", name: "score" }, { type: "wait", delay: 600 }]);
+      const mine = results[0].r;
+      const fx = mine.n >= 3 ? [{ type: "banner", text: `Restored ×${mine.n}`, sub: `+${mine.pts + mine.bonus} reputation${mine.notes.length ? " · " + mine.notes.join(" · ") : ""}`, delay: 1500 }] : [];
+      return animate([{ type: "render" }, { type: "sfx", name: "score" }, ...fx, { type: "wait", delay: 600 }]);
     },
   },
   shift: {
@@ -2369,6 +2384,7 @@ function processEventQueue() {
     case "sfx": sfx(evt.name); break;
     case "fx": document.querySelectorAll(evt.sel).forEach((el, i) => { el.classList.remove(evt.cls); void el.offsetWidth; el.style.animationDelay = (i * (evt.stagger || 0)) + "ms"; el.classList.add(evt.cls); }); break;
     case "pulse": screenPulse(evt.colour); break;
+    case "banner": showBanner(evt.text, evt.sub); break;
     case "wait": break;
     case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
   }
@@ -2380,6 +2396,12 @@ function screenPulse(colour) {
   const el = document.getElementById("screen-pulse");
   el.style.background = colour;
   el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+}
+function showBanner(text, sub) {
+  const el = document.getElementById("banner");
+  el.innerHTML = `${esc(text)}${sub ? `<small>${esc(sub)}</small>` : ""}`;
+  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  setTimeout(() => el.classList.remove("on"), 1900);
 }
 function showPhaseToast(text) {
   const el = document.getElementById("phase-toast");
@@ -3038,7 +3060,7 @@ function showHowToPlay(tab) {
     <div ${panel("shifts")}>
       <ol>
         <li><b>Intake.</b> Three hosts are rolled per escalation queue (1s and 6s re-rolled), lowest values into queue #1. Starting with the Incident Commander, each SOC takes one queue. The Commander may not take #1. Whoever takes the lowest-numbered queue gets an intel token and becomes Commander. If your segments cannot fit the new hosts, existing hosts are written off as breaches.</li>
-        <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token.</li>
+        <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token; you get that offer at the top of activation, until your first placement.</li>
         <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool.</li>
         <li><b>Dwell time.</b> Every host still Queued loses 1 integrity. A 1 that drops becomes a breach.</li>
         <li><b>Restoration.</b> Score this shift's restored hosts. Directives apply here.</li>
@@ -3083,6 +3105,7 @@ function showHowToPlay(tab) {
         <li><b>B</b> — spend an intel token to heal</li>
         <li><b>H</b> or <b>?</b> — this help</li>
         <li><b>M</b> — toggle sound</li>
+        <li><b>S</b> — rival and phase speed: normal, fast, instant</li>
         <li><b>Double-click a host</b> — confirm the current selection (a slow second click deselects it instead)</li>
         <li><b>Tab</b> — every host, tool and analyst is reachable by keyboard</li>
       </ul>
@@ -3107,7 +3130,7 @@ function showGameOver() {
   if (G.cfg.solo) {
     const p = human(), b = p.breakdown;
     sfx(b.total >= 30 ? "win" : "lose");
-    html = `<h2>Shift 8 closed</h2><div class="grade">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
+    html = `<h2 class="${b.total >= 45 ? "win" : ""}">Shift 8 closed</h2><div class="grade ${b.total >= 45 ? "win" : ""}">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
       <table class="score-table">
         <tr><td>Restorations and filed reports</td><td>${b.base}</td></tr>
         <tr><td>Breaches (${p.fatalities})</td><td>${b.fatalities}</td></tr>
@@ -3118,7 +3141,7 @@ function showGameOver() {
       <p style="text-align:center">${p.dischargedTotal} hosts restored over 8 shifts.</p>`;
   } else {
     sfx(won ? "win" : "lose");
-    html = `<h2>${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
+    html = `<h2 class="${won ? "win" : ""}">${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
       <table class="help-table"><tr><th>#</th><th>SOC</th><th>Reputation</th><th>Breaches</th><th>Intel</th><th>Restored</th>${G.cfg.collections ? "<th>Handover</th>" : ""}<th>Total</th></tr>`;
     G.final.ranking.forEach((id, i) => {
       const p = G.players[id], b = p.breakdown;
