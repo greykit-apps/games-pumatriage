@@ -815,7 +815,7 @@ function newGame(seed) {
   G = {
     version: 1, mode: cfg.solo ? "solo" : "rivals", houseRules: { ...houseRules }, cfg,
     rng: (seed === undefined ? (Math.random() * 4294967296) : seed) >>> 0,
-    round: 1, phase: "setup", step: "admin", actor: 0, cursor: 0, nextUid: 1,
+    round: 1, phase: "setup", step: cfg.admins ? "admin" : "startDice", actor: 0, cursor: 0, nextUid: 1,
     players: [], firstPlayer: 0, turnOrder: [],
     bag: { red: cfg.dicePerColour, yellow: cfg.dicePerColour, green: cfg.dicePerColour },
     ambulances: [], deptStack: [], deptDisplay: [], specStack: [], specDisplay: [], adminDeck: [],
@@ -2574,7 +2574,7 @@ function renderCenter() {
   let html = "";
   const ev = currentEvent();
   if (ev) html += `<div class="rule-card"><div class="rn">Incident event: ${esc(ev.name)}</div>${esc(ev.desc)}</div>`;
-  if (ph === "setup" && st === "admin") {
+  if (ph === "setup" && st === "admin" && p.adminChoice) {
     html += '<div class="center-title">CISO Directive — keep one</div><div class="admin-pick">';
     for (const id of p.adminChoice) html += `<div class="admin-card" data-act="admin" data-id="${id}" role="button" tabindex="0"><div class="an">${esc(ADMIN_DEFS[id].name)}</div><div class="ad">${esc(adminDesc(id))}</div></div>`;
     html += '</div>';
@@ -2785,7 +2785,7 @@ function updatePhaseUI() {
   if (!G) return;
   const ph = G.phase;
   document.getElementById("phase-display").textContent = `${PHASE_NAMES[ph] || ph}${G.gameOver ? "" : " · shift " + Math.min(G.round, ROUNDS)}`;
-  if (UI.prevPhase !== null && UI.prevPhase !== ph && !G.gameOver && ph !== "setup") { showPhaseToast(PHASE_NAMES[ph]); sfx("phase"); }
+  if (UI.prevPhase !== null && UI.prevPhase !== ph && !G.gameOver && ph !== "setup" && !UI.reducedMotion) { showPhaseToast(PHASE_NAMES[ph]); sfx("phase"); }
   UI.prevPhase = ph;
   const pr = promptFor();
   document.getElementById("phase-instructions").textContent = pr.text || "";
@@ -3046,7 +3046,29 @@ function init() {
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
   document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
   document.getElementById("center").innerHTML = '<div class="center-title">Table</div><div class="hint">Start a game from the menu.</div>';
+  const shot = /[#&]shot=([a-z]+)/.exec(location.hash);
+  if (shot) { screenshotState(shot[1]); return; }
   showMainMenu();
+}
+// #shot=setup|midgame|gameover|solo — deterministic states for README screenshots (headless Chromium).
+function screenshotState(which) {
+  UI.reducedMotion = true;
+  houseRules = { ...DIFFICULTY_PRESETS[which === "solo" ? "solo" : "normal"].sliders };
+  try { localStorage.setItem(TUTORIAL_KEY, "1"); } catch (e) {}
+  newGame(7);
+  const stopAt = (ph, st) => { let guard = 0; while (!(G.phase === ph && G.step === st) && !G.gameOver && guard++ < 400) { botAnswerWait(); advance(); } };
+  if (which === "setup") { showMainMenu(); return; }
+  if (which === "midgame" || which === "solo") {
+    advance();
+    stopAt("activate", "human");
+    for (let i = 0; i < 3 && G.round < 4; i++) { botAnswerWait(); advance(); stopAt("activate", "human"); }
+    const p = human();
+    const m = p.meeples.find(x => !x.used && !x.off);
+    const t = p.departments.find(d => canActivate(d, p));
+    if (m && t) { onMeepleClick(m.uid); onDeptClick(t.uid); }
+  } else if (which === "gameover") { advance(); stopAt("gameover", "done"); }
+  UI.reducedMotion = false;
+  updateAll();
   console.log("%cPumaTriage", "color:#ffb000;font-size:16px;letter-spacing:3px");
   console.log("%cReading the source? Good instinct. __PT.runSim(50) plays bot-vs-bot games headlessly.", "color:#00ff41");
 }

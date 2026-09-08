@@ -18,6 +18,14 @@ Compromised hosts are dice. The face is the host's **integrity**: 1 is about to 
 
 Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per escalation queue and each SOC takes one queue), **Improvement** (take one tool or one specialist from the display), **Activation** (place staff on tools, one at a time), **Dwell time** (every host still queued degrades), **Restoration** (score this shift's restored hosts together: 1st = 1, 2nd–6th = 2 each, 7th–8th = 3, 9th–10th = 4, 11th–12th = 5, +5 for clearing every segment) and **Shift change**. Final score: −2 per breach, +1 per unspent intel token.
 
+![Setup screen — presets and house rules](screenshots/setup.png)
+
+![Mid-game — an analyst about to work a red host on the Sandbox](screenshots/midgame.png)
+
+![Solo mode — Audit Reports on the right, rolled hosts to keep](screenshots/solo.png)
+
+![Game over — final ranking](screenshots/gameover.png)
+
 ## Features
 
 - **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, 6 starting tool types in 9 slots, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
