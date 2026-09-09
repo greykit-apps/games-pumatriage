@@ -90,8 +90,8 @@ body::after {
 /* Top HUD */
 #hud-top {
   display: grid; align-items: center; gap: 2px 14px;
-  grid-template-columns: auto 1fr auto;
-  grid-template-areas: "title stats buttons" "strip strip strip";
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "title buttons" "strip stats";
   padding: 4px 12px; border: 1px solid var(--border); background: var(--panel);
 }
 #hud-top > .brand { grid-area: title; display: flex; align-items: baseline; gap: 10px; }
