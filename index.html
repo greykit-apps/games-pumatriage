@@ -89,14 +89,24 @@ body::after {
 
 /* Top HUD */
 #hud-top {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  display: grid; align-items: center; gap: 6px 16px;
+  grid-template-columns: auto auto 1fr auto;
+  grid-template-areas: "title strip stats buttons";
   padding: 6px 12px; border: 1px solid var(--border); background: var(--panel);
+}
+#hud-top > .brand { grid-area: title; }
+#hud-top #phase-strip { grid-area: strip; }
+#hud-top .stats { grid-area: stats; justify-content: flex-end; }
+#hud-top .hud-buttons { grid-area: buttons; }
+@media (max-width: 1400px) {
+  #hud-top { grid-template-columns: auto 1fr auto; grid-template-areas: "title stats buttons" "strip strip strip"; }
+  #hud-top #phase-strip { margin-left: 0; }
 }
 #hud-top .title {
   color: var(--amber); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
 }
 #hud-top .sub { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
-#hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
+#hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
 #phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
 .pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
@@ -494,14 +504,16 @@ details.addons summary::-webkit-details-marker { display: none; }
   #board { overflow: visible; }
   #strip { bottom: 0; }
   .h3-note { display: none; }
-  #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
+  #hud-top { grid-template-columns: 1fr; grid-template-areas: "title" "stats" "strip" "buttons"; }
+  #hud-top .stats { justify-content: flex-start; }
+  #phase-strip { flex-wrap: wrap; }
 }
 </style>
 </head>
 <body>
 <div id="app">
   <header id="hud-top">
-    <div>
+    <div class="brand">
       <div class="title">PumaTriage</div>
       <div class="sub">INCIDENT RESPONSE · DICE</div>
     </div>
