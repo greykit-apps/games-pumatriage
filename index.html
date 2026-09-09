@@ -90,18 +90,14 @@ body::after {
 /* Top HUD */
 #hud-top {
   display: grid; align-items: center; gap: 2px 14px;
-  grid-template-columns: auto auto 1fr auto;
-  grid-template-areas: "title strip stats buttons";
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "title stats buttons" "strip strip strip";
   padding: 4px 12px; border: 1px solid var(--border); background: var(--panel);
 }
 #hud-top > .brand { grid-area: title; display: flex; align-items: baseline; gap: 10px; }
 #hud-top .hud-buttons { grid-area: buttons; justify-self: end; }
 #hud-top #phase-strip { grid-area: strip; margin-left: 0; }
 #hud-top .stats { grid-area: stats; justify-content: flex-end; }
-@media (max-width: 1300px) {
-  #hud-top { grid-template-columns: auto 1fr auto; grid-template-areas: "title strip buttons" "stats stats stats"; }
-  #hud-top .stats { justify-content: flex-start; }
-}
 #hud-top .title {
   color: var(--amber); font-size: 17px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
 }
