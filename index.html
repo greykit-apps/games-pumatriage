@@ -235,17 +235,20 @@ body::after {
 }
 .dept-tile .dn { font-size: 13px; color: var(--white); line-height: 1.2; }
 .dept-tile .dr { font-size: 12px; color: var(--green-dim); margin-top: 4px; letter-spacing: 0.3px; }
-.dept-tile.tag-red    { border-left-color: var(--red); }
-.dept-tile.tag-yellow { border-left-color: var(--yellow); }
-.dept-tile.tag-green  { border-left-color: var(--green); }
-.dept-tile.tag-any    { border-left-color: var(--cyan); }
-.dept-tile.tag-exp    { border-left-color: var(--blue); }
-.dept-tile.can { border-color: var(--green); box-shadow: 0 0 8px rgba(0,255,65,0.35); cursor: pointer; }
-.dept-tile.can:hover { background: rgba(0,255,65,0.08); }
+.dept-tile { --tag: var(--border); border-left-color: var(--tag); }
+.dept-tile.tag-red    { --tag: var(--red); }
+.dept-tile.tag-yellow { --tag: var(--yellow); }
+.dept-tile.tag-green  { --tag: var(--green); }
+.dept-tile.tag-any    { --tag: var(--cyan); }
+.dept-tile.tag-exp    { --tag: var(--blue); }
+/* An available tile lights up in its own colour; unavailable ones dim. */
+.dept-tile.can { border-color: var(--tag); box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); cursor: pointer; }
+.dept-tile.can .dn { text-shadow: 0 0 6px color-mix(in srgb, var(--tag) 50%, transparent); }
+.dept-tile.can:hover { background: color-mix(in srgb, var(--tag) 10%, transparent); }
 .dept-tile.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.5); }
 .dept-tile.used { opacity: 0.45; }
 .dept-tile.used::after { content: "USED"; position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
-.dept-tile.disabled { opacity: 0.35; border-style: dashed; }
+.dept-tile.disabled { opacity: 0.28; border-style: dashed; border-left-style: solid; }
 .dept-tile.returnable { border-color: var(--amber); cursor: pointer; }
 .dept-tile.new { animation: tile-in .4s var(--ease-out-quart); }
 @keyframes tile-in { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
@@ -319,8 +322,10 @@ body::after {
 #display .disp-row .spec-card { flex: 1 1 240px; max-width: 380px; font-size: 11px; }
 #display .disp-row .spec-card .sn { font-size: 13px; }
 #display .disp-row .spec-card .sd { font-size: 12px; }
-.dept-tile.pickable, .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
-.dept-tile.pickable:hover, .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
+.dept-tile.pickable { cursor: pointer; border-color: var(--tag); }
+.dept-tile.pickable:hover { box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); }
+.spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
+.spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .stack-info { font-size: 10px; color: var(--text-dim); }
 
 .keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
