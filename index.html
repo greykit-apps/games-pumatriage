@@ -305,7 +305,11 @@ body::after {
 .queue .qcmd { position: absolute; right: -6px; top: -8px; }
 
 #display { display: flex; flex-direction: column; gap: 8px; }
-#display .disp-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+#display .disp-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+#display .disp-row .dept-tile { flex: 1 1 200px; max-width: 340px; }
+#display .disp-row .spec-card { flex: 1 1 240px; max-width: 380px; font-size: 11px; }
+#display .disp-row .spec-card .sn { font-size: 13px; }
+#display .disp-row .spec-card .sd { font-size: 12px; }
 .dept-tile.pickable, .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
 .dept-tile.pickable:hover, .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .stack-info { font-size: 10px; color: var(--text-dim); }
@@ -2767,7 +2771,6 @@ function renderDisplay(pickable) {
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
   dd.forEach((t, i) => { if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""); });
-  html += '</div><div class="disp-row">';
   sd.forEach((t, i) => { if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""); });
   html += '</div>';
   if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
