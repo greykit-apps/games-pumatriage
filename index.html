@@ -89,19 +89,15 @@ body::after {
 
 /* Top HUD */
 #hud-top {
-  display: grid; align-items: center; gap: 6px 16px;
-  grid-template-columns: auto auto 1fr auto;
-  grid-template-areas: "title strip stats buttons";
+  display: grid; align-items: center; gap: 4px 16px;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: "title buttons" "strip stats";
   padding: 6px 12px; border: 1px solid var(--border); background: var(--panel);
 }
 #hud-top > .brand { grid-area: title; }
-#hud-top #phase-strip { grid-area: strip; }
+#hud-top .hud-buttons { grid-area: buttons; justify-self: end; align-self: start; }
+#hud-top #phase-strip { grid-area: strip; margin-left: 0; }
 #hud-top .stats { grid-area: stats; justify-content: flex-end; }
-#hud-top .hud-buttons { grid-area: buttons; }
-@media (max-width: 1400px) {
-  #hud-top { grid-template-columns: auto 1fr auto; grid-template-areas: "title stats buttons" "strip strip strip"; }
-  #hud-top #phase-strip { margin-left: 0; }
-}
 #hud-top .title {
   color: var(--amber); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
 }
@@ -504,8 +500,9 @@ details.addons summary::-webkit-details-marker { display: none; }
   #board { overflow: visible; }
   #strip { bottom: 0; }
   .h3-note { display: none; }
-  #hud-top { grid-template-columns: 1fr; grid-template-areas: "title" "stats" "strip" "buttons"; }
+  #hud-top { grid-template-columns: 1fr; grid-template-areas: "title" "buttons" "strip" "stats"; }
   #hud-top .stats { justify-content: flex-start; }
+  #hud-top .hud-buttons { justify-self: start; }
   #phase-strip { flex-wrap: wrap; }
 }
 </style>
