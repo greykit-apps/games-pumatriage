@@ -32,7 +32,7 @@
   --font-mono: "Courier New", "Lucida Console", monospace;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
-  --die: 40px;
+  --die: clamp(36px, 2.7vw, 46px);
 }
 
 * { box-sizing: border-box; }
@@ -60,14 +60,13 @@ body::after {
    ============================================================ */
 #app {
   height: 100vh; display: grid; gap: 8px; padding: 8px;
-  grid-template-columns: minmax(430px, 1.2fr) minmax(300px, 0.9fr) minmax(230px, 0.6fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  grid-template-areas: "hud hud hud" "board center side" "board actions side";
+  grid-template-columns: minmax(640px, 1.8fr) minmax(280px, 0.7fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas: "hud hud" "board side";
 }
 #hud-top { grid-area: hud; }
 #board   { grid-area: board; overflow: auto; }
-#center  { grid-area: center; overflow: auto; }
-#actions { grid-area: actions; }
+#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 
 .panel {
@@ -90,6 +89,15 @@ body::after {
 #hud-top .sub { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
 #hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; margin-left: auto; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+#phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
+.pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
+.pstep.done { color: var(--green-dark); border-color: #163016; }
+.pstep.on { color: var(--amber); border-color: var(--amber); background: rgba(255,176,0,0.12); text-shadow: 0 0 6px rgba(255,176,0,0.5); }
+.ticks { display: flex; gap: 2px; margin-top: 2px; }
+.ticks span { width: 6px; height: 8px; background: #1a3a1a; display: inline-block; }
+.ticks span.on { background: var(--green); }
+.bagdots { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+.bagdots .mini-dot { width: 9px; height: 9px; }
 .stat .lbl { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
 .stat .val { font-size: 16px; color: var(--green); transition: color .3s; }
 .stat.flash .val { animation: stat-flash .6s ease-out; }
@@ -126,6 +134,18 @@ body::after {
   0% { opacity: 0; transform: scaleX(0.6); } 12% { opacity: 1; transform: scaleX(1); }
   75% { opacity: 1; } 100% { opacity: 0; }
 }
+
+#banner {
+  position: fixed; left: 0; right: 0; top: 34%; z-index: 8600; pointer-events: none; text-align: center; padding: 18px 0; opacity: 0;
+  background: linear-gradient(90deg, transparent, rgba(0,30,5,0.94) 20%, rgba(0,30,5,0.94) 80%, transparent);
+  color: var(--green); font-size: 30px; letter-spacing: 5px; text-transform: uppercase;
+  text-shadow: 0 0 16px rgba(0,255,65,0.8), 0 0 40px rgba(0,255,65,0.4);
+}
+#banner small { display: block; font-size: 12px; letter-spacing: 3px; color: var(--amber); margin-top: 4px; }
+#banner.on { animation: banner-pop 1.8s var(--ease-out-quart); }
+@keyframes banner-pop { 0% { opacity: 0; transform: translateY(10px) scale(0.96); } 12% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; } }
+.win { color: var(--green) !important; text-shadow: 0 0 20px rgba(0,255,65,0.7), 0 0 40px rgba(0,255,65,0.3); animation: win-pulse 1.4s ease-in-out 3; }
+@keyframes win-pulse { 0%, 100% { text-shadow: 0 0 12px rgba(0,255,65,0.5); } 50% { text-shadow: 0 0 28px rgba(0,255,65,1), 0 0 60px rgba(0,255,65,0.5); } }
 
 /* ============================================================
    DICE
@@ -176,35 +196,36 @@ body::after {
 /* ============================================================
    BOARD — quarantine segments, tools, staff
    ============================================================ */
-#wards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
-.ward { border: 1px solid var(--border); background: var(--panel-2); padding: 4px 6px 6px; }
+#wards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+.ward { flex: 0 0 auto; border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
 .ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
-.ward .beds { display: flex; gap: 6px; justify-content: space-around; }
-.bed { display: flex; flex-direction: column; gap: 3px; }
+.ward .beds { display: flex; gap: 6px; justify-content: flex-start; }
+.bed { display: flex; flex-direction: column; gap: 4px; }
 .slot {
   width: calc(var(--die) + 8px); height: calc(var(--die) + 8px);
-  border: 1px dashed #234023; border-radius: 6px; display: flex; align-items: center; justify-content: center;
+  border: 1px solid transparent; border-radius: 6px; display: flex; align-items: center; justify-content: center;
   position: relative;
 }
-.slot.t { border-color: #1c2e1c; background: rgba(0,255,65,0.03); }
-.slot.u::before, .slot.t::before {
-  position: absolute; left: 3px; top: 1px; font-size: 7px; letter-spacing: 1px; color: #2c4a2c;
-}
-.slot.u::before { content: "Q"; } .slot.t::before { content: "W"; }
+.slot.u.empty { border-color: #1a2e1a; border-style: dashed; }
+.slot.u.empty.open { border-color: #2a5a2a; }
+.slot.t.empty::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: #1a2e1a; }
+.slot.t { background: rgba(0,255,65,0.03); }
+.h3-note { float: right; color: var(--text-dim); letter-spacing: 0; text-transform: none; font-size: 10px; }
 .slot.drop-ok { border-color: var(--amber); box-shadow: inset 0 0 8px rgba(255,176,0,0.3); cursor: pointer; }
 .slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
 
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; min-width: 64px; }
 
-#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-bottom: 8px; }
+#staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
+#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .dept-tile {
-  border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2);
-  padding: 5px 6px; min-height: 58px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
+  border: 1px solid var(--border); border-left: 5px solid var(--border); background: var(--panel-2);
+  padding: 8px 10px; min-height: 68px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
   display: flex; flex-direction: column; justify-content: space-between;
 }
-.dept-tile .dn { font-size: 11px; color: var(--white); line-height: 1.2; }
-.dept-tile .dr { font-size: 10px; color: var(--text-dim); margin-top: 3px; letter-spacing: 0.5px; }
+.dept-tile .dn { font-size: 13px; color: var(--white); line-height: 1.2; }
+.dept-tile .dr { font-size: 12px; color: var(--green-dim); margin-top: 4px; letter-spacing: 0.3px; }
 .dept-tile.tag-red    { border-left-color: var(--red); }
 .dept-tile.tag-yellow { border-left-color: var(--yellow); }
 .dept-tile.tag-green  { border-left-color: var(--green); }
@@ -214,26 +235,34 @@ body::after {
 .dept-tile.can:hover { background: rgba(0,255,65,0.08); }
 .dept-tile.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.5); }
 .dept-tile.used { opacity: 0.45; }
-.dept-tile.used::after { content: "USED"; position: absolute; right: 4px; top: 3px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
+.dept-tile.used::after { content: "USED"; position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
 .dept-tile.disabled { opacity: 0.35; border-style: dashed; }
 .dept-tile.returnable { border-color: var(--amber); cursor: pointer; }
 .dept-tile.new { animation: tile-in .4s var(--ease-out-quart); }
 @keyframes tile-in { 0% { opacity: 0; transform: scale(0.85); } 100% { opacity: 1; transform: scale(1); } }
-.dept-tile .meep-on { position: absolute; right: 4px; bottom: 4px; }
+.dept-tile .meep-on { position: absolute; right: 6px; bottom: 6px; width: 12px; height: 12px; }
 
 .meeple {
-  display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px 3px 4px; border: 1px solid var(--border);
-  background: var(--panel-2); border-radius: 14px; cursor: default; font-size: 11px; transition: box-shadow .2s;
+  display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border: 1px solid var(--border); border-left: 4px solid var(--border);
+  background: var(--panel-2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
 }
+.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); }
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
-.meeple .key { color: var(--text-dim); font-size: 9px; }
+.meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
+.meeple .ab { font-size: 11px; color: var(--green-dim); line-height: 1.3; }
+.meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
+.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); }
+.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
+.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
+.meeple.returnable { border-color: var(--amber); cursor: pointer; }
+.meeple.clickable { cursor: pointer; border-color: var(--green-dark); }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
 .dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); }
-.meeple.avail { cursor: pointer; border-color: var(--green-dark); }
-.meeple.avail:hover { box-shadow: 0 0 8px rgba(0,255,65,0.4); }
+.meeple.avail { cursor: pointer; border-color: var(--green-dark); box-shadow: 0 0 6px rgba(0,255,65,0.2); }
+.meeple.avail:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .meeple.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.6); }
-.meeple.used { opacity: 0.4; text-decoration: line-through; }
-.meeple.off { opacity: 0.4; border-style: dashed; }
+.meeple.used { opacity: 0.45; }
+.meeple.off { opacity: 0.45; border-style: dashed; }
 .mini-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
 
 #specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -242,7 +271,7 @@ body::after {
   border-top: 3px solid var(--border);
 }
 .spec-card .sn { color: var(--white); font-size: 11px; }
-.spec-card .sd { color: var(--text-dim); }
+.spec-card .sd { color: var(--green-dim); font-size: 11px; }
 .spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
 .spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
 .spec-card.tag-blue { border-top-color: var(--blue); }
@@ -276,7 +305,11 @@ body::after {
 .queue .qcmd { position: absolute; right: -6px; top: -8px; }
 
 #display { display: flex; flex-direction: column; gap: 8px; }
-#display .disp-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+#display .disp-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+#display .disp-row .dept-tile { flex: 1 1 200px; max-width: 340px; }
+#display .disp-row .spec-card { flex: 1 1 240px; max-width: 380px; font-size: 11px; }
+#display .disp-row .spec-card .sn { font-size: 13px; }
+#display .disp-row .spec-card .sd { font-size: 12px; }
 .dept-tile.pickable, .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
 .dept-tile.pickable:hover, .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .stack-info { font-size: 10px; color: var(--text-dim); }
@@ -338,15 +371,33 @@ body::after {
 #log-list li { padding: 2px 0; border-bottom: 1px solid #0f1f0f; animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
 @keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 #log-list li.warn { color: var(--amber); } #log-list li.bad { color: var(--red); } #log-list li.good { color: var(--green); } #log-list li.sys { color: var(--text-dim); }
-#log-list li .ts { color: #2c5a2c; margin-right: 4px; }
+#log-list li .ts { color: #3f7f3f; margin-right: 4px; }
 
 /* ============================================================
    ACTIONS bar + buttons
    ============================================================ */
-#actions { display: flex; flex-direction: column; gap: 6px; }
-#phase-display { color: var(--amber); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-#phase-instructions { font-size: 12px; min-height: 32px; color: var(--white); }
-#action-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+#strip {
+  position: sticky; bottom: 0; z-index: 5; margin: 12px 0 0;
+  background: var(--panel); border: 1px solid var(--amber-dim); padding: 8px 10px;
+  box-shadow: 0 0 14px rgba(255,176,0,0.12), 0 6px 12px rgba(0,0,0,0.6);
+}
+.strip-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+.strip-phase { color: var(--amber); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+.strip-shift { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.strip-rule { font-size: 12px; color: var(--green); padding: 3px 0; }
+.strip-rule b { color: var(--white); font-weight: normal; }
+.strip-rule .strip-count { color: var(--amber); margin-left: 6px; }
+.strip-rule.amber { color: var(--amber); }
+#phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
+#action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.strip-tools .hint { margin: 0 0 0 auto; }
+.ladder { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
+.lcell { font-size: 10px; padding: 1px 5px; border: 1px solid var(--border); color: var(--text-dim); }
+.lcell b { font-weight: normal; color: var(--green-dim); }
+.lcell.cur { color: #000; background: var(--amber); border-color: var(--amber); }
+.lcell.cur b { color: #000; }
+.lcell.next { color: var(--amber); border-color: var(--amber-dim); }
 .action-btn {
   background: transparent; color: var(--green); border: 1px solid var(--green-dark); padding: 6px 12px;
   cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s;
@@ -381,11 +432,17 @@ body::after {
 .menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
 .presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
 .preset-btn.on { background: rgba(255,176,0,0.15); border-color: var(--amber); color: var(--amber); }
-.rule-row { display: grid; grid-template-columns: 150px 1fr auto; align-items: center; gap: 8px; padding: 3px 0; font-size: 11px; }
+.rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
 .rule-row .rl { color: var(--white); }
-.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 1 / -1; margin-top: -2px; }
-.rule-row .rv { color: var(--amber); min-width: 90px; text-align: right; }
-.rule-row input[type="range"] { width: 100%; accent-color: var(--green); }
+.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 2; margin-top: -2px; }
+.seg { display: flex; flex-wrap: wrap; }
+.seg-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 10px; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; }
+.seg-btn + .seg-btn { margin-left: -1px; }
+.seg-btn:hover { color: var(--green); border-color: var(--green-dark); }
+.seg-btn.on { color: var(--amber); border-color: var(--amber); background: rgba(255,176,0,0.12); position: relative; z-index: 1; }
+details.addons summary { cursor: pointer; color: var(--amber); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; list-style: none; }
+details.addons summary::before { content: "▸ "; } details.addons[open] summary::before { content: "▾ "; }
+details.addons summary::-webkit-details-marker { display: none; }
 .rules-head { color: var(--amber); font-size: 10px; letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
 .help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
 .help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
@@ -403,7 +460,7 @@ body::after {
 /* ============================================================
    A11Y, touch, motion, mobile
    ============================================================ */
-*:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+*:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (pointer: coarse) {
   .action-btn, .icon-btn { min-height: 44px; }
@@ -413,16 +470,17 @@ body::after {
   *, *::before, *::after { animation: none !important; transition: none !important; }
   body::before, body::after { display: none; }
 }
-@media (max-width: 1400px) { :root { --die: 34px; } }
 @media (max-width: 960px) {
+  :root { --die: clamp(36px, 9vw, 48px); }
   body { overflow: auto; }
   #app {
     height: auto; grid-template-columns: 1fr; grid-template-rows: auto;
-    grid-template-areas: "hud" "actions" "center" "board" "side";
+    grid-template-areas: "hud" "board" "side";
   }
-  #board, #center { overflow: visible; }
-  #actions { position: sticky; top: 0; z-index: 100; background: var(--bg); }
-  #wards { grid-template-columns: 1fr; }
+  #board { overflow: visible; }
+  #strip { bottom: 0; }
+  .h3-note { display: none; }
+  #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
 </style>
 </head>
@@ -433,21 +491,17 @@ body::after {
       <div class="title">PumaTriage</div>
       <div class="sub">INCIDENT RESPONSE · DICE</div>
     </div>
+    <div id="phase-strip" aria-label="Shift phases"></div>
     <div class="stats" id="hud-stats"></div>
     <div class="hud-buttons">
       <button class="icon-btn" id="btn-help" onclick="showHowToPlay()" aria-label="How to play" title="How to play (H)">?</button>
+      <button class="icon-btn" id="speed-btn" onclick="cycleSpeed()" aria-label="Rival and phase speed" title="Rival and phase speed: normal (S)">1×</button>
       <button class="icon-btn" id="mute-btn" onclick="toggleMute()" aria-label="Toggle sound" aria-pressed="false" title="Toggle sound (M)"></button>
       <button class="icon-btn" id="newgame-btn" onclick="newGameClick()" aria-label="New game" title="New game" style="width:auto;padding:0 8px;font-size:11px;">NEW</button>
     </div>
   </header>
 
   <section id="board" class="panel" aria-label="Your SOC"></section>
-  <section id="center" class="panel" aria-label="Shared area"></section>
-  <section id="actions" class="panel" aria-label="Actions">
-    <div id="phase-display"></div>
-    <div id="phase-instructions"></div>
-    <div id="action-buttons"></div>
-  </section>
   <aside id="side">
     <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
     <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
@@ -455,6 +509,7 @@ body::after {
 </div>
 <div id="screen-pulse"></div>
 <div id="phase-toast" aria-hidden="true"></div>
+<div id="banner" aria-hidden="true"></div>
 <div id="modal-overlay" role="dialog" aria-modal="true"><div id="modal-content"></div></div>
 <div id="announcements" class="sr-only" aria-live="polite"></div>
 
@@ -631,7 +686,7 @@ const EVENT_DEFS = {
    ============================================================ */
 const SLIDER_DEFS = {
   mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
-  rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, unit: " rivals", showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
+  rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, labels: [null, "1 rival", "2 rivals", "3 rivals"], showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
   rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Deal 2, keep 1 (base rule; the rulebook suggests skipping them on a first game)" },
   tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
@@ -735,8 +790,10 @@ const UI = {
   flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
-  lastDieClick: null,
+  lastDieClick: null, speed: 1, addonsOpen: false,
 };
+const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
+const SPEED_LABEL = { 1: "1×", 2: "2×", 3: "≫" };
 const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
 // Mutates in place: handlers hold a reference to UI.sel across a reset.
 function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Object.assign(UI.sel, clone(SEL_DEFAULTS)); }
@@ -1305,7 +1362,7 @@ const STEP = {
         for (let i = 0; i < SOLO_DRAW + extra; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); p.pendingDice.push(d); }
         if (G.cfg.epidemic) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.epidemicDie = d.uid; p.pendingDice.push(d); } }
         go("intake", "keep");
-        return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#center .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
+        return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#table .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
       }
       const per = 3 + extra;
       const dice = [];
@@ -1390,10 +1447,13 @@ const STEP = {
       go("improve", "return"); return NEXT;
     },
     return() {
+      // The rulebook's "return one improvement for a blood bag" is offered to the
+      // human at the top of activation instead of as its own stop: nothing
+      // happens between the two points, and it saves a click every shift.
       for (const p of playersInTurnOrder()) {
         if (p.returnDone) continue;
         if (p.isBot) { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); continue; }
-        G.actor = p.id; return WAIT;
+        p.returnDone = true; p.returnOpen = true;
       }
       go("activate", "start"); return NEXT;
     },
@@ -1482,7 +1542,9 @@ const STEP = {
       G.reportPool = null; G.reportsDone = false;
       if (G.round >= ROUNDS) go("final", G.cfg.collections ? "collections" : "score");
       else go("shift", "run");
-      return animate([{ type: "render" }, { type: "sfx", name: "score" }, { type: "wait", delay: 600 }]);
+      const mine = results[0].r;
+      const fx = mine.n >= 3 ? [{ type: "banner", text: `Restored ×${mine.n}`, sub: `+${mine.pts + mine.bonus} reputation${mine.notes.length ? " · " + mine.notes.join(" · ") : ""}`, delay: 1500 }] : [];
+      return animate([{ type: "render" }, { type: "sfx", name: "score" }, ...fx, { type: "wait", delay: 600 }]);
     },
   },
   shift: {
@@ -1491,7 +1553,7 @@ const STEP = {
         for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
         for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
         for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
-        p.ambulance = null; p.took = false; p.returnDone = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
+        p.ambulance = null; p.took = false; p.returnDone = false; p.returnOpen = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
         p.breachesThisRound = 0; p.neglectResults = null; p.botSummary = "";
       }
       for (const a of G.ambulances) { a.dice = []; a.takenBy = null; }
@@ -1777,8 +1839,8 @@ function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; a
 function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
 function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
 function onConsultantSkip() { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), null); advance(); }
-function onReportClick(col) { if (!inPhase("discharge", "reports")) return; if (applyCompleteReport(col)) { sfx("score"); saveGame(); updateAll(); } }
-function onReportsBest() { if (!inPhase("discharge", "reports")) return; let c; while ((c = bestReport()) !== null) applyCompleteReport(c); sfx("score"); saveGame(); updateAll(); }
+function onReportClick(col) { if (!inPhase("discharge", "reports")) return; if (applyCompleteReport(col)) { sfx("score"); if (!completableReports().length) { applyReportsDone(); advance(); return; } saveGame(); updateAll(); } }
+function onReportsBest() { if (!inPhase("discharge", "reports")) return; let c; while ((c = bestReport()) !== null) applyCompleteReport(c); sfx("score"); applyReportsDone(); advance(); }
 function onReportsDone() { if (!inPhase("discharge", "reports")) return; applyReportsDone(); advance(); }
 function onCollectDie(uid) {
   if (!inPhase("final", "collections")) return;
@@ -1790,16 +1852,36 @@ function onCollectPass() { if (!inPhase("final", "collections")) return; applyPa
 
 // ---- activation FSM ----
 function onMeepleClick(uid) {
+  if (inPhase("activate", "consultant")) { const m0 = meepleOf(human(), uid); const sp0 = m0 && m0.kind === "spec" ? specOf(human(), m0.specUid) : null; if (sp0 && sp0.type !== "consultant") onConsultantPick(sp0.uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), m = meepleOf(p, uid), s = UI.sel;
+  if (s.state === "returning") { if (m && m.kind === "spec") applyReturnNow("spec", m.specUid); return; }
   if (!m || m.used || m.off) return;
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
   if (s.meepleUid === uid && s.state === "meepleSel") resetSel();
   else { resetSel(); s.state = "meepleSel"; UI.sel.meepleUid = uid; }
   computeLegal(); updateAll();
 }
+function canReturnNow(p) { return p.returnOpen && !p.meeples.some(m => m.used) && (p.departments.some(d => d.improvement) || p.specialists.length > 0); }
+function onReturnToggle() {
+  if (!inPhase("activate", "human")) return;
+  const p = human(), s = UI.sel;
+  if (s.state === "returning") { resetSel(); }
+  else if (canReturnNow(p)) { resetSel(); s.state = "returning"; }
+  computeLegal(); updateAll();
+}
+function applyReturnNow(kind, uid) {
+  const p = human();
+  if (!canReturnNow(p)) return;
+  pushUndo();
+  applyReturn(p, kind, uid);
+  p.returnOpen = false;
+  sfx("intel");
+  afterAction();
+}
 function onDeptClick(uid) {
   if (inPhase("improve", "return")) { const d = deptOf(human(), uid); if (d && d.improvement) onReturnClick("dept", uid); return; }
+  if (inPhase("activate", "human") && UI.sel.state === "returning") { const d = deptOf(human(), uid); if (d && d.improvement) applyReturnNow("dept", uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), dept = deptOf(p, uid), s = UI.sel;
   if (!dept || dept.used) return;
@@ -1813,6 +1895,7 @@ function onDeptClick(uid) {
 }
 function onSpecCardClick(uid) {
   if (inPhase("improve", "return")) { onReturnClick("spec", uid); return; }
+  if (inPhase("activate", "human") && UI.sel.state === "returning") { applyReturnNow("spec", uid); return; }
   if (inPhase("activate", "consultant")) { const s = specOf(human(), uid); if (s && s.type !== "consultant") onConsultantPick(uid); return; }
 }
 function toggleDie(list, uid) { const i = list.indexOf(uid); if (i >= 0) list.splice(i, 1); else list.push(uid); }
@@ -1933,6 +2016,7 @@ function runActivation(opt) {
     const o = specOptions(def, ctx, p);
     if (o) {
       if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(); }
+      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
         o.ordered = !!def.then.and;
@@ -1993,7 +2077,7 @@ function cancelSel() {
     case "intelHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); break;
     case "intelRecolour": case "intelColour": s.state = "targeting"; s.pending = null; break;
     case "colour": if (s.colourFor === "spec") { s.state = "spec"; } else { s.state = "targeting"; } s.colourQueue = null; break;
-    case "meepleSel": resetSel(); break;
+    case "meepleSel": case "returning": resetSel(); break;
     default: return;
   }
   computeLegal(); updateAll();
@@ -2003,12 +2087,15 @@ function endActivation() {
   const p = human();
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
   const idle = p.meeples.filter(m => !m.used && !m.off).length && p.departments.some(d => canActivate(d, p));
-  if (idle && !UI.endConfirm) {
-    UI.endConfirm = true;
+  const ev = currentEvent();
+  const dmg = ev && ev.neglectMod !== undefined ? ev.neglectMod : (G.cfg.superbug ? 2 : 1);
+  const risk = untreatedDice(p).filter(d => d.value <= dmg).length;
+  if ((idle || risk) && !UI.endConfirm) {
+    UI.endConfirm = true; UI.endRisk = risk;
     setTimeout(() => { UI.endConfirm = false; if (G) updatePhaseUI(); }, 3000);
     updatePhaseUI(); return;
   }
-  UI.endConfirm = false;
+  UI.endConfirm = false; UI.endRisk = 0;
   applyEndActivation(p);
   resetSel(); UI.undo = []; UI.undoBarrier = 0;
   log("Activation complete. Waiting on dwell time.", "sys");
@@ -2055,6 +2142,7 @@ function setupInput() {
     if (modalOpen) return;
     if (e.key === "h" || e.key === "H" || e.key === "?") { showHowToPlay(); return; }
     if (e.key === "m" || e.key === "M") { toggleMute(); return; }
+    if (e.key === "s" || e.key === "S") { cycleSpeed(); return; }
     if (!G || G.gameOver) return;
     if (e.key === "Enter") { const b = document.querySelector("#action-buttons .action-btn.primary:not(:disabled)"); if (b) { b.click(); e.preventDefault(); } return; }
     if (e.key === "u" || e.key === "U") { undo(); return; }
@@ -2310,16 +2398,24 @@ function processEventQueue() {
     case "sfx": sfx(evt.name); break;
     case "fx": document.querySelectorAll(evt.sel).forEach((el, i) => { el.classList.remove(evt.cls); void el.offsetWidth; el.style.animationDelay = (i * (evt.stagger || 0)) + "ms"; el.classList.add(evt.cls); }); break;
     case "pulse": screenPulse(evt.colour); break;
+    case "banner": showBanner(evt.text, evt.sub); break;
     case "wait": break;
     case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
   }
   if (UI.reducedMotion) delay = Math.min(delay, 30);
+  delay = Math.round(delay * SPEED_FACTOR[UI.speed]);
   UI.queueTimer = setTimeout(processEventQueue, delay);
 }
 function screenPulse(colour) {
   const el = document.getElementById("screen-pulse");
   el.style.background = colour;
   el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+}
+function showBanner(text, sub) {
+  const el = document.getElementById("banner");
+  el.innerHTML = `${esc(text)}${sub ? `<small>${esc(sub)}</small>` : ""}`;
+  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
+  setTimeout(() => el.classList.remove("on"), 1900);
 }
 function showPhaseToast(text) {
   const el = document.getElementById("phase-toast");
@@ -2391,6 +2487,12 @@ const SFX = {
   lose:      () => [392, 330, 262, 196].forEach((f, i) => playTone(f, "sawtooth", 0.3, 0.1, i * 0.2)),
 };
 function sfx(name) { if (UI.muted || !SFX[name]) return; SFX[name](); }
+function cycleSpeed() {
+  UI.speed = UI.speed >= 3 ? 1 : UI.speed + 1;
+  const b = document.getElementById("speed-btn");
+  if (b) { b.textContent = SPEED_LABEL[UI.speed]; b.title = `Rival and phase speed: ${["", "normal", "fast", "instant"][UI.speed]} (S)`; }
+  try { localStorage.setItem("pumatriage_speed_v1", String(UI.speed)); } catch (e) {}
+}
 function toggleMute() {
   UI.muted = !UI.muted;
   const b = document.getElementById("mute-btn");
@@ -2444,7 +2546,7 @@ function rebuildLog() {
 function updateAll() {
   if (UI.headless || !G) return;
   snapshotRects();
-  renderBoard(); renderCenter(); renderRivals(); updateHUD(); updatePhaseUI();
+  renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
 }
 function pips() { return '<span class="pip"></span>'.repeat(9); }
@@ -2525,22 +2627,59 @@ function renderSpecCard(type, cls, attrs) {
   return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${esc(specDesc(def))}</div></div>`;
 }
 function renderMeeple(p, m, key) {
-  const s = UI.sel, cls = [];
+  const s = UI.sel, cls = ["b-" + m.colour];
   const live = G.phase === "activate" && G.step === "human";
+  const returning = live && s.state === "returning";
+  const consult = G.phase === "activate" && G.step === "consultant";
+  const spec = m.kind === "spec" ? specOf(p, m.specUid) : null;
+  const def = spec ? SPEC_DEFS[spec.type] : null;
   if (m.used) cls.push("used");
   if (m.off) cls.push("off");
-  if (live && !m.used && !m.off) cls.push("avail");
-  if (s.meepleUid === m.uid && live) cls.push("sel");
-  const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "");
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div>`;
+  if (live && !returning && !m.used && !m.off) cls.push("avail");
+  if (s.meepleUid === m.uid && live && !returning) cls.push("sel");
+  if (returning && spec) cls.push("returnable");
+  if (consult && spec && spec.type !== "consultant") cls.push("clickable");
+  if (consult && spec && p.consultantCopy === spec.type && spec.type !== "consultant") cls.push("sel");
+  let ability = "Any one unused tool.";
+  if (def) {
+    ability = specDesc(def);
+    if (def.special === "copy" && p.consultantCopy) ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`;
+  }
+  const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
 }
-
 function renderBoard() {
   const p = human(), el = document.getElementById("board"), s = UI.sel;
   const live = G.phase === "activate" && G.step === "human";
-  const returning = G.phase === "improve" && G.step === "return" && !UI.animating;
-  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}</h3>`;
-  html += '<div id="wards">';
+  const returning = (G.phase === "improve" && G.step === "return" && !UI.animating) || (live && s.state === "returning");
+  const intake = G.phase === "intake" && G.step === "place";
+  const consult = G.phase === "activate" && G.step === "consultant";
+  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
+  html += renderCenter();
+  html += '<div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
+  let key = 0;
+  for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
+  html += '</div>';
+  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
+  for (const d of p.departments) {
+    const cls = [];
+    const def = DEPT_DEFS[d.type];
+    let why = deptDesc(def);
+    if (d.used) { cls.push("used"); why = "Used this shift. " + why; }
+    if (live && (s.state === "meepleSel" || s.state === "targeting")) {
+      if (UI.legalByDept[d.uid] && !d.used) cls.push("can");
+      else if (!d.used) { cls.push("disabled"); why = "No valid targets right now. " + why; }
+    }
+    if (live && s.deptUid === d.uid) cls.push("sel");
+    if (returning && d.improvement) { cls.push("returnable"); why = "Click to return it for an intel token. " + why; }
+    if (d.uid >= G.nextUid - 2) cls.push("new");
+    const m = p.meeples.find(x => x.deptUid === d.uid);
+    const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
+    const clickable = cls.includes("can") || cls.includes("returnable");
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
+  }
+  html += '</div>';
+  html += '<div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
   p.wards.forEach((w, wi) => {
     const n = w.filter(b => b.u || b.t).length;
     html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
@@ -2549,56 +2688,25 @@ function renderBoard() {
       for (const k of ["u", "t"]) {
         const d = b[k];
         const x = d ? dieState(d.uid) : null;
-        html += `<div class="slot ${k}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+        html += `<div class="slot ${k}${d ? "" : " empty"}${!d && k === "u" && intake ? " open" : ""}" aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
       }
       html += '</div>';
     }
     html += '</div></div>';
   });
   html += '</div>';
-  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
-  for (const d of p.departments) {
-    const cls = [];
-    if (d.used) cls.push("used");
-    if (live && (s.state === "meepleSel" || s.state === "targeting")) { if (UI.legalByDept[d.uid] && !d.used) cls.push("can"); else if (!d.used) cls.push("disabled"); }
-    if (live && s.deptUid === d.uid) cls.push("sel");
-    if (returning && d.improvement) cls.push("returnable");
-    if (d.uid >= G.nextUid - 2) cls.push("new");
-    const m = p.meeples.find(x => x.deptUid === d.uid);
-    const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
-    const clickable = cls.includes("can") || cls.includes("returnable");
-    html += renderDeptTile(d.type, cls.join(" "), `data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}"`, inner);
-  }
-  html += '</div>';
-  html += '<div class="board-row"><span class="lbl">Analysts</span>';
-  let key = 0;
-  for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
-  html += '</div>';
-  if (p.specialists.length) {
-    html += '<div class="board-row"><span class="lbl">Specialists</span></div><div id="specs">';
-    for (const sp of p.specialists) {
-      const cls = [];
-      if (returning) cls.push("returnable");
-      if (G.phase === "activate" && G.step === "consultant" && sp.type !== "consultant") cls.push("clickable");
-      if (p.consultantCopy === sp.type && sp.type !== "consultant") cls.push("sel");
-      html += renderSpecCard(sp.type, cls.join(" "), `data-act="spec" data-uid="${sp.uid}" role="button" tabindex="0"`);
-    }
-    html += '</div>';
-  }
-  html += '<div class="board-row"><span class="lbl">Status</span><div id="tray">';
-  html += `<span class="token intel" title="Intel tokens: heal any host 1 step or retag its colour during activation. +1 reputation each at the end.">INTEL ×${p.bloodBags}</span>`;
-  html += `<span class="token breach" title="Breach records: −${FATALITY_PENALTY} reputation each at the end.">BREACH ×${p.fatalities}</span>`;
+  const n = p.dischargedThisRound.length;
+  html += '<div class="board-row"><span class="lbl">Shift</span><div id="tray">';
   if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
-  if (p.dischargedThisRound.length) {
-    html += '<span class="stack-info">Restored:</span>';
-    for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`;
-  }
+  html += `<span class="ladder" title="Reputation for hosts restored in one shift. Restore more at once for more per host."><span class="stack-info">restore</span>`;
+  for (let i = 1; i <= 8; i++) html += `<span class="lcell ${i === n ? "cur" : i === n + 1 ? "next" : ""}">${i}<b>:${dischargePoints(i)}</b></span>`;
+  html += '</span>';
+  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
   html += '</div></div>';
+  html += renderStrip();
   el.innerHTML = html;
 }
-
 function renderCenter() {
-  const el = document.getElementById("center");
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   let html = "";
   const ev = currentEvent();
@@ -2645,8 +2753,6 @@ function renderCenter() {
     html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
   } else if (ph === "activate" && st === "consultant") {
     html += '<div class="center-title">Consultant</div><div class="hint">Click one of your specialists on the board for the Consultant to shadow this shift.</div>';
-  } else if (ph === "activate" && st === "human") {
-    html += renderActivationPanel();
   } else if (ph === "discharge" && st === "reports") {
     html += '<div class="center-title">Audit Reports</div>' + renderReports(true);
   } else if (ph === "final" && st === "collections") {
@@ -2657,22 +2763,14 @@ function renderCenter() {
       html += '</div>';
     });
     html += '</div><div class="hint">Hand a host whose colour and value match an open slot: +1 each. Every host left at the end costs 1.</div>';
-  } else if (ph === "gameover") {
-    html += '<div class="center-title">Shift log closed</div><div class="hint">Open the summary from the actions bar, or start a new game.</div>';
-  } else {
-    html += '<div class="center-title">Table</div>';
-    html += `<div class="summary-grid"><span class="k">Bag</span><span>${renderPlainDie("red", 1)} ${G.bag.red} &nbsp; ${renderPlainDie("yellow", 1)} ${G.bag.yellow} &nbsp; ${renderPlainDie("green", 1)} ${G.bag.green}</span>`;
-    html += `<span class="k">Tool stack</span><span>${G.deptStack.length}</span><span class="k">Specialist deck</span><span>${G.specStack.length}</span></div>`;
-    if (ph === "activate" && st === "bots") html += '<div class="hint">Rival SOCs are working their queues.</div>';
   }
-  el.innerHTML = html;
+  return html ? `<div id="table" aria-label="Shared table">${html}</div>` : "";
 }
 function renderDisplay(pickable) {
   let html = '<div id="display">';
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
   dd.forEach((t, i) => { if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""); });
-  html += '</div><div class="disp-row">';
   sd.forEach((t, i) => { if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""); });
   html += '</div>';
   if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
@@ -2700,43 +2798,49 @@ function renderReports(clickable) {
   if (G.solo.completed.length) html += `<div class="report-list"><span class="stack-info">Filed: ${G.solo.completed.length}</span></div>`;
   return html;
 }
-function renderActivationPanel() {
-  const p = human(), s = UI.sel;
-  let html = '<div class="center-title">Activation</div>';
-  const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
-  const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
-  if (m) {
-    const def = specDefForMeeple(p, m);
-    html += `<div class="rule-card"><div class="rn">${esc(meepleLabel(p, m))}</div>${def ? esc(specDesc(def)) : "Places on any one unused tool to trigger it."}</div>`;
-  }
-  if (dept) {
-    const def = DEPT_DEFS[dept.type];
-    html += `<div class="rule-card"><div class="rn">${esc(def.name)}</div>${esc(deptDesc(def))}<div class="hint">Selected ${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""}.</div></div>`;
-  }
-  if (s.state === "spec" || s.state === "choice" || s.state === "admReturn") {
-    html += `<div class="rule-card"><div class="rn">${esc(s.spec.name)} follow-up</div>${esc(specDesc(s.spec))}</div>`;
-    if (s.state === "choice") {
-      const o = s.specOpts;
-      html += '<div class="act-controls">';
-      if (o.choice === "pathologist") html += `<button class="action-btn primary" onclick="onSpecChoice('yes')">Close a breach record (+1 intel)</button><button class="action-btn" onclick="onSpecChoice('no')">No thanks</button>`;
-      if (o.choice === "admissions") html += `<button class="action-btn" onclick="onSpecChoice('return')" ${boardDice(p).length ? "" : "disabled"}>Hand off a host</button><button class="action-btn" onclick="onSpecChoice('admit')" ${emptyBeds(p).length ? "" : "disabled"}>Admit a new host</button><button class="action-btn" onclick="onSpecChoice('skip')">Skip</button><div class="hint">${o.count} ${plural(o.count, "trigger")} left.</div>`;
-      html += '</div>';
+function renderStrip() {
+  const p = human(), s = UI.sel, live = G.phase === "activate" && G.step === "human";
+  let html = `<div id="strip" aria-live="off"><div class="strip-head"><span class="strip-phase">${esc(PHASE_NAMES[G.phase] || "")}</span><span class="strip-shift">shift ${Math.min(G.round, ROUNDS)} of ${ROUNDS}</span></div>`;
+  if (live) {
+    const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
+    const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
+    if (m && !["spec", "choice", "admReturn"].includes(s.state)) {
+      const def = specDefForMeeple(p, m);
+      html += `<div class="strip-rule"><b>${esc(meepleLabel(p, m))}</b> — ${def ? esc(specDesc(def)) : "staffs any one unused tool."}</div>`;
+    }
+    if (dept && !["spec", "choice", "admReturn"].includes(s.state)) {
+      const def = DEPT_DEFS[dept.type];
+      html += `<div class="strip-rule"><b>${esc(def.name)}</b> — ${esc(deptDesc(def))}<span class="strip-count">${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""} selected</span></div>`;
+    }
+    if (["spec", "choice", "admReturn"].includes(s.state)) {
+      html += `<div class="strip-rule amber"><b>${esc(s.spec.name)}</b> — ${esc(specDesc(s.spec))}</div>`;
+      if (s.state === "choice") {
+        const o = s.specOpts;
+        html += '<div class="act-controls">';
+        if (o.choice === "pathologist") html += `<button class="action-btn primary" onclick="onSpecChoice('yes')">Close a breach record (+1 intel)</button><button class="action-btn" onclick="onSpecChoice('no')">No thanks</button>`;
+        if (o.choice === "admissions") html += `<button class="action-btn" onclick="onSpecChoice('return')" ${boardDice(p).length ? "" : "disabled"}>Hand off a host</button><button class="action-btn" onclick="onSpecChoice('admit')" ${emptyBeds(p).length ? "" : "disabled"}>Admit a new host</button><button class="action-btn" onclick="onSpecChoice('skip')">Skip</button><span class="hint">${o.count} ${plural(o.count, "trigger")} left</span>`;
+        html += '</div>';
+      }
+    }
+    if (s.state === "colour" || s.state === "intelColour") {
+      html += `<div class="strip-rule amber">${s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}: pick the colour.` : "Pick the host's colour for this shift."}<div class="colour-pick">`;
+      for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
+      html += '</div></div>';
     }
   }
-  if (s.state === "colour" || s.state === "intelColour") {
-    html += '<div class="rule-card"><div class="rn">Pick a colour</div>' + (s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}.` : "The token retags this host for the rest of the shift.") + '<div class="colour-pick">';
-    for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
-    html += '</div></div>';
+  html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
+  if (live) {
+    const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
+    const idle = p.meeples.filter(x => !x.used && !x.off).length;
+    const usable = p.departments.filter(d => canActivate(d, p)).length;
+    html += '<div class="strip-tools">';
+    html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token (the blood bag) to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
+    html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
+    html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
+    if (canReturnNow(p)) html += `<button class="action-btn sm ${s.state === "returning" ? "primary" : ""}" onclick="onReturnToggle()" title="Return one tool or specialist to the bottom of its stack for an intel token. Only before your first placement this shift.">Return one for intel</button>`;
+    html += `<span class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} ready · ${p.bloodBags} intel</span></div>`;
   }
-  html += '<div class="act-controls">';
-  const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
-  html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
-  html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
-  html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
   html += '</div>';
-  const idle = p.meeples.filter(x => !x.used && !x.off).length;
-  const usable = p.departments.filter(d => canActivate(d, p)).length;
-  html += `<div class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} with valid targets · ${p.bloodBags} intel</div>`;
   return html;
 }
 function renderRivals() {
@@ -2759,66 +2863,76 @@ function renderRivals() {
   }
   el.innerHTML = html;
 }
+const PHASE_STEPS = [["intake", "Intake"], ["improve", "Improve"], ["activate", "Activate"], ["neglect", "Dwell"], ["discharge", "Restore"], ["shift", "Shift"]];
 function updateHUD() {
   const p = human();
+  const shiftN = Math.min(G.round, ROUNDS);
+  let ticks = '<span class="ticks">'; for (let i = 1; i <= ROUNDS; i++) ticks += `<span class="${i <= shiftN ? "on" : ""}"></span>`; ticks += '</span>';
+  const bag = `<span class="bagdots">${COLOURS.map(c => `<span class="mini-dot dot c-${c}"></span>${G.bag[c]}`).join(" ")}</span>`;
   const stats = [
-    ["Shift", `${Math.min(G.round, ROUNDS)}/${ROUNDS}`],
+    ["Shift", `${shiftN}/${ROUNDS}`, "", ticks],
     ["Reputation", p.score, p.score < 0 ? "bad" : ""],
     ["Intel", p.bloodBags],
     ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
     ["Restored", p.dischargedTotal],
-    ["Bag", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
+    ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
+    ["Stacks", `${G.deptStack.length} · ${G.specStack.length}`],
   ];
   const el = document.getElementById("hud-stats");
-  el.innerHTML = stats.map(([l, v, c]) => `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== v ? "flash" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span></div>`).join("");
-  for (const [l, v] of stats) UI.prevHUD[l] = v;
+  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? "Dice left in the bag by colour" : l === "Stacks" ? "Tool tiles and specialist cards left in their stacks" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
+  for (const [l, v, , , key] of stats) UI.prevHUD[l] = key || v;
+  const ps = document.getElementById("phase-strip");
+  const idx = PHASE_STEPS.findIndex(([id]) => id === G.phase);
+  const allDone = G.phase === "final" || G.phase === "gameover";
+  ps.innerHTML = PHASE_STEPS.map(([id, label], i) => `<span class="pstep ${i === idx ? "on" : (allDone || (idx >= 0 && i < idx)) ? "done" : ""}" ${i === idx ? 'aria-current="step"' : ""}>${label}</span>`).join("");
 }
 function promptFor() {
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   const B = (label, fn, opt = {}) => ({ label, fn, ...opt });
   if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("New game", "showMainMenu()")] };
   if (UI.animating) return { text: "…", buttons: [] };
-  if (ph === "setup" && st === "admin") return { text: "The CISO hands you two directives. Keep one; it scores or shields for the whole game." };
-  if (ph === "setup" && st === "startDice") return { text: "Your first hosts arrive at 3, 4 and 5. Click two to swap their values; double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
-  if (st === "extraReveal") return { text: "Two-SOC table: as Incident Commander, reveal one extra tool or one extra specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
-  if (ph === "intake" && st === "pick") return { text: "Choose an escalation queue. Low numbers carry sicker hosts but improve first and the lowest taken earns an intel token." };
-  if (ph === "intake" && st === "keep") return { text: "Keep 3 of the 4 rolled hosts. The 4th goes back in the bag. A kept total under 9 earns an intel token. Double-click a host to confirm.", buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
-  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full. Mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} on your board to write off as ${plural(G.overflow.shortage, "a breach", "breaches")}. Double-click the last one to confirm.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
-  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "One tool and one specialist are revealed. Take one; the other goes to the bottom of its stack." : "Take one improvement: deploy a tool or hire a specialist. Specialists bring an extra pair of hands." };
-  if (ph === "improve" && st === "return") return { text: "Optionally return one of your improvements (even the one you just took) to the bottom of its stack for an intel token.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
-  if (ph === "activate" && st === "consultant") return { text: "Pick a specialist on your board for the Consultant to shadow.", buttons: [B("Skip", "onConsultantSkip()")] };
+  if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
+  if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
+  if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
+  if (ph === "intake" && st === "pick") return { text: "Click an escalation queue to take it." };
+  if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
+  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
+  if (ph === "improve" && st === "return") return { text: "Return one improvement for an intel token, or keep everything.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
+  if (ph === "activate" && st === "consultant") return { text: "Pick a specialist for the Consultant to shadow this shift.", buttons: [B("Skip", "onConsultantSkip()")] };
   if (ph === "activate" && st === "human") {
-    const undoB = B("Undo", "undo()", { disabled: !canUndo() });
-    const endLabel = UI.endConfirm ? "Sure?" : "End activation";
+    const endLabel = UI.endConfirm ? (UI.endRisk ? `Sure? ${UI.endRisk} will breach` : "Sure?") : "End activation";
     const endB = B(endLabel, "endActivation()", { primary: !p.meeples.some(m => !m.used && !m.off) || !p.departments.some(d => canActivate(d, p)), danger: UI.endConfirm, key: "E" });
     switch (s.state) {
-      case "idle": return { text: "Click an analyst, then a tool. Worked hosts move to the lower slot and skip dwell time. Hosts healed to 7 are restored.", buttons: [endB, undoB] };
-      case "meepleSel": return { text: "Now click a glowing tool. Dimmed tools have no valid targets.", buttons: [B("Cancel", "cancelSel()"), undoB] };
-      case "targeting": { const dept = deptOf(p, s.deptUid); const def = DEPT_DEFS[dept.type]; return { text: `${def.name}: ${deptDesc(def)} Click glowing hosts; double-click the last one to confirm.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] }; }
-      case "spec": return { text: `${s.spec.name}: ${specDesc(s.spec)} Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the target"} and double-click to confirm, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
-      case "choice": return { text: `${s.spec.name} triggered. Choose in the shared area.`, buttons: [B("Skip", "skipSpec()")] };
-      case "admReturn": return { text: "Click a host on your board to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
-      case "intelHeal": return { text: "Intel token: click any host to heal it 1 step. It counts as worked.", buttons: [B("Cancel", "cancelSel()")] };
-      case "intelRecolour": return { text: "Intel token: click the host to retag, then pick its new colour for this shift.", buttons: [B("Cancel", "cancelSel()")] };
-      case "intelColour": case "colour": return { text: "Pick the new colour in the shared area.", buttons: [B("Cancel", "cancelSel()")] };
+      case "idle": return { text: "Click an analyst, then a tool.", buttons: [endB] };
+      case "meepleSel": return { text: "Now click a glowing tool.", buttons: [B("Cancel", "cancelSel()")] };
+      case "returning": return { text: "Click the tool or specialist to return for an intel token.", buttons: [B("Cancel", "cancelSel()")] };
+      case "targeting": return { text: "Click glowing hosts; double-click the last one to confirm.", buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] };
+      case "spec": return { text: `Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the follow-up target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
+      case "choice": return { text: "Choose the follow-up above, or skip.", buttons: [B("Skip", "skipSpec()")] };
+      case "admReturn": return { text: "Click a host to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
+      case "intelHeal": return { text: "Click any host to heal it 1 step for one intel token.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelRecolour": return { text: "Click the host to retag.", buttons: [B("Cancel", "cancelSel()")] };
+      case "intelColour": case "colour": return { text: "Pick the colour above.", buttons: [B("Cancel", "cancelSel()")] };
     }
   }
-  if (ph === "discharge" && st === "reports") return { text: "File Audit Reports with this shift's restored hosts. Only the bottom row is open; filing one slides the card above it down.", buttons: [B("File best", "onReportsBest()"), B("Done", "onReportsDone()", { primary: true })] };
-  if (ph === "final" && st === "collections") return { text: "Hand a matching host to an outside provider, or pass for the rest of the handover.", buttons: [B("Pass", "onCollectPass()", { primary: !collectionMoves(p).length })] };
+  if (ph === "discharge" && st === "reports") return { text: "Click an open Audit Report to file it with this shift's restored hosts.", buttons: [B("File best", "onReportsBest()"), B("Done", "onReportsDone()", { primary: true })] };
+  if (ph === "final" && st === "collections") return { text: "Click a host that matches an open provider slot, or pass.", buttons: [B("Pass", "onCollectPass()", { primary: !collectionMoves(p).length })] };
   if (ph === "activate" && st === "bots") return { text: "Rival SOCs are working their queues." };
-  if (ph === "neglect") return { text: "Dwell time: every host still queued degrades." };
+  if (ph === "neglect") return { text: "Every host still queued degrades." };
   if (ph === "discharge") return { text: "Restorations are scored." };
   return { text: "" };
 }
 function updatePhaseUI() {
   if (!G) return;
   const ph = G.phase;
-  document.getElementById("phase-display").textContent = `${PHASE_NAMES[ph] || ph}${G.gameOver ? "" : " · shift " + Math.min(G.round, ROUNDS)}`;
   if (UI.prevPhase !== null && UI.prevPhase !== ph && !G.gameOver && ph !== "setup" && !UI.reducedMotion) { showPhaseToast(PHASE_NAMES[ph]); sfx("phase"); }
   UI.prevPhase = ph;
   const pr = promptFor();
-  document.getElementById("phase-instructions").textContent = pr.text || "";
-  document.getElementById("action-buttons").innerHTML = (pr.buttons || []).map(b =>
+  const pi = document.getElementById("phase-instructions"), ab = document.getElementById("action-buttons");
+  if (!pi || !ab) return;
+  pi.textContent = pr.text || "";
+  ab.innerHTML = (pr.buttons || []).map(b =>
     `<button class="action-btn ${b.primary ? "primary" : ""} ${b.danger ? "danger" : ""}" onclick="${b.fn}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}${b.key ? `<span class="k">${b.key}</span>` : ""}</button>`).join("");
 }
 /* ============================================================
@@ -2850,10 +2964,11 @@ function closeModal() {
 }
 function renderRuleRow(key) {
   const d = SLIDER_DEFS[key], v = houseRules[key];
-  const shown = d.toggle ? d.labels[v] : d.labels ? d.labels[v] : `${v}${d.unit || ""}`;
-  return `<div class="rule-row"><span class="rl">${esc(d.label)}${d.harder ? ' <span style="color:var(--red)">▲</span>' : ""}</span>
-    <input type="range" min="${d.min}" max="${d.max}" value="${v}" step="1" aria-label="${esc(d.label)}" oninput="setRule('${key}', this.value)">
-    <span class="rv">${esc(shown)}</span><span class="rd">${esc(d.desc || "")}</span></div>`;
+  let opts = [];
+  for (let i = d.min; i <= d.max; i++) opts.push([i, d.labels ? d.labels[i] : `${i}${d.unit || ""}`]);
+  const seg = opts.map(([i, l]) => `<button class="seg-btn ${i === v ? "on" : ""}" role="radio" aria-checked="${i === v}" onclick="setRule('${key}', ${i})">${esc(l)}</button>`).join("");
+  return `<div class="rule-row"><span class="rl">${esc(d.label)}${d.harder ? ' <span style="color:var(--red)" title="harder">▲</span>' : ""}</span>
+    <div class="seg" role="radiogroup" aria-label="${esc(d.label)}">${seg}</div><span class="rd">${esc(d.desc || "")}</span></div>`;
 }
 function setRule(key, val) {
   houseRules[key] = parseInt(val, 10);
@@ -2874,6 +2989,7 @@ function showMainMenu(keepScroll) {
   const saved = hasSave();
   const keys = Object.keys(SLIDER_DEFS).filter(k => !SLIDER_DEFS[k].showIf || SLIDER_DEFS[k].showIf(houseRules));
   const base = keys.filter(k => !SLIDER_DEFS[k].addon), addons = keys.filter(k => SLIDER_DEFS[k].addon);
+  const addonsOn = addons.filter(k => houseRules[k]).length;
   mc.innerHTML = `
     <h2>PumaTriage</h2>
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
@@ -2881,13 +2997,15 @@ function showMainMenu(keepScroll) {
     <div class="presets">${Object.keys(DIFFICULTY_PRESETS).map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</div>
     <div class="rules-head">Table</div>
     ${base.map(renderRuleRow).join("")}
-    <div class="rules-head">Add-ons — house rules, off in Standard</div>
+    <details class="addons" ${UI.addonsOpen || addonsOn ? "open" : ""} ontoggle="UI.addonsOpen = this.open"><summary>House rules — ${addonsOn ? addonsOn + " on" : "all off"}</summary>
     ${addons.map(renderRuleRow).join("")}
+    </details>
     <div class="modal-actions">
-      <button class="action-btn primary" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
+      <button class="action-btn primary" id="menu-start" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
       <button class="action-btn" onclick="showHowToPlay('overview')">How to play</button>
     </div>`;
   openModal(!!G);
+  if (!keepScroll) { const b = document.getElementById("menu-start"); if (b) b.focus(); }
   mc.scrollTop = scroll;
 }
 function startGame() {
@@ -2949,7 +3067,7 @@ function showHowToPlay(tab) {
     <div ${panel("shifts")}>
       <ol>
         <li><b>Intake.</b> Three hosts are rolled per escalation queue (1s and 6s re-rolled), lowest values into queue #1. Starting with the Incident Commander, each SOC takes one queue. The Commander may not take #1. Whoever takes the lowest-numbered queue gets an intel token and becomes Commander. If your segments cannot fit the new hosts, existing hosts are written off as breaches.</li>
-        <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token.</li>
+        <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token; you get that offer at the top of activation, until your first placement.</li>
         <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool.</li>
         <li><b>Dwell time.</b> Every host still Queued loses 1 integrity. A 1 that drops becomes a breach.</li>
         <li><b>Restoration.</b> Score this shift's restored hosts. Directives apply here.</li>
@@ -2994,6 +3112,7 @@ function showHowToPlay(tab) {
         <li><b>B</b> — spend an intel token to heal</li>
         <li><b>H</b> or <b>?</b> — this help</li>
         <li><b>M</b> — toggle sound</li>
+        <li><b>S</b> — rival and phase speed: normal, fast, instant</li>
         <li><b>Double-click a host</b> — confirm the current selection (a slow second click deselects it instead)</li>
         <li><b>Tab</b> — every host, tool and analyst is reachable by keyboard</li>
       </ul>
@@ -3018,7 +3137,7 @@ function showGameOver() {
   if (G.cfg.solo) {
     const p = human(), b = p.breakdown;
     sfx(b.total >= 30 ? "win" : "lose");
-    html = `<h2>Shift 8 closed</h2><div class="grade">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
+    html = `<h2 class="${b.total >= 45 ? "win" : ""}">Shift 8 closed</h2><div class="grade ${b.total >= 45 ? "win" : ""}">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
       <table class="score-table">
         <tr><td>Restorations and filed reports</td><td>${b.base}</td></tr>
         <tr><td>Breaches (${p.fatalities})</td><td>${b.fatalities}</td></tr>
@@ -3029,7 +3148,7 @@ function showGameOver() {
       <p style="text-align:center">${p.dischargedTotal} hosts restored over 8 shifts.</p>`;
   } else {
     sfx(won ? "win" : "lose");
-    html = `<h2>${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
+    html = `<h2 class="${won ? "win" : ""}">${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
       <table class="help-table"><tr><th>#</th><th>SOC</th><th>Reputation</th><th>Breaches</th><th>Intel</th><th>Restored</th>${G.cfg.collections ? "<th>Handover</th>" : ""}<th>Total</th></tr>`;
     G.final.ranking.forEach((id, i) => {
       const p = G.players[id], b = p.breakdown;
@@ -3074,8 +3193,8 @@ function endTutorial() {
 function init() {
   setupInput();
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+  try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
   document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
-  document.getElementById("center").innerHTML = '<div class="center-title">Table</div><div class="hint">Start a game from the menu.</div>';
   const shot = /[#&]shot=([a-z]+)/.exec(location.hash);
   if (shot) { screenshotState(shot[1]); return; }
   showMainMenu();
