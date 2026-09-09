@@ -60,13 +60,13 @@ body::after {
    ============================================================ */
 #app {
   height: 100vh; display: grid; gap: 8px; padding: 8px;
-  grid-template-columns: minmax(520px, 1.6fr) minmax(250px, 0.75fr) minmax(230px, 0.65fr);
+  grid-template-columns: minmax(640px, 1.8fr) minmax(280px, 0.7fr);
   grid-template-rows: auto minmax(0, 1fr);
-  grid-template-areas: "hud hud hud" "board center side";
+  grid-template-areas: "hud hud" "board side";
 }
 #hud-top { grid-area: hud; }
 #board   { grid-area: board; overflow: auto; }
-#center  { grid-area: center; overflow: auto; }
+#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 
 .panel {
@@ -471,9 +471,9 @@ details.addons summary::-webkit-details-marker { display: none; }
   body { overflow: auto; }
   #app {
     height: auto; grid-template-columns: 1fr; grid-template-rows: auto;
-    grid-template-areas: "hud" "board" "center" "side";
+    grid-template-areas: "hud" "board" "side";
   }
-  #board, #center { overflow: visible; }
+  #board { overflow: visible; }
   #strip { bottom: 0; }
   .h3-note { display: none; }
   #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
@@ -498,7 +498,6 @@ details.addons summary::-webkit-details-marker { display: none; }
   </header>
 
   <section id="board" class="panel" aria-label="Your SOC"></section>
-  <section id="center" class="panel" aria-label="Shared area"></section>
   <aside id="side">
     <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
     <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
@@ -1359,7 +1358,7 @@ const STEP = {
         for (let i = 0; i < SOLO_DRAW + extra; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); p.pendingDice.push(d); }
         if (G.cfg.epidemic) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.epidemicDie = d.uid; p.pendingDice.push(d); } }
         go("intake", "keep");
-        return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#center .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
+        return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#table .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
       }
       const per = 3 + extra;
       const dice = [];
@@ -2543,7 +2542,7 @@ function rebuildLog() {
 function updateAll() {
   if (UI.headless || !G) return;
   snapshotRects();
-  renderBoard(); renderCenter(); renderRivals(); updateHUD(); updatePhaseUI();
+  renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
 }
 function pips() { return '<span class="pip"></span>'.repeat(9); }
@@ -2652,6 +2651,7 @@ function renderBoard() {
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
   let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
+  html += renderCenter();
   html += '<div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
   let key = 0;
   for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
@@ -2703,7 +2703,6 @@ function renderBoard() {
   el.innerHTML = html;
 }
 function renderCenter() {
-  const el = document.getElementById("center");
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   let html = "";
   const ev = currentEvent();
@@ -2760,15 +2759,8 @@ function renderCenter() {
       html += '</div>';
     });
     html += '</div><div class="hint">Hand a host whose colour and value match an open slot: +1 each. Every host left at the end costs 1.</div>';
-  } else if (ph === "gameover") {
-    html += '<div class="center-title">Shift log closed</div><div class="hint">Open the summary from the actions bar, or start a new game.</div>';
-  } else {
-    html += '<div class="center-title">Table</div>';
-    html += `<div class="summary-grid"><span class="k">Bag</span><span>${renderPlainDie("red", 1)} ${G.bag.red} &nbsp; ${renderPlainDie("yellow", 1)} ${G.bag.yellow} &nbsp; ${renderPlainDie("green", 1)} ${G.bag.green}</span>`;
-    html += `<span class="k">Tool stack</span><span>${G.deptStack.length}</span><span class="k">Specialist deck</span><span>${G.specStack.length}</span></div>`;
-    if (ph === "activate" && st === "bots") html += '<div class="hint">Rival SOCs are working their queues.</div>';
   }
-  el.innerHTML = html;
+  return html ? `<div id="table" aria-label="Shared table">${html}</div>` : "";
 }
 function renderDisplay(pickable) {
   let html = '<div id="display">';
@@ -2881,9 +2873,10 @@ function updateHUD() {
     ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
     ["Restored", p.dischargedTotal],
     ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
+    ["Stacks", `${G.deptStack.length} · ${G.specStack.length}`],
   ];
   const el = document.getElementById("hud-stats");
-  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? "Dice left in the bag by colour" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
+  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? "Dice left in the bag by colour" : l === "Stacks" ? "Tool tiles and specialist cards left in their stacks" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
   for (const [l, v, , , key] of stats) UI.prevHUD[l] = key || v;
   const ps = document.getElementById("phase-strip");
   const idx = PHASE_STEPS.findIndex(([id]) => id === G.phase);
@@ -3199,7 +3192,6 @@ function init() {
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
   try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
   document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
-  document.getElementById("center").innerHTML = '<div class="center-title">Table</div><div class="hint">Start a game from the menu.</div>';
   const shot = /[#&]shot=([a-z]+)/.exec(location.hash);
   if (shot) { screenshotState(shot[1]); return; }
   showMainMenu();
