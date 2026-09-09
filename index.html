@@ -89,21 +89,25 @@ body::after {
 
 /* Top HUD */
 #hud-top {
-  display: grid; align-items: center; gap: 4px 16px;
-  grid-template-columns: auto 1fr;
-  grid-template-areas: "title buttons" "strip stats";
-  padding: 6px 12px; border: 1px solid var(--border); background: var(--panel);
+  display: grid; align-items: center; gap: 2px 14px;
+  grid-template-columns: auto auto auto 1fr;
+  grid-template-areas: "title buttons strip stats";
+  padding: 4px 12px; border: 1px solid var(--border); background: var(--panel);
 }
-#hud-top > .brand { grid-area: title; }
-#hud-top .hud-buttons { grid-area: buttons; justify-self: end; align-self: start; }
+#hud-top > .brand { grid-area: title; display: flex; align-items: baseline; gap: 10px; }
+#hud-top .hud-buttons { grid-area: buttons; }
 #hud-top #phase-strip { grid-area: strip; margin-left: 0; }
 #hud-top .stats { grid-area: stats; justify-content: flex-end; }
-#hud-top .title {
-  color: var(--amber); font-size: 18px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
+@media (max-width: 1300px) {
+  #hud-top { grid-template-columns: auto auto 1fr; grid-template-areas: "title buttons strip" "stats stats stats"; }
+  #hud-top .stats { justify-content: flex-start; }
 }
-#hud-top .sub { color: var(--text-dim); font-size: 11px; letter-spacing: 1px; }
+#hud-top .title {
+  color: var(--amber); font-size: 17px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(255,176,0,0.6);
+}
+#hud-top .sub { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; }
 #hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; }
-.stat { display: flex; flex-direction: column; align-items: center; min-width: 54px; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 50px; }
 #phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
 .pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
 .pstep.done { color: var(--green-dark); border-color: #163016; }
@@ -114,7 +118,7 @@ body::after {
 .bagdots { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .bagdots .mini-dot { width: 9px; height: 9px; }
 .stat .lbl { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
-.stat .val { font-size: 16px; color: var(--green); transition: color .3s; }
+.stat .val { font-size: 15px; color: var(--green); transition: color .3s; line-height: 1.1; }
 .stat.flash .val { animation: stat-flash .6s ease-out; }
 .stat .val.warn { color: var(--amber); }
 .stat .val.bad  { color: var(--red); }
@@ -122,7 +126,7 @@ body::after {
 .hud-buttons { display: flex; gap: 6px; }
 .icon-btn {
   background: transparent; border: 1px solid var(--border); color: var(--green);
-  width: 30px; height: 30px; cursor: pointer; font-size: 14px; padding: 0;
+  width: 26px; height: 26px; cursor: pointer; font-size: 13px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
 }
 .icon-btn:hover { border-color: var(--green); background: rgba(0,255,65,0.08); }
@@ -502,7 +506,6 @@ details.addons summary::-webkit-details-marker { display: none; }
   .h3-note { display: none; }
   #hud-top { grid-template-columns: 1fr; grid-template-areas: "title" "buttons" "strip" "stats"; }
   #hud-top .stats { justify-content: flex-start; }
-  #hud-top .hud-buttons { justify-self: start; }
   #phase-strip { flex-wrap: wrap; }
 }
 </style>
@@ -2899,10 +2902,9 @@ function updateHUD() {
     ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
     ["Restored", p.dischargedTotal],
     ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
-    ["Stacks", `${G.deptStack.length} · ${G.specStack.length}`],
   ];
   const el = document.getElementById("hud-stats");
-  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? "Dice left in the bag by colour" : l === "Stacks" ? "Tool tiles and specialist cards left in their stacks" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
+  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? `Dice left in the bag by colour. Stacks: ${G.deptStack.length} tools, ${G.specStack.length} specialists` : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
   for (const [l, v, , , key] of stats) UI.prevHUD[l] = key || v;
   const ps = document.getElementById("phase-strip");
   const idx = PHASE_STEPS.findIndex(([id]) => id === G.phase);
