@@ -217,10 +217,8 @@ body::after {
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; min-width: 64px; }
 
-#work { display: grid; grid-template-columns: minmax(170px, max-content) 1fr; gap: 12px; align-items: start; margin-bottom: 8px; }
-#staff { display: flex; flex-direction: column; gap: 6px; }
-#staff .lbl, #work .board-row { min-height: 18px; }
-#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+#staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
+#depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; margin-bottom: 10px; }
 .dept-tile {
   border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2);
   padding: 5px 6px; min-height: 58px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
@@ -245,18 +243,26 @@ body::after {
 .dept-tile .meep-on { position: absolute; right: 4px; bottom: 4px; }
 
 .meeple {
-  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid var(--border);
-  background: var(--panel-2); border-radius: 6px; cursor: default; font-size: 12px; min-height: 40px; transition: box-shadow .2s;
+  display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border: 1px solid var(--border); border-left: 4px solid var(--border);
+  background: var(--panel-2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
 }
-.meeple .dot { width: 18px; height: 18px; border-radius: 50%; border: 1px solid #000; flex: none; }
+.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); }
+.meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
 .meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
+.meeple .ab { font-size: 11px; color: var(--green-dim); line-height: 1.3; }
+.meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
+.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); }
+.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
+.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
+.meeple.returnable { border-color: var(--amber); cursor: pointer; }
+.meeple.clickable { cursor: pointer; border-color: var(--green-dark); }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
 .dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); }
-.meeple.avail { cursor: pointer; border-color: var(--green-dark); }
-.meeple.avail:hover { box-shadow: 0 0 8px rgba(0,255,65,0.4); }
+.meeple.avail { cursor: pointer; border-color: var(--green-dark); box-shadow: 0 0 6px rgba(0,255,65,0.2); }
+.meeple.avail:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .meeple.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.6); }
-.meeple.used { opacity: 0.4; text-decoration: line-through; }
-.meeple.off { opacity: 0.4; border-style: dashed; }
+.meeple.used { opacity: 0.45; }
+.meeple.off { opacity: 0.45; border-style: dashed; }
 .mini-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
 
 #specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -469,9 +475,7 @@ details.addons summary::-webkit-details-marker { display: none; }
   }
   #board, #center { overflow: visible; }
   #strip { bottom: 0; }
-  #work { grid-template-columns: 1fr; }
-  #staff { flex-direction: row; flex-wrap: wrap; }
-  #staff .lbl { width: 100%; }
+  .h3-note { display: none; }
   #phase-strip { margin-left: 0; width: 100%; flex-wrap: wrap; }
 }
 </style>
@@ -1845,8 +1849,10 @@ function onCollectPass() { if (!inPhase("final", "collections")) return; applyPa
 
 // ---- activation FSM ----
 function onMeepleClick(uid) {
+  if (inPhase("activate", "consultant")) { const m0 = meepleOf(human(), uid); const sp0 = m0 && m0.kind === "spec" ? specOf(human(), m0.specUid) : null; if (sp0 && sp0.type !== "consultant") onConsultantPick(sp0.uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), m = meepleOf(p, uid), s = UI.sel;
+  if (s.state === "returning") { if (m && m.kind === "spec") applyReturnNow("spec", m.specUid); return; }
   if (!m || m.used || m.off) return;
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
   if (s.meepleUid === uid && s.state === "meepleSel") resetSel();
@@ -2618,44 +2624,39 @@ function renderSpecCard(type, cls, attrs) {
   return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${esc(specDesc(def))}</div></div>`;
 }
 function renderMeeple(p, m, key) {
-  const s = UI.sel, cls = [];
+  const s = UI.sel, cls = ["b-" + m.colour];
   const live = G.phase === "activate" && G.step === "human";
+  const returning = live && s.state === "returning";
+  const consult = G.phase === "activate" && G.step === "consultant";
+  const spec = m.kind === "spec" ? specOf(p, m.specUid) : null;
+  const def = spec ? SPEC_DEFS[spec.type] : null;
   if (m.used) cls.push("used");
   if (m.off) cls.push("off");
-  if (live && !m.used && !m.off) cls.push("avail");
-  if (s.meepleUid === m.uid && live) cls.push("sel");
-  const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "");
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div>`;
+  if (live && !returning && !m.used && !m.off) cls.push("avail");
+  if (s.meepleUid === m.uid && live && !returning) cls.push("sel");
+  if (returning && spec) cls.push("returnable");
+  if (consult && spec && spec.type !== "consultant") cls.push("clickable");
+  if (consult && spec && p.consultantCopy === spec.type && spec.type !== "consultant") cls.push("sel");
+  let ability = "Any one unused tool.";
+  if (def) {
+    ability = specDesc(def);
+    if (def.special === "copy" && p.consultantCopy) ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`;
+  }
+  const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
 }
-
 function renderBoard() {
   const p = human(), el = document.getElementById("board"), s = UI.sel;
   const live = G.phase === "activate" && G.step === "human";
   const returning = (G.phase === "improve" && G.step === "return" && !UI.animating) || (live && s.state === "returning");
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
-  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">top row queued · bottom row worked</span></h3>`;
-  html += '<div id="wards">';
-  p.wards.forEach((w, wi) => {
-    const n = w.filter(b => b.u || b.t).length;
-    html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
-    for (const b of w) {
-      html += '<div class="bed">';
-      for (const k of ["u", "t"]) {
-        const d = b[k];
-        const x = d ? dieState(d.uid) : null;
-        html += `<div class="slot ${k}${d ? "" : " empty"}${!d && k === "u" && intake ? " open" : ""}" aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
-      }
-      html += '</div>';
-    }
-    html += '</div></div>';
-  });
-  html += '</div>';
-  let staff = '<div id="staff"><span class="lbl">Staff</span>';
+  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
+  html += '<div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
   let key = 0;
-  for (const m of p.meeples) staff += renderMeeple(p, m, m.off ? null : ++key);
-  staff += '</div>';
-  html += `<div id="work">${staff}<div><div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
+  for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
+  html += '</div>';
+  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
   for (const d of p.departments) {
     const cls = [];
     const def = DEPT_DEFS[d.type];
@@ -2673,18 +2674,23 @@ function renderBoard() {
     const clickable = cls.includes("can") || cls.includes("returnable");
     html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
   }
-  html += '</div></div></div>';
-  if (p.specialists.length && (returning || consult)) {
-    html += `<div class="board-row"><span class="lbl">Specialists</span><span class="stack-info">${returning ? "click one to return it for an intel token" : "click one for the Consultant to shadow"}</span></div><div id="specs">`;
-    for (const sp of p.specialists) {
-      const cls = [];
-      if (returning) cls.push("returnable");
-      if (consult && sp.type !== "consultant") cls.push("clickable");
-      if (p.consultantCopy === sp.type && sp.type !== "consultant") cls.push("sel");
-      html += renderSpecCard(sp.type, cls.join(" "), `data-act="spec" data-uid="${sp.uid}" role="button" tabindex="0"`);
+  html += '</div>';
+  html += '<div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
+  p.wards.forEach((w, wi) => {
+    const n = w.filter(b => b.u || b.t).length;
+    html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
+    for (const b of w) {
+      html += '<div class="bed">';
+      for (const k of ["u", "t"]) {
+        const d = b[k];
+        const x = d ? dieState(d.uid) : null;
+        html += `<div class="slot ${k}${d ? "" : " empty"}${!d && k === "u" && intake ? " open" : ""}" aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+      }
+      html += '</div>';
     }
-    html += '</div>';
-  }
+    html += '</div></div>';
+  });
+  html += '</div>';
   const n = p.dischargedThisRound.length;
   html += '<div class="board-row"><span class="lbl">Shift</span><div id="tray">';
   if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
