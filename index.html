@@ -404,6 +404,7 @@ body::after {
 .strip-rule b { color: var(--white); font-weight: normal; }
 .strip-rule .strip-count { color: var(--amber); margin-left: 6px; }
 .strip-rule.amber { color: var(--amber); }
+.strip-rule.note { color: var(--cyan); }
 #phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
 #action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -817,7 +818,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null;
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
   UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
@@ -1207,13 +1208,44 @@ function applySpec(p, def, ctx, dice, opt = {}) {
   if (t.op === "recolour") { const d = dice[0]; d.tmpColour = opt.colour || d.colour; markTreated(p, d); ctx.notes.push(`${def.name}: host retagged ${COLOUR_NAME[d.tmpColour]}`); return; }
   if (t.and) {
     const [h, x] = dice;
+    const start = ctx.healed.length;
     heal(p, h, t.heal, ctx);
+    const xPre = x.value, xColour = effColour(x);
     deteriorate(p, x, -t.and.heal, ctx);
-    ctx.notes.push(`${def.name}: +1 and −1`);
+    ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}, ${xColour} ${xPre}→${x.value <= 0 ? "breached" : x.value}`);
     return;
   }
+  const start = ctx.healed.length;
   for (const d of dice) heal(p, d, t.heal, ctx);
-  ctx.notes.push(`${def.name}: +${t.heal} to ${dice.length} ${plural(dice.length, "host")}`);
+  ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}`);
+}
+// "red 4→5, green 6→restored" from a run of ctx.healed entries.
+function describeHeals(entries) {
+  const byUid = {};
+  for (const h of entries) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
+  return Object.values(byUid).map(h => `${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`).join(", ");
+}
+// Why a specialist's follow-up did nothing this activation, in the player's words.
+function specMissReason(def, ctx, p) {
+  const w = def.when, t = def.then;
+  if (!specEligible(def, ctx)) {
+    if (w.healedColour) return `no ${w.healedColour} host was healed`;
+    if (w.dischargedAny) return "no host was restored";
+    return "no host was healed";
+  }
+  if (t.choice === "pathologist") return "no breach record to close";
+  const [kind, c] = (t.from || "any").split(":");
+  const vals = t.values ? ` at ${t.values.join("/")}` : "";
+  if (kind === "healedOf") return `every healed ${c} host was restored`;
+  if (kind === "otherOf") return `no other ${c} host`;
+  if (kind === "otherValueEqPre") {
+    const pres = new Set();
+    for (const h of ctx.healed) if (h.colour === c) pres.add(h.pre);
+    return `no other host at ${[...pres].sort().join("/")}`;
+  }
+  const n = specPool(t, ctx, p).length;
+  if (t.and || t.n === 2) return `needs two other hosts${vals}, ${n === 1 ? "only one" : "none"} available`;
+  return kind === "other" ? `no other host${vals}` : `no host${vals}`;
 }
 
 // ---- end-of-round rules ----
@@ -1768,6 +1800,7 @@ function applyPass(p) { G.collections.passed[p.id] = true; G.collections.cursor+
 
 // ---- activation (shared by human FSM and bots) ----
 function pushUndo() {
+  UI.specNote = null;
   UI.undo.push(JSON.stringify(G));
   if (UI.undo.length > 40) { UI.undo.shift(); if (UI.undoBarrier > 0) UI.undoBarrier--; }
 }
@@ -1775,16 +1808,13 @@ function canUndo() { return G && G.phase === "activate" && G.step === "human" &&
 function undo() {
   if (!canUndo()) return;
   G = JSON.parse(UI.undo.pop());
-  resetSel();
+  resetSel(); UI.specNote = null;
   log("Undo.", "sys");
   commit();
 }
 function describeHealCtx(p, who, deptName, ctx) {
-  const parts = [];
-  const byUid = {};
-  for (const h of ctx.healed) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
-  for (const uid in byUid) { const h = byUid[uid]; parts.push(`${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`); }
-  return `${who} on ${deptName}: ${parts.length ? parts.join(", ") : "no change"}${ctx.notes.length ? "; " + ctx.notes.join("; ") : ""}.`;
+  const parts = describeHeals(ctx.healed);
+  return `${who} on ${deptName}: ${parts || "no change"}${ctx.notes.length ? "; " + ctx.notes.join("; ") : ""}.`;
 }
 function useIntelHeal(p, die) {
   if (p.bloodBags <= 0) return null;
@@ -2032,21 +2062,30 @@ function runActivation(opt) {
   if (def && !def.special) {
     const o = specOptions(def, ctx, p);
     if (o) {
-      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(); }
-      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(); }
+      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(true); }
+      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(true); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
         o.ordered = !!def.then.and;
         if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
         computeLegal(); updateAll(); return;
       }
+    } else {
+      setSpecNote(`${def.name} follow-up skipped: ${specMissReason(def, ctx, p)}.`);
     }
   }
   afterAction();
 }
-function finishSpecLog() {
+// The strip line that says what the last specialist follow-up did. Cleared by
+// the next placement (pushUndo), an undo, or the end of activation.
+function setSpecNote(text) { UI.specNote = text; log(text, "sys"); }
+function finishSpecLog(auto) {
   const s = UI.sel;
-  if (s.ctx && s.ctx.notes.length) { log(s.ctx.notes.join("; ") + ".", "good"); s.ctx.notes = []; }
+  if (s.ctx && s.ctx.notes.length) {
+    const text = s.ctx.notes.join("; ");
+    log(text + ".", "good"); s.ctx.notes = [];
+    UI.specNote = `Follow-up${auto ? " fired automatically" : ""}: ${text}.`;
+  }
   if (s.ctx && s.ctx.random) UI.undoBarrier = UI.undo.length;
 }
 function finishSpec(opt) {
@@ -2059,16 +2098,26 @@ function finishSpec(opt) {
 function onSpecChoice(mode) {
   if (!inPhase("activate", "human") || UI.sel.state !== "choice") return;
   const p = human(), s = UI.sel, o = s.specOpts;
-  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); afterAction(); return; }
+  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); if (mode !== "yes") setSpecNote(`${s.spec.name} follow-up declined.`); afterAction(); return; }
   if (o.choice === "admissions") {
     if (mode === "return") { if (!boardDice(p).length) return; s.state = "admReturn"; computeLegal(); updateAll(); return; }
     if (mode === "admit") { if (!emptyBeds(p).length) return; applySpec(p, s.spec, s.ctx, [], { mode: "admit" }); }
     o.count--;
     if (mode !== "skip" && o.count > 0) { updateAll(); return; }
-    finishSpecLog(); afterAction();
+    const hadNotes = s.ctx.notes.length;
+    finishSpecLog();
+    if (!hadNotes) setSpecNote(`${s.spec.name} follow-up skipped.`);
+    afterAction();
   }
 }
-function skipSpec() { if (!inPhase("activate", "human")) return; if (!["spec", "choice", "admReturn"].includes(UI.sel.state)) return; finishSpecLog(); afterAction(); }
+function skipSpec() {
+  if (!inPhase("activate", "human")) return;
+  if (!["spec", "choice", "admReturn"].includes(UI.sel.state)) return;
+  const s = UI.sel, name = s.spec.name, hadNotes = s.ctx && s.ctx.notes.length;
+  finishSpecLog();
+  if (!hadNotes) setSpecNote(`${name} follow-up skipped.`);
+  afterAction();
+}
 function afterAction() { resetSel(); saveGame(); computeLegal(); updateAll(); }
 function onIntelHeal() {
   if (!inPhase("activate", "human") || human().bloodBags <= 0) return;
@@ -2114,7 +2163,7 @@ function endActivation() {
   }
   UI.endConfirm = false; UI.endRisk = 0;
   applyEndActivation(p);
-  resetSel(); UI.undo = []; UI.undoBarrier = 0;
+  resetSel(); UI.undo = []; UI.undoBarrier = 0; UI.specNote = null;
   log("Activation complete. Waiting on dwell time.", "sys");
   advance();
 }
@@ -2844,6 +2893,7 @@ function renderStrip() {
       for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
       html += '</div></div>';
     }
+    if (UI.specNote && !["spec", "choice", "admReturn", "colour"].includes(s.state)) html += `<div class="strip-rule note">${esc(UI.specNote)}</div>`;
   }
   html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
   if (live) {
@@ -3083,7 +3133,7 @@ function showHowToPlay(tab) {
       <ol>
         <li><b>Intake.</b> Three hosts are rolled per escalation queue (1s and 6s re-rolled), lowest values into queue #1. Starting with the Incident Commander, each SOC takes one queue. The Commander may not take #1. Whoever takes the lowest-numbered queue gets an intel token and becomes Commander. If your segments cannot fit the new hosts, existing hosts are written off as breaches.</li>
         <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token; you get that offer at the top of activation, until your first placement.</li>
-        <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool.</li>
+        <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool, and like a tool it needs its full set of targets or it does nothing; when only one choice is legal it fires by itself. The strip reports what each follow-up did.</li>
         <li><b>Dwell time.</b> Every host still Queued loses 1 integrity. A 1 that drops becomes a breach.</li>
         <li><b>Restoration.</b> Score this shift's restored hosts. Directives apply here.</li>
         <li><b>Shift change.</b> Staff return, Worked hosts move back to Queued, the display is recycled and refilled. Skipped after shift 8.</li>
