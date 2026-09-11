@@ -542,9 +542,8 @@ body::after {
 #modal-content ul { padding-left: 18px; margin: 4px 0; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
 .menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
-.presets { display: flex; gap: 6px 22px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
-.preset-grp { display: inline-flex; gap: 6px; align-items: center; }
-.preset-lbl { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-right: 2px; }
+.presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.preset-sep { flex: 0 0 18px; } /* Solo stands apart: a mode, not a difficulty */
 .preset-btn.on { background: rgba(255,176,0,0.15); border-color: var(--amber); color: var(--amber); }
 .rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
 .rule-row .rl { color: var(--white); }
@@ -710,7 +709,7 @@ const START_DEPTS = ["ccu", "oncology", "pharmacy", "intensive", "imaging", "cli
 
 const NURSES_AT_START = 3;
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
-const SKILL_NAMES = ["Intern", "Resident", "Attending"];
+const SKILL_NAMES = ["Script Kiddie", "Hacktivist", "Nation State"];
 
 /* ============================================================
    RULE TABLES
@@ -938,7 +937,7 @@ const UI = {
   flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
-  lastDieClick: null, speed: 1, addonsOpen: false,
+  lastDieClick: null, speed: 1, addonsOpen: true,
 };
 const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
 const WIDE_TABLE_MQ = "(min-width: 1200px)"; // from here up the shared table sits in the side column (keep in step with the CSS)
@@ -3432,7 +3431,7 @@ function setPreset(id) { houseRules = { ...DIFFICULTY_PRESETS[id].sliders, mode:
 function setMode(m) { houseRules = { ...houseRules, mode: m }; showMainMenu(true); }
 function currentPreset() {
   for (const id in DIFFICULTY_PRESETS) {
-    if (id === "solo") continue; // a mode, not a difficulty: the Mode pills own it
+    if (id === "solo") continue; // a mode, not a difficulty: the Solo toggle owns it
     const s = DIFFICULTY_PRESETS[id].sliders;
     if (Object.keys(SLIDER_DEFS).every(k => k === "mode" || (s[k] || 0) === (houseRules[k] || 0))) return id;
   }
@@ -3451,8 +3450,9 @@ function showMainMenu(keepScroll) {
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
     ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
     <div class="presets">
-      <span class="preset-grp" role="group" aria-label="Difficulty"><span class="preset-lbl">Difficulty</span>${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</span>
-      <span class="preset-grp" role="group" aria-label="Mode"><span class="preset-lbl">Mode</span><button class="action-btn preset-btn ${houseRules.mode === 1 ? "on" : ""}" onclick="setMode(1)" title="The 2–4 player rules with AI SOCs">Vs rivals</button><button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" onclick="setMode(0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button></span>
+      ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
+      <span class="preset-sep" aria-hidden="true"></span>
+      <button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" aria-pressed="${houseRules.mode === 0}" onclick="setMode(houseRules.mode === 0 ? 1 : 0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button>
     </div>
     <div class="rules-head">Table</div>
     ${base.map(renderRuleRow).join("")}
