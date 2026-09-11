@@ -30,7 +30,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 
 - **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, the six starting tools, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
 - **Two modes** — Vs 1–3 AI SOCs (2–4 player rules, including the 2-player extra reveal) or the rulebook's solo score-chase with Audit Reports (draw 4 keep 3, one-of-each reveal, bottom-row filing)
-- **Expansion modes** — Virtualization: pink hypervisor dice arrive with guest hosts in a guest segment of their own, only degrade in company, never breach, and restore together as a family; a 4th analyst, 8 tools, 8 specialists, 2 directives, and restoration up to 20 hosts a shift; Network: no queues, a responder walks the links of a network map to collect 3 hosts, recon tokens ride along with hosts at 2, and the lowest intake total goes first
+- **Expansion modes** — Virtualization: pink hypervisor dice arrive with guest hosts in a guest segment of their own, only degrade in company, never breach, and restore together as a family; a 4th analyst, 8 tools, 8 specialists, 2 directives, and restoration up to 20 hosts a shift; Network: no queues, a responder walks the links of a network map to collect 3 hosts, recon tokens ride along with hosts at 2, and the lowest intake total goes first; Procurement: spend a staff member's shift at the vendor desk for an upgrade fitted to a tool for good, adding an extra effect after the tool's own
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
 - **3 presets, sized like the operation you run** — MSSP (one easy rival), SOC (the full base game vs two rivals), CIRT (three expert rivals plus the harder add-ons), and a Solo toggle
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
@@ -117,9 +117,23 @@ Each SOC then sends its **responder** out from the jump host: it takes the host 
 
 With Virtualization on as well, a few zones spawn hypervisors instead of coloured hosts; a responder collects at most one per shift and passes over the rest. Bots plan their walk a few zones deep.
 
+## Procurement
+
+Switch it on under *Expansions* in the setup menu (rival games only). The display shows one more tool and specialist, and intake rolls one extra host (two from shift 5) as a fourth host in the top queue or queues. After the improvement picks, each SOC in response order may send one free staff member to a **vendor line** (red, yellow, green): look at two **upgrades** of that colour, keep one, fit it to a tool at once, for good, two per tool. Upgrades fire after the tool's own effect and before the specialist's, keyed off what the tool did.
+
+| Upgrade | Effect |
+|---|---|
+| Rescue | Heal a different host of the colour at 1 or 2 by 2 steps |
+| Boost | Heal one host of the colour the tool worked on 1 more step |
+| Match / Step Up / Step Down | Heal a different host of the colour 1 step whose value equals / is 1 above / is 1 below one the tool worked on |
+| Retarget | The tool works on the upgrade's colour instead of its own |
+| Headcount | Not fitted: a permanent extra analyst |
+
+Tools: On-call Rotation (an unused analyst brings back a placed specialist), Red / Yellow / Green Hardening Bay (heal one host of that colour 2 steps, park two others). Specialists: Procurement Lead (peeks at a second line), Vendor Manager (draws three), Integration Engineer (fires an upgrade from another tool), Automation Engineer (fires one of the tool's upgrades twice), Apprentice (parks two queued hosts; upgrades on its card fire instead). No bonus for clearing every segment; the Vendor Partnership directive pays +1 in a shift in which an upgrade fired.
+
 ## What's approximated
 
-Virtualization's provisioning die shows twins on 2 faces of 6, its piles hold two of each tool and specialist, and restorations 13–20 in a shift score 40, 46, 52, 68, 75, 82, 90, 98. Network's zone tiles carry links the rulebook doesn't print (4 crossroads, 8 T-junctions, 4 straights and 4 corners, laid out by the rulebook's rotation rule and re-drawn until every zone is reachable), its 30 recon tokens split 5 of each kind, and 2, 3 or 4 zones spawn hypervisors with Virtualization.
+Virtualization's provisioning die shows twins on 2 faces of 6, its piles hold two of each tool and specialist, and restorations 13–20 in a shift score 40, 46, 52, 68, 75, 82, 90, 98. Network's zone tiles carry links the rulebook doesn't print (4 crossroads, 8 T-junctions, 4 straights and 4 corners, laid out by the rulebook's rotation rule and re-drawn until every zone is reachable), its 30 recon tokens split 5 of each kind, and 2, 3 or 4 zones spawn hypervisors with Virtualization. Procurement's directive is an image in the rulebook (approximated as +1 per shift with an upgrade fired), the three specialists with two cards are a guess, and the pink vendor line of the Virtualization combination is left out.
 
 The rulebook doesn't print the 15 Event cards or the 15 Medical Report cards, and its component list says each starting board "depicts 9 hospital departments" while only six starting types exist; the starting SOC uses one of each (`START_DEPTS` at the top of `index.html`) on the reading that the count includes the station, discharge and mortuary areas. Audit Reports and Incident Events are PumaTriage originals in the same spirit. Final Round Collections slots are generated randomly. Adjust the tables at the top of `index.html` if your copy differs.
 

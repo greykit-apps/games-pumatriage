@@ -496,6 +496,34 @@ body::after {
 .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 11px; }
 .summary-grid .k { color: var(--text-dim); }
 
+/* Procurement (Investments): upgrade chips on tools and the Apprentice, the
+   vendor lines on the table, the drawn upgrades to pick from. */
+.upgs { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
+.upg { display: inline-block; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; padding: 0 3px; border: 1px solid var(--border); line-height: 12px; color: var(--text-dim); }
+.upg.c-red { color: var(--red); border-color: var(--red); } .upg.c-yellow { color: var(--yellow); border-color: var(--yellow); } .upg.c-green { color: var(--green); border-color: var(--green); }
+.meeple .upg { margin-left: 4px; }
+.meeple.used.invest::after { content: "AT DESK"; }
+.meeple.used.clickable { opacity: 0.8; border-color: var(--amber); }
+.vendors { display: flex; gap: 8px; justify-content: center; }
+.vendor { flex: 1 1 0; max-width: 150px; border: 1px solid var(--border); border-top: 3px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; }
+.vendor.c-red { border-top-color: var(--red); } .vendor.c-yellow { border-top-color: var(--yellow); } .vendor.c-green { border-top-color: var(--green); }
+.vendor .vn { color: var(--white); font-size: 12px; }
+.vendor .vs { font-size: 10px; color: var(--text-dim); }
+.vendor .vo { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
+.vslot { min-width: 28px; height: 16px; border: 1px dashed var(--border); font-size: 8px; line-height: 14px; letter-spacing: 1px; color: var(--amber); }
+.vslot.on { border-style: solid; border-color: var(--amber-dim); }
+.vendor.can { cursor: pointer; border-color: var(--amber); box-shadow: 0 0 8px rgba(255,176,0,0.35); }
+.vendor.can:hover { background: rgba(255,176,0,0.08); }
+.vendor.full { opacity: 0.5; }
+.itokens { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
+.itoken { border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2); padding: 5px 8px; max-width: 210px; cursor: pointer; }
+.itoken.c-red { border-left-color: var(--red); } .itoken.c-yellow { border-left-color: var(--yellow); } .itoken.c-green { border-left-color: var(--green); }
+.itoken:hover { border-color: var(--amber); box-shadow: 0 0 8px rgba(255,176,0,0.35); }
+.itoken .in { color: var(--white); font-size: 11px; } .itoken .id { font-size: 10px; color: var(--green-dim); margin-top: 2px; }
+/* One more tool and specialist on display: the table grows a row. */
+#app.invest #table { height: 250px; } #app.invest.p4 #table { height: 330px; }
+#app.invest #side-table #table { height: 350px; } #app.invest.p4 #side-table #table { height: 470px; }
+
 /* Network map (City): zones on a grid, links drawn as bars to the edges,
    the host on top; a jump host sits on the outside edge of its ingress. */
 .netmap { display: grid; gap: 3px; --tile: 56px; justify-content: center; margin: 2px 0 4px; }
@@ -868,6 +896,38 @@ const CITY_TOKENS = {
   contractor: { name: "Contractor", abbr: "A", botValue: 5, short: "an extra analyst for one shift", desc: "Activation: a one-shift analyst. Gone at shift change." },
 };
 const PLAYER_CHIPS = ["YOU", "A", "B", "C"];
+
+/* ============================================================
+   INVESTMENTS EXPANSION → "Procurement" mode
+   Community Care's Investments module: Investment Action board →
+   procurement desk (three vendor lines), Investment token → upgrade,
+   Supplemental Intake board → a fourth host in the top queues. An
+   upgrade sits on a tool for good (two per tool) and adds an effect that
+   resolves after the tool's own, before the specialist's.
+   Not printed in the rulebook (an image): the Investments directive,
+   approximated here as +1 for a shift in which an upgrade fired; and
+   which of the five specialists have two cards, taken as the Procurement
+   Lead, the Apprentice and the Vendor Manager. The pink vendor line of
+   the Investments & Virtualization combination is not included.
+   ============================================================ */
+const INVEST = {
+  perKind: 2,                       // two of each upgrade kind per colour: 14 per vendor line, 42 in all
+  maxPerTool: 2,
+  draw: 2,                          // look at two, keep one
+  capacity: { 2: 1, 3: 1, 4: 2 },   // SOCs per vendor line per shift
+  supplemental: r => (r <= 4 ? 1 : 2), // extra hosts rolled into the top queues by shift
+};
+const INVEST_KINDS = {
+  rescue:   { name: "Rescue",    when: "always", desc: c => `Heal a different ${c} host at 1 or 2 by 2 steps.` },
+  boost:    { name: "Boost",     desc: c => `Heal one ${c} host the tool worked on 1 more step.` },
+  retarget: { name: "Retarget",  desc: c => `The tool works on ${c} hosts instead of its own colour.` },
+  headcount:{ name: "Headcount", desc: () => "Not placed: discarded at once for a permanent extra analyst." },
+  match:    { name: "Match",     delta: 0,  desc: c => `Heal a different ${c} host 1 step whose value equals one the tool worked on (before the work).` },
+  stepUp:   { name: "Step Up",   delta: 1,  desc: c => `Heal a different ${c} host 1 step whose value is 1 above one the tool worked on (before the work).` },
+  stepDown: { name: "Step Down", delta: -1, desc: c => `Heal a different ${c} host 1 step whose value is 1 below one the tool worked on (before the work).` },
+};
+const INVEST_DEPTS = ["rotation", "rotation", "hardRed", "hardRed", "hardYellow", "hardYellow", "hardGreen", "hardGreen"];
+const INVEST_SPECS = ["procurementLead", "procurementLead", "integrationEng", "automationEng", "apprentice", "apprentice", "vendorMgr", "vendorMgr"];
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
 const SKILL_NAMES = ["Script Kiddie", "Hacktivist", "Nation State"];
 
@@ -915,6 +975,11 @@ const DEPT_DEFS = {
   failover:   { name: "Failover Cluster", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "highest" }, heal: 1, pinkHeal: 3, rule: "3 consecutive, highest pink → pink +3, others +1", desc: "Heal exactly 3 hosts of consecutive values where the highest is pink. The pink host heals 3 steps, the others 1." }, // consecutive, highest is pink
   isolation:  { name: "Isolation Bay",   tag: "pink", maternity: true, sel: { n: 3, pinkMin: 1 }, pinkHeal: 3, pinkOne: true, op: "park", rule: "1 pink host +3, park 2 others", desc: "Heal one pink host 3 steps and move two other hosts to their Worked slot without healing them: they escape dwell time." }, // pink +3, two others moved down
   guestReimage:{ name: "Guest Reimage",  tag: "pink", maternity: true, sel: { n: 2, pinkMin: 1, pinkMax: 1 }, pinkHeal: 2, op: "rerollOther", rule: "1 pink host +2, re-roll another", desc: "Heal one pink host 2 steps and re-roll one other, non-pink host. You must accept the new result; both count as worked." }, // pink +2, re-roll the other
+  // ---- Investments expansion → Procurement mode (shuffled into the tool stack) ----
+  rotation:   { name: "On-call Rotation", tag: "any", invest: true, sel: { n: 0 }, op: "rotation", power: 3, rule: "idle analyst frees a used specialist", desc: "Place an unused analyst here to bring back one specialist you have already placed this shift: it may be placed again." }, // swap room
+  hardRed:    { name: "Red Hardening Bay",    tag: "red",    invest: true, sel: { n: 3, starColour: "red" },    star: { heal: 2 }, op: "park", rule: "1 red host +2, park 2 others",    desc: "Heal one red host 2 steps (the first red host you pick) and move two other hosts to their Worked slot without healing them: they escape dwell time." },
+  hardYellow: { name: "Yellow Hardening Bay", tag: "yellow", invest: true, sel: { n: 3, starColour: "yellow" }, star: { heal: 2 }, op: "park", rule: "1 yellow host +2, park 2 others", desc: "Heal one yellow host 2 steps (the first yellow host you pick) and move two other hosts to their Worked slot without healing them: they escape dwell time." },
+  hardGreen:  { name: "Green Hardening Bay",  tag: "green",  invest: true, sel: { n: 3, starColour: "green" },  star: { heal: 2 }, op: "park", rule: "1 green host +2, park 2 others",  desc: "Heal one green host 2 steps (the first green host you pick) and move two other hosts to their Worked slot without healing them: they escape dwell time." },
 };
 const MATERNITY_DEPTS = ["clusterPatch", "liveMigrate", "fleetUpdate", "bootChain", "pipeline", "failover", "isolation", "guestReimage"];
 const IMPROVEMENT_DEPTS = ["opTheatre", "cardiology", "anaesthesia", "crash", "ent", "immunology", "allergy", "ortho", "urology", "renal", "radiology", "triageCtr"];
@@ -938,6 +1003,12 @@ const SPEC_DEFS = {
   // ---- Kickstarter promo specialists (add-on) ----
   consultant:   { name: "Consultant",         colour: "blue",   addon: "promo", special: "copy" },                                   // Consultant
   admissions:   { name: "Intake Coordinator", colour: "white",  addon: "promo", when: { dischargedAny: true }, then: { choice: "admissions" } }, // Admissions Nurse
+  // ---- Investments expansion → Procurement mode (shuffled into the specialist deck) ----
+  procurementLead:{ name: "Procurement Lead",   colour: "blue", invest: true, special: "advisor",     desc: "At the procurement desk it also looks at the top two upgrades of a second vendor line (the colour most of your tools work on) and keeps one of the four." }, // Investment Advisor
+  vendorMgr:    { name: "Vendor Manager",       colour: "blue", invest: true, special: "strategist",  desc: "At the procurement desk it draws three upgrades instead of two, keeping one." }, // Hospital Strategist
+  integrationEng:{ name: "Integration Engineer", colour: "blue", invest: true, special: "integration", desc: "When it works a tool, you may also fire one upgrade that sits on a different tool." }, // Project Consultant
+  automationEng:{ name: "Automation Engineer",  colour: "blue", invest: true, special: "automation",  desc: "When it works a tool, you may fire one of that tool's upgrades a second time." }, // Strategy Consultant
+  apprentice:   { name: "Apprentice",           colour: "blue", invest: true, when: { always: true }, then: { from: "queued", n: 2, op: "park" }, desc: "When it works a tool: move two queued hosts to their Worked slot without healing them (they escape dwell time). Upgrades placed on this card fire instead." }, // Trainee
   // ---- Experimental Medicine specialists (add-on) ----
   pathologist:  { name: "Postmortem Lead",    colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { choice: "pathologist" } },        // Pathologist
   expChemist:   { name: "Chaos Engineer",     colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { from: "other", n: 1, op: "reroll" } }, // Experimental Chemist
@@ -973,9 +1044,12 @@ const ADMIN_DEFS = {
   // Maternity expansion directives, shuffled in with the rest in Virtualization mode.
   twins:      { name: "Provisioning Policy",  kind: "twins", maternity: true },       // choose one guest or twins instead of rolling
   matPair:    { name: "Tenant Bonus",         kind: "matPair", maternity: true },     // 2 hypervisors and 2 guests restored in a shift → +3
+  // Investments directive (its text is an image in the rulebook; approximated).
+  partnership:{ name: "Vendor Partnership",   kind: "invested", invest: true, desc: "+1 reputation at restoration in every shift in which one of your upgrades fired." },
 };
 function adminDesc(id) {
   const a = ADMIN_DEFS[id];
+  if (a.desc) return a.desc;
   switch (a.kind) {
     case "colourTwo": return `Restore at least two ${a.colour} hosts in a shift: +1 reputation.`;
     case "eachColour": return "Restore at least one host of each colour in a shift: +1 reputation.";
@@ -1028,6 +1102,7 @@ const SLIDER_DEFS = {
   // Expansions (whole modes; the Dice Hospital expansion modules)
   maternity:   { label: "Virtualization",     min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Pink hypervisors arrive with guest hosts in a segment of their own, only degrade when they share a segment, and are restored together. A 4th analyst, 8 new tools, 8 specialists and 2 directives." },
   city:        { label: "Network",            min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "No escalation queues: send a responder out from your jump host along the links of a network map to collect 3 hosts. Hosts at 2 carry recon tokens. The lowest intake total goes first, holds remote access and earns intel; hosts left on the map degrade too." },
+  invest:      { label: "Procurement",        min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Spend a staff member's shift at the procurement desk for an upgrade that adds an extra effect to one of your tools (two per tool). One more tool and specialist on display, a fourth host in the top queues, 8 tools, 8 specialists and a directive." },
   // Add-ons
   promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
   experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Four experimental tools and six more specialists join the stacks" },
@@ -1039,7 +1114,7 @@ const SLIDER_DEFS = {
   soloDblFat:  { label: "Double breach penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: breaches cost 4 instead of 2" },
   soloDblRep:  { label: "Double report penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: incomplete Audit Reports subtract double" },
 };
-const ADDONS_OFF = { maternity: 0, city: 0, promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
+const ADDONS_OFF = { maternity: 0, city: 0, invest: 0, promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
 const DIFFICULTY_PRESETS = {
   // Presets read as the size of the operation you run, smallest first.
   easy:   { label: "MSSP", title: "Managed service, one easy rival, no directives: the gentle start", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
@@ -1066,6 +1141,7 @@ function resolveConfig(h = houseRules) {
     collections: !solo && !!h.collections,
     maternity: !solo && !!h.maternity,
     city: !solo && !!h.city,
+    invest: !solo && !!h.invest,
     soloDblFat: solo && !!h.soloDblFat,
     soloDblRep: solo && !!h.soloDblRep,
     dicePerColour: solo ? DICE_PER_COLOUR.solo : DICE_PER_COLOUR[players],
@@ -1178,9 +1254,9 @@ function makePlayer(id, name, isBot, skill) {
   const wards = [];
   for (let w = 0; w < WARDS; w++) { const beds = []; for (let b = 0; b < BEDS; b++) beds.push({ u: null, t: null }); wards.push(beds); }
   const meeples = [];
-  const nurses = NURSES_AT_START + (G.cfg.maternity ? MAT.extraNurses : 0);
+  const nurses = NURSES_AT_START + (G.cfg.maternity && !G.cfg.invest ? MAT.extraNurses : 0); // no 4th analyst with Procurement on too
   for (let i = 0; i < nurses; i++) meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false });
-  const departments = START_DEPTS.map(type => ({ uid: G.nextUid++, type, used: false, improvement: false, idleRounds: 0 }));
+  const departments = START_DEPTS.map(type => ({ uid: G.nextUid++, type, used: false, improvement: false, idleRounds: 0, tokens: [] }));
   // Virtualization: a guest segment under each quarantine segment, face down
   // until a hypervisor arrives above it. Works like a tool while it holds guests.
   const nurseries = [];
@@ -1193,6 +1269,7 @@ function makePlayer(id, name, isBot, skill) {
     // Network: the jump host's ingress zone, this shift's start and responder position, the hosts and recon tokens picked up, the intake total and the response order.
     van: null, heliUsed: false, cityStart: null, cityAt: null, cityTrail: [], cityGot: [], cityTokensRound: [], cityDone: false, keepPending: false,
     intakeTotal: 0, laneUsed: 0, laneDone: false, order: 0, tokens: [],
+    invested: false, upgradeFired: false, // Procurement: this shift's desk visit, and whether an upgrade fired
   };
 }
 
@@ -1220,6 +1297,8 @@ function buildStacks(cfg) {
     // Each promo card replaces a random specialist card in the deck.
     for (const t of PROMO_SPECS) { specs.splice(rint(specs.length), 1); specs.push(t); }
   }
+  // Procurement: its eight tools and eight specialists shuffle into the main stacks.
+  if (cfg.invest) { depts.push(...INVEST_DEPTS); specs.push(...INVEST_SPECS); }
   // Virtualization: separate face-down piles, 2 of each maternity tool and specialist.
   const matDepts = [], matSpecs = [];
   if (cfg.maternity) { for (const t of MATERNITY_DEPTS) matDepts.push(t, t); for (const t of MATERNITY_SPECS) matSpecs.push(t, t); }
@@ -1240,6 +1319,7 @@ function newGame(seed) {
     extraChoice: null, solo: null, events: null, currentEvent: null,
     roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
     city: null, cityPer: CITY.collect,
+    investPiles: null, investBoard: null, invest: null,
   };
   for (let i = 0; i < cfg.players; i++) G.players.push(makePlayer(i, PLAYER_NAMES[i], i > 0, cfg.rivalSkill));
   G.turnOrder = G.players.map(p => p.id);
@@ -1248,7 +1328,7 @@ function newGame(seed) {
   G.deptStack = stacks.deptStack; G.specStack = stacks.specStack; G.matDeptStack = stacks.matDeptStack; G.matSpecStack = stacks.matSpecStack;
   for (let i = 1; i <= cfg.ambulances; i++) G.ambulances.push({ num: i, dice: [], takenBy: null });
   if (cfg.admins) {
-    G.adminDeck = shuffle(Object.keys(ADMIN_DEFS).filter(id => !ADMIN_DEFS[id].maternity || cfg.maternity));
+    G.adminDeck = shuffle(Object.keys(ADMIN_DEFS).filter(id => (!ADMIN_DEFS[id].maternity || cfg.maternity) && (!ADMIN_DEFS[id].invest || cfg.invest)));
     for (const p of G.players) p.adminChoice = [G.adminDeck.pop(), G.adminDeck.pop()];
   }
   if (cfg.solo) {
@@ -1266,6 +1346,12 @@ function newGame(seed) {
   }
   // Network: the map is laid out and every zone gets a rolled host.
   if (cfg.city) { G.city = buildCity(cfg); for (const t of G.city.tiles) cityFill(t); }
+  // Procurement: a face-down pile of upgrades per vendor line.
+  if (cfg.invest) {
+    G.investPiles = {};
+    for (const c of COLOURS) { const pile = []; for (const k of Object.keys(INVEST_KINDS)) for (let i = 0; i < INVEST.perKind; i++) pile.push(k); G.investPiles[c] = shuffle(pile); }
+    G.investBoard = { red: [], yellow: [], green: [] };
+  }
   refillDisplay(true);
   log(`New game: ${cfg.solo ? "solo score-chase" : (cfg.players - 1) + " rival SOC" + (cfg.players > 2 ? "s" : "")}. Shift 1 of ${ROUNDS}.`, "sys");
   if (!cfg.solo) log(`${G.players[G.firstPlayer].name} ${G.firstPlayer === 0 ? "are" : "is"} Incident Commander for shift 1.`, "sys");
@@ -1277,8 +1363,8 @@ function displaySizes() {
   const cfg = G.cfg;
   if (cfg.solo) return { dept: 1, spec: 1, mat: 0 };
   return {
-    dept: cfg.displaySize + (G.extraChoice === "dept" ? 1 : 0),
-    spec: cfg.displaySize + (G.extraChoice === "spec" ? 1 : 0),
+    dept: cfg.displaySize + (G.extraChoice === "dept" ? 1 : 0) + (cfg.invest ? 1 : 0), // Procurement: one more of each
+    spec: cfg.displaySize + (G.extraChoice === "spec" ? 1 : 0) + (cfg.invest ? 1 : 0),
     mat: cfg.maternity ? MAT.displayExtra[cfg.players] || 2 : 0, // maternity tools and specialists, from their own piles
   };
 }
@@ -1387,14 +1473,14 @@ function meepleLabel(p, m) {
   return s ? SPEC_DEFS[s.type].name : "Specialist";
 }
 function addSpecialist(p, type) {
-  const s = { uid: G.nextUid++, type, meepleUid: null, idleRounds: 0 };
+  const s = { uid: G.nextUid++, type, meepleUid: null, idleRounds: 0, tokens: [] };
   const m = { uid: G.nextUid++, kind: "spec", specUid: s.uid, colour: SPEC_DEFS[type].colour, used: false, deptUid: null, off: false };
   s.meepleUid = m.uid;
   p.specialists.push(s); p.meeples.push(m);
   return s;
 }
 function addDepartment(p, type) {
-  const d = { uid: G.nextUid++, type, used: false, improvement: true, idleRounds: 0 };
+  const d = { uid: G.nextUid++, type, used: false, improvement: true, idleRounds: 0, tokens: [] };
   p.departments.push(d);
   return d;
 }
@@ -1447,7 +1533,7 @@ function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
 function selPool(sel, dice) {
   return dice.filter(d => !d.ready && (!sel.noPink || !isPink(d)) && (!sel.colour || effColour(d) === sel.colour) && (!sel.values || sel.values.includes(d.value)));
 }
-function selNeedsCombos(sel) { return !!(sel.rel || sel.pinkMin || sel.pinkMax !== undefined || sel.needMother || sel.needInfant || sel.pinkPos); }
+function selNeedsCombos(sel) { return !!(sel.rel || sel.pinkMin || sel.pinkMax !== undefined || sel.needMother || sel.needInfant || sel.pinkPos || sel.starColour); }
 function pinkAtPos(sel, dice) {
   const sorted = dice.slice().sort((a, b) => a.value - b.value);
   return sel.pinkPos === "lowest" ? sorted[0] : sel.pinkPos === "highest" ? sorted[sorted.length - 1] : sorted[Math.floor(sorted.length / 2)];
@@ -1467,6 +1553,7 @@ function matchesSel(sel, dice) {
   if (sel.needMother && !dice.some(isMother)) return false;
   if (sel.needInfant && !dice.some(d => d.infant)) return false;
   if (sel.pinkPos && dice.length && !isPink(pinkAtPos(sel, dice))) return false;
+  if (sel.starColour && !dice.some(d => effColour(d) === sel.starColour)) return false; // Hardening Bay: one host of its colour among them
   if (sel.rel === "sameValue" && !dice.every(d => d.value === dice[0].value)) return false;
   if (sel.rel === "consecutive") {
     const vs = dice.map(d => d.value).sort((a, b) => a - b);
@@ -1491,9 +1578,24 @@ function firstLegalSet(sel, dice) {
   }
   return null;
 }
+// A tool's rule as it stands: a Retarget upgrade swaps its colour for the
+// upgrade's, before anything else resolves.
+function effDef(dept) {
+  const def = DEPT_DEFS[dept.type];
+  const re = (dept.tokens || []).find(t => t.kind === "retarget");
+  if (!re || !(def.sel.colour || def.sel.starColour)) return def;
+  const from = def.sel.colour || def.sel.starColour, to = re.colour;
+  const sel = { ...def.sel };
+  if (sel.colour) sel.colour = to;
+  if (sel.starColour) sel.starColour = to;
+  const sw = t => t && t.replace(new RegExp(from, "g"), to).replace(new RegExp(COLOUR_NAME[from], "g"), COLOUR_NAME[to]);
+  return { ...def, sel, tag: to, rule: sw(def.rule), desc: sw(def.desc), retargeted: true };
+}
 function canActivate(dept, p) {
   if (dept.used || (dept.type === "nursery" && !dept.open)) return false;
-  return firstLegalSet(DEPT_DEFS[dept.type].sel, boardDice(p)) !== null;
+  const def = effDef(dept);
+  if (def.op === "rotation") return p.meeples.some(m => m.kind === "spec" && m.used && !m.off && !m.invest);
+  return firstLegalSet(def.sel, boardDice(p)) !== null;
 }
 // Dice that can still be part of a legal set containing everything already selected.
 function narrowTargets(sel, dice, selectedUids) {
@@ -1569,10 +1671,18 @@ function noteDeparture(uid, kind, steps) {
 
 // Department effect. opt.colours = { uid: colour } for recolour ops.
 function resolveDept(p, dept, dice, ctx, opt = {}) {
-  const def = DEPT_DEFS[dept.type];
+  const def = effDef(dept);
   dept.used = true;
   dept.idleRounds = 0;
-  if (def.pinkHeal) {
+  if (def.op === "rotation") {
+    // On-call Rotation: the specialist named comes back for another placement.
+    const sm = meepleOf(p, opt.rotate) || p.meeples.find(m => m.kind === "spec" && m.used && !m.off && !m.invest);
+    if (sm) { sm.used = false; sm.deptUid = null; ctx.notes.push(`${meepleLabel(p, sm)} freed for another placement`); }
+  } else if (def.star) {
+    // Hardening Bay: the first host of its colour takes the heal, the rest are parked as worked.
+    const star = dice.find(d => effColour(d) === def.sel.starColour);
+    for (const d of dice) { if (d === star) heal(p, d, def.star.heal, ctx); else markTreated(p, d); }
+  } else if (def.pinkHeal) {
     // Maternity tools: the pink host (the one at the named position, the
     // first one, or all of them) takes the big heal; the others heal, are
     // parked as worked, or are re-rolled.
@@ -1606,25 +1716,35 @@ function activateDept(p, m, dept, dice, opt) {
   m.used = true; m.deptUid = dept.uid;
   ctx.meepleUid = m.uid; ctx.deptUid = dept.uid;
   resolveDept(p, dept, dice, ctx, opt);
+  ctx.deptHealed = ctx.healed.slice(); // what the tool itself did: upgrades key off this, not off each other
   return ctx;
 }
 
 // ---- specialist follow-ups ----
 function specEligible(def, ctx) {
   if (!def || !def.when) return false;
-  if (def.when.healedColour) return ctx.healed.some(h => h.colour === def.when.healedColour);
-  if (def.when.healedPink) return ctx.healed.some(h => h.colour === PINK);
+  const H = def.token && ctx.deptHealed ? ctx.deptHealed : ctx.healed;
+  if (def.when.always) return true;
+  if (def.when.healedColour) return H.some(h => h.colour === def.when.healedColour);
+  if (def.when.healedPink) return H.some(h => h.colour === PINK);
   if (def.when.dischargedPink) return !!ctx.dischargedPink;
-  if (def.when.healedAny) return ctx.healed.length > 0;
+  if (def.when.healedAny) return H.length > 0;
   if (def.when.dischargedAny) return ctx.discharged.length > 0;
   return false;
 }
 function specPool(then, ctx, p) {
   const board = boardDice(p).filter(d => !d.ready);
-  const healedUids = new Set(ctx.healed.map(h => h.uid));
+  const H = then.deptOnly && ctx.deptHealed ? ctx.deptHealed : ctx.healed;
+  const healedUids = new Set(H.map(h => h.uid));
   const [kind, c] = (then.from || "any").split(":");
   let pool;
   switch (kind) {
+    case "queued": pool = untreatedDice(p).filter(d => !d.ready); break; // Apprentice: hosts still in the queued row
+    case "tokVal": { // upgrades: a host of the upgrade's colour at a value relative to one the tool worked on
+      const want = new Set(H.map(h => h.pre + then.delta));
+      pool = board.filter(d => !healedUids.has(d.uid) && effColour(d) === then.colour && want.has(d.value));
+      break;
+    }
     case "healedOf": pool = board.filter(d => healedUids.has(d.uid) && effColour(d) === c); break;
     case "otherOf": pool = board.filter(d => !healedUids.has(d.uid) && effColour(d) === c); break;
     case "otherValueEqPre": {
@@ -1669,6 +1789,8 @@ function specOptions(def, ctx, p) {
 function applySpec(p, def, ctx, dice, opt = {}) {
   const t = def.then;
   ctx.specFired = true;
+  if (def.token) p.upgradeFired = true;
+  if (t.op === "park") { for (const d of dice) markTreated(p, d); ctx.notes.push(`${def.name}: ${dice.map(d => `${effColour(d)} ${d.value}`).join(", ")} parked as worked`); return; }
   if (t.op === "score") { p.score += t.n; ctx.notes.push(`${def.name}: +${t.n} reputation`); return; }
   if (t.op === "bloodBag") { const k = t.n || 1; p.bloodBags += k; ctx.notes.push(`${def.name}: +${k} intel ${plural(k, "token")}`); return; }
   if (t.choice === "pathologist") { if (opt.yes && p.fatalities > 0) { p.fatalities--; p.bloodBags++; ctx.notes.push(`${def.name}: breach record closed, +1 intel`); } return; }
@@ -1774,11 +1896,12 @@ function scoreDischarges(p) {
   const pts = dischargePoints(n);
   const notes = [];
   let bonus = 0;
-  if (emptyBeds(p).length === WARDS * BEDS && !nurseryDice(p).length) { bonus += EMPTY_WARDS_BONUS; notes.push(`all segments clear +${EMPTY_WARDS_BONUS}`); }
+  if (!G.cfg.invest && emptyBeds(p).length === WARDS * BEDS && !nurseryDice(p).length) { bonus += EMPTY_WARDS_BONUS; notes.push(`all segments clear +${EMPTY_WARDS_BONUS}`); } // Procurement drops the clear-board bonus
   if (p.admin) {
     const a = ADMIN_DEFS[p.admin], c = dischargeCounts(p);
     if (a.kind === "colourTwo" && c[a.colour] >= 2) { bonus += 1; notes.push(`${a.name} +1`); }
     if (a.kind === "eachColour" && c.red && c.yellow && c.green) { bonus += 1; notes.push(`${a.name} +1`); }
+    if (a.kind === "invested" && p.upgradeFired) { bonus += 1; notes.push(`${a.name} +1`); }
     if (a.kind === "matPair" && p.dischargedThisRound.filter(d => d.colour === PINK && !d.infant).length >= 2 && p.dischargedThisRound.filter(d => d.infant).length >= 2) { bonus += 3; notes.push(`${a.name} +3`); }
   }
   p.score += pts + bonus;
@@ -1918,6 +2041,7 @@ const STEP = {
       }
       const per = 3 + extra;
       const dice = [];
+      const supp = G.cfg.invest ? INVEST.supplemental(G.round) : 0; // Procurement: a fourth host in the top queue(s)
       if (G.cfg.maternity) {
         // Virtualization: fewer coloured hosts, plus hypervisors from the supply, by table size.
         const tab = MAT.intake[G.players.length] || MAT.intake[4];
@@ -1926,11 +2050,13 @@ const STEP = {
       } else {
         for (const a of G.ambulances) for (let i = 0; i < per; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
       }
+      for (let i = 0; i < supp; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
       // Lowest values fill the lowest-numbered queue first. Same value: colour order, then draw order.
       dice.sort((a, b) => a.value - b.value || COLOUR_ORDER[a.colour] - COLOUR_ORDER[b.colour] || a.uid - b.uid);
       const ambs = G.ambulances.slice().sort((a, b) => a.num - b.num);
+      // The supplemental hosts sit beside the top queue (shifts 1–4) or the top two (5–8), each filled in turn.
       let i = 0;
-      for (const a of ambs) { a.dice = dice.slice(i, i + per); a.takenBy = null; i += per; }
+      ambs.forEach((a, k) => { const ex = supp && (k === ambs.length - 1 || (supp === 2 && k === ambs.length - 2)) ? 1 : 0; a.dice = dice.slice(i, i + per + ex); a.takenBy = null; i += per + ex; });
       if (G.cfg.maternity) separateMothers(ambs);
       if (G.cfg.epidemic) for (const p of G.players) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.pendingDice.push(d); } }
       G.cursor = 0;
@@ -2129,6 +2255,22 @@ const STEP = {
         }
         G.actor = p.id; return WAIT;
       }
+      go("improve", "invest"); return NEXT;
+    },
+    // Procurement: in response order, one staff member may spend the shift at
+    // the desk for an upgrade.
+    invest() {
+      if (!G.cfg.invest) { go("improve", "return"); return NEXT; }
+      for (const p of playersInTurnOrder()) {
+        if (p.invested) continue;
+        if (p.isBot) {
+          const did = botInvest(p); p.invested = true;
+          if (did) return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 450, min: 150 }]);
+          continue;
+        }
+        G.actor = p.id; return WAIT;
+      }
+      G.invest = null;
       go("improve", "return"); return NEXT;
     },
     return() {
@@ -2239,7 +2381,8 @@ const STEP = {
     run() {
       for (const p of G.players) {
         p.meeples = p.meeples.filter(m => !m.temp); // a Contractor works one shift
-        for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
+        for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; m.invest = false; }
+        p.invested = false; p.upgradeFired = false;
         p.cityStart = null; p.cityAt = null; p.cityTrail = []; p.cityDone = false; p.keepPending = false; p.laneDone = false; p.heliUsed = false;
         for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
         for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
@@ -2249,6 +2392,7 @@ const STEP = {
         p.breachesThisRound = 0; p.neglectResults = null; p.botSummary = "";
       }
       for (const a of G.ambulances) { a.dice = []; a.takenBy = null; }
+      if (G.investBoard) { G.investBoard = { red: [], yellow: [], green: [] }; G.invest = null; }
       if (G.events && G.events.current) { G.events.current = null; }
       G.eventApplied = false;
       recycleDisplay();
@@ -2394,6 +2538,137 @@ function separateMothers(ambs) {
     if (back) { to.dice.splice(to.dice.indexOf(back), 1); from.dice.push(back); }
     from.dice.sort(byVal); to.dice.sort(byVal);
   }
+}
+// ---- Procurement (Investments): upgrades on tools, and the desk ----
+// An upgrade as a follow-up: the same shape as a specialist's, keyed off
+// what the tool itself did (ctx.deptHealed), so upgrades never chain.
+function tokenDef(tok, group) {
+  const k = INVEST_KINDS[tok.kind], c = tok.colour;
+  if (!k || tok.kind === "retarget" || tok.kind === "headcount") return null;
+  const base = { name: `${k.name} upgrade (${c})`, token: true, group, colour: c, desc: k.desc(c) };
+  if (tok.kind === "rescue") return { ...base, when: { always: true }, then: { from: "otherOf:" + c, values: [1, 2], n: 1, heal: 2, deptOnly: true } };
+  if (tok.kind === "boost") return { ...base, when: { healedColour: c }, then: { from: "healedOf:" + c, n: 1, heal: 1, deptOnly: true } };
+  return { ...base, when: { healedAny: true }, then: { from: "tokVal", colour: c, delta: k.delta, n: 1, heal: 1, deptOnly: true } };
+}
+// Everything that may fire after a tool resolves, in rulebook order: the
+// tool's upgrades, the specialist's own follow-up (upgrades fitted to an
+// Apprentice replace it), then the two consultants' extras, one pick each.
+function followUpDefs(p, m, dept) {
+  const out = [];
+  for (const t of dept.tokens || []) { const d = tokenDef(t); if (d) out.push(d); }
+  const def = specDefForMeeple(p, m);
+  const spec = m.kind === "spec" ? specOf(p, m.specUid) : null;
+  if (def && !def.special) {
+    if (spec && (spec.tokens || []).length) { for (const t of spec.tokens) { const d = tokenDef(t); if (d) out.push(d); } }
+    else out.push(def);
+  }
+  if (def && def.special === "automation") for (const t of dept.tokens || []) { const d = tokenDef(t, "again"); if (d) { d.name += ", again"; out.push(d); } }
+  if (def && def.special === "integration") for (const o of p.departments) if (o.uid !== dept.uid) for (const t of o.tokens || []) { const d = tokenDef(t, "other"); if (d) { d.name += ` on ${DEPT_DEFS[o.type].name}`; out.push(d); } }
+  return out;
+}
+// Bots and simulations resolve the chain at once, one pick per group.
+function applyFollowUps(p, defs, ctx) {
+  const done = new Set();
+  for (const def of defs) {
+    if (def.group && done.has(def.group)) continue;
+    const o = specOptions(def, ctx, p);
+    if (!o) continue;
+    botApplySpec(p, def, ctx, o);
+    if (def.group) done.add(def.group);
+  }
+}
+function investCapacity() { return INVEST.capacity[G.players.length] || 2; }
+function investLineOpen(colour) { return G.investBoard[colour].length < investCapacity() && G.investPiles[colour].length > 0; }
+function tokenPlaceable(p, dept, tok) {
+  if (dept.type === "nursery" || (dept.tokens || []).length >= INVEST.maxPerTool) return false;
+  const def = DEPT_DEFS[dept.type], own = def.sel.colour || def.sel.starColour;
+  if (tok.kind === "retarget") return !!own && own !== tok.colour && !dept.tokens.some(t => t.kind === "retarget");
+  return true;
+}
+function tokenPlaceableSpec(p, spec, tok) { return spec.type === "apprentice" && (spec.tokens || []).length < INVEST.maxPerTool && tok.kind !== "retarget"; }
+function anyTokenRoom(p) { return p.departments.some(d => (d.tokens || []).length < INVEST.maxPerTool) || p.specialists.some(x => x.type === "apprentice" && (x.tokens || []).length < INVEST.maxPerTool); }
+function drawInvest(colour, n) { const out = []; for (let i = 0; i < n && G.investPiles[colour].length; i++) out.push({ colour, kind: G.investPiles[colour].pop() }); return out; }
+// The colour most of a SOC's tools work on: the Procurement Lead's second line.
+function toolColour(p, not) {
+  const c = colourCounts([]);
+  for (const d of p.departments) { const t = DEPT_DEFS[d.type].tag; if (COLOURS.includes(t) && t !== not) c[t]++; }
+  return COLOURS.filter(x => x !== not).sort((a, b) => c[b] - c[a])[0];
+}
+function startInvest(p, m, colour) {
+  m.used = true; m.deptUid = null; m.invest = true;
+  G.investBoard[colour].push(p.id);
+  const def = specDefForMeeple(p, m);
+  let drawn = drawInvest(colour, INVEST.draw + (def && def.special === "strategist" ? 1 : 0));
+  if (def && def.special === "advisor") drawn = drawn.concat(drawInvest(toolColour(p, colour), INVEST.draw));
+  G.invest = { pid: p.id, meepleUid: m.uid, colour, drawn, kept: null };
+  const who = meepleLabel(p, m);
+  log(`${p.name} ${p.isBot ? "sends" : "send"} ${who === "Analyst" ? "an analyst" : "the " + who} to the ${colour} vendor line.`, p.isBot ? "sys" : "good");
+}
+// Keep one of the drawn upgrades; the rest go back under their piles. A
+// Headcount upgrade is spent on the spot. Returns true when nothing is left to fit.
+function keepInvest(p, idx) {
+  const I = G.invest, tok = I.drawn[idx];
+  I.drawn.forEach((t, i) => { if (i !== idx) G.investPiles[t.colour].unshift(t.kind); });
+  I.drawn = []; I.kept = tok;
+  if (tok.kind === "headcount") {
+    p.meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false });
+    G.investGone = (G.investGone || 0) + 1;
+    log(`${p.name}: Headcount upgrade, a permanent extra analyst.`, p.isBot ? "sys" : "good");
+    I.kept = null; return true;
+  }
+  return false;
+}
+function placeInvest(p, tok, target, isSpec) {
+  (target.tokens = target.tokens || []).push(tok);
+  const name = isSpec ? SPEC_DEFS[target.type].name : DEPT_DEFS[target.type].name;
+  log(`${p.name} ${p.isBot ? "fits" : "fit"} a ${tok.colour} ${INVEST_KINDS[tok.kind].name} upgrade to ${isSpec ? "the " : ""}${name}.`, p.isBot ? "sys" : "good");
+  G.invest.kept = null;
+}
+function discardInvest(p, tok) { G.investPiles[tok.colour].unshift(tok.kind); G.invest.kept = null; log(`${p.name}: no room for the ${INVEST_KINDS[tok.kind].name} upgrade; it goes back under its pile.`, "sys"); }
+function botTokenScore(p, tok) {
+  const k = tok.kind;
+  if (k === "headcount") return 6;
+  const mine = p.departments.filter(d => (d.tokens || []).length < INVEST.maxPerTool);
+  if (!mine.length) return -1;
+  const same = mine.filter(d => { const t = DEPT_DEFS[d.type].tag; return t === tok.colour || t === "any"; });
+  if (k === "retarget") return mine.some(d => tokenPlaceable(p, d, tok)) ? 1.5 : -1;
+  if (k === "boost") return same.length ? 3 : 0.5;
+  if (k === "rescue") return 2 + (same.length ? 0.5 : 0);
+  return same.length ? 2.5 : 1.5;
+}
+function botPlaceTarget(p, tok) {
+  const cands = p.departments.filter(d => tokenPlaceable(p, d, tok));
+  if (!cands.length) return null;
+  const score = d => { const def = DEPT_DEFS[d.type], t = def.tag; return (t === tok.colour ? 3 : t === "any" ? 2 : 0) + deptPower(def) * 0.3 - (d.tokens || []).length * 0.5; };
+  return cands.sort((a, b) => score(b) - score(a))[0];
+}
+function botChooseInvest(p) {
+  const I = G.invest; if (!I) return;
+  if (I.drawn.length) {
+    const scored = I.drawn.map((t, idx) => ({ idx, score: botTokenScore(p, t) + rnd() * 0.1 }));
+    if (keepInvest(p, botPick(scored, p.skill === 0 ? 0 : 2).idx)) { G.invest = null; return; }
+  }
+  if (I.kept) { const d = botPlaceTarget(p, I.kept); if (d) placeInvest(p, I.kept, d, false); else discardInvest(p, I.kept); }
+  G.invest = null;
+}
+// A rival visits the desk with a spare hand, or on a whim; the line is the
+// colour most of its tools with room work on.
+function botInvest(p) {
+  const free = p.meeples.filter(m => !m.used && !m.off);
+  if (!free.length || !anyTokenRoom(p)) return false;
+  const usable = allDepts(p).filter(d => canActivate(d, p)).length;
+  const spare = free.length > usable;
+  if (!spare && !(rnd() < (p.skill >= 1 ? 0.55 : 0.3))) return false;
+  const lines = COLOURS.filter(investLineOpen);
+  if (!lines.length) return false;
+  const c = colourCounts([]);
+  for (const d of p.departments) if ((d.tokens || []).length < INVEST.maxPerTool && COLOURS.includes(DEPT_DEFS[d.type].tag)) c[DEPT_DEFS[d.type].tag]++;
+  for (const d of boardDice(p)) if (COLOURS.includes(d.colour)) c[d.colour] += 0.5;
+  const colour = lines.sort((a, b) => c[b] - c[a])[0];
+  const m = free.find(x => { const d = specDefForMeeple(p, x); return d && (d.special === "advisor" || d.special === "strategist"); }) || free.find(x => x.kind === "nurse") || free[0];
+  startInvest(p, m, colour);
+  botChooseInvest(p);
+  return true;
 }
 // ---- Network (City): the map, the jump hosts and the responders ----
 function rotShape(sh, r) { let out = sh.slice(); for (let i = 0; i < r; i++) out = [out[3], out[0], out[1], out[2]]; return out; }
@@ -2823,6 +3098,12 @@ function assertInvariants() {
     const toks = G.city.pile.length + G.city.discard.length + G.city.tiles.filter(t => t.token).length + sum(G.players.map(p => p.tokens.length + p.cityTokensRound.length));
     if (toks !== sum(Object.values(CITY.tokens))) throw new Error("Recon token conservation broken: " + toks);
   }
+  if (G.investPiles) {
+    let toks = sum(COLOURS.map(c => G.investPiles[c].length)) + (G.investGone || 0) + (G.invest ? G.invest.drawn.length + (G.invest.kept ? 1 : 0) : 0);
+    for (const p of G.players) { for (const d of p.departments) toks += (d.tokens || []).length; for (const x of p.specialists) toks += (x.tokens || []).length; }
+    if (toks !== 3 * INVEST.perKind * Object.keys(INVEST_KINDS).length) throw new Error("Upgrade conservation broken: " + toks);
+    for (const p of G.players) for (const d of p.departments) if ((d.tokens || []).length > INVEST.maxPerTool) throw new Error("Too many upgrades on a tool");
+  }
   const seen = new Set();
   for (const p of G.players) for (const d of boardDice(p)) {
     if (seen.has(d.uid)) throw new Error("Duplicate die uid " + d.uid);
@@ -2899,6 +3180,20 @@ function onDisplayClick(kind, idx) {
   sfx("place"); advance();
 }
 function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; applyReturn(human(), kind, uid); advance(); }
+function onInvestLine(colour) {
+  if (!inPhase("improve", "invest") || G.actor !== 0 || G.invest) return;
+  const p = human(), m = meepleOf(p, UI.sel.meepleUid);
+  if (!m || m.used || m.off || !investLineOpen(colour)) return;
+  startInvest(p, m, colour); resetSel(); sfx("place"); updateAll();
+}
+function onInvestToken(idx) {
+  if (!inPhase("improve", "invest") || !G.invest || G.invest.pid !== 0 || !G.invest.drawn[idx]) return;
+  if (keepInvest(human(), idx)) { finishInvest(); return; }
+  sfx("deal"); updateAll();
+}
+function finishInvest() { const p = human(); p.invested = true; G.invest = null; resetSel(); advance(); }
+function onInvestSkip() { if (!inPhase("improve", "invest") || G.actor !== 0 || (G.invest && (G.invest.drawn.length || G.invest.kept))) return; finishInvest(); }
+function onInvestDiscard() { if (!inPhase("improve", "invest") || !G.invest || !G.invest.kept) return; discardInvest(human(), G.invest.kept); finishInvest(); }
 function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
 function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
 function onConsultantSkip() { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), null); advance(); }
@@ -2915,10 +3210,18 @@ function onCollectPass() { if (!inPhase("final", "collections")) return; applyPa
 
 // ---- activation FSM ----
 function onMeepleClick(uid) {
+  if (inPhase("improve", "invest") && G.actor === 0) {
+    // Procurement: pick who goes to the desk, or fit the kept upgrade to the Apprentice.
+    const p = human(), m = meepleOf(p, uid), s = UI.sel;
+    if (G.invest && G.invest.kept) { const sp = m && m.kind === "spec" ? specOf(p, m.specUid) : null; if (sp && tokenPlaceableSpec(p, sp, G.invest.kept)) { placeInvest(p, G.invest.kept, sp, true); sfx("place"); finishInvest(); } return; }
+    if (G.invest || !m || m.used || m.off) return;
+    s.meepleUid = s.meepleUid === uid ? null : uid; updateAll(); return;
+  }
   if (inPhase("activate", "consultant")) { const m0 = meepleOf(human(), uid); const sp0 = m0 && m0.kind === "spec" ? specOf(human(), m0.specUid) : null; if (sp0 && sp0.type !== "consultant") onConsultantPick(sp0.uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), m = meepleOf(p, uid), s = UI.sel;
   if (s.state === "returning") { if (m && m.kind === "spec") applyReturnNow("spec", m.specUid); return; }
+  if (s.state === "rotation") { if (m && m.kind === "spec" && m.used && !m.off && !m.invest) runRotation(uid); return; }
   if (!m || m.used || m.off) return;
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
   if (s.meepleUid === uid && s.state === "meepleSel") resetSel();
@@ -2943,6 +3246,7 @@ function applyReturnNow(kind, uid) {
   afterAction();
 }
 function onDeptClick(uid) {
+  if (inPhase("improve", "invest") && G.invest && G.invest.kept) { const p = human(), d = deptOf(p, uid); if (d && tokenPlaceable(p, d, G.invest.kept)) { placeInvest(p, G.invest.kept, d, false); sfx("place"); finishInvest(); } return; }
   if (inPhase("improve", "return")) { const d = deptOf(human(), uid); if (d && d.improvement) onReturnClick("dept", uid); return; }
   if (inPhase("activate", "human") && UI.sel.state === "returning") { const d = deptOf(human(), uid); if (d && d.improvement) applyReturnNow("dept", uid); return; }
   if (!inPhase("activate", "human")) return;
@@ -2951,8 +3255,9 @@ function onDeptClick(uid) {
   if (s.state !== "meepleSel" && s.state !== "targeting") return;
   if (!canActivate(dept, p)) return;
   if (s.state === "targeting" && s.deptUid === uid) return;
+  if (effDef(dept).op === "rotation") { const mm = meepleOf(p, s.meepleUid); if (!mm || mm.kind !== "nurse") return; s.state = "rotation"; s.deptUid = uid; s.dice = []; computeLegal(); updateAll(); return; }
   s.state = "targeting"; s.deptUid = uid; s.dice = [];
-  const sets = legalSets(DEPT_DEFS[dept.type].sel, boardDice(p));
+  const sets = legalSets(effDef(dept).sel, boardDice(p));
   if (sets.length === 1) s.dice = sets[0].map(d => d.uid);
   computeLegal(); updateAll();
 }
@@ -3030,7 +3335,7 @@ function onDieClick(uid) {
       const o = s.specOpts;
       applySpec(p, s.spec, s.ctx, [], { mode: "return", uid });
       o.count--;
-      if (o.count > 0) s.state = "choice"; else { finishSpecLog(); afterAction(); return; }
+      if (o.count > 0) s.state = "choice"; else { finishSpecLog(); nextFollowUp(); return; }
       break;
     }
     default: return;
@@ -3040,7 +3345,7 @@ function onDieClick(uid) {
 function selectedDice() { return UI.sel.dice.map(u => findDie(human(), u)).filter(Boolean); }
 function targetsComplete() {
   const p = human(), s = UI.sel;
-  if (s.state === "targeting") { const dept = deptOf(p, s.deptUid); return dept && matchesSel(DEPT_DEFS[dept.type].sel, selectedDice()); }
+  if (s.state === "targeting") { const dept = deptOf(p, s.deptUid); return dept && matchesSel(effDef(dept).sel, selectedDice()); }
   if (s.state === "spec") {
     const o = s.specOpts, dice = selectedDice();
     return o.sets.some(set => set.length === dice.length && (o.ordered ? set.every((d, i) => d.uid === dice[i].uid) : set.every(d => dice.some(x => x.uid === d.uid))));
@@ -3083,23 +3388,34 @@ function runActivation(opt) {
   if (ctx.random) UI.undoBarrier = UI.undo.length;
   log(describeHealCtx(p, meepleLabel(p, m), DEPT_DEFS[dept.type].name, ctx), "good");
   sfx(ctx.discharged.length ? "discharge" : "heal");
-  s.ctx = ctx;
-  const def = specDefForMeeple(p, m);
-  if (def && !def.special) {
+  s.ctx = ctx; s.chain = followUpDefs(p, m, dept);
+  nextFollowUp();
+}
+// Walks the follow-up chain: whatever resolves itself does, the first that
+// needs a choice stops for it, and the end of the chain ends the placement.
+function nextFollowUp() {
+  const p = human(), s = UI.sel, ctx = s.ctx;
+  while (s.chain && s.chain.length) {
+    const def = s.chain.shift();
     const o = specOptions(def, ctx, p);
-    if (o) {
-      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(true); }
-      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); queueBonusFx(ctx); finishSpecLog(true); }
-      else {
-        s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
-        o.ordered = !!def.then.and || !!def.then.pair;
-        if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
-        computeLegal(); updateAll(); return;
-      }
-    } else {
-      setSpecNote(`${def.name} follow-up skipped: ${specMissReason(def, ctx, p)}.`);
-    }
+    if (!o) { if (!def.token) setSpecNote(`${def.name} follow-up skipped: ${specMissReason(def, ctx, p)}.`); continue; }
+    if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(true); dropGroup(def); continue; }
+    if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); queueBonusFx(ctx); finishSpecLog(true); dropGroup(def); continue; }
+    s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
+    o.ordered = !!def.then.and || !!def.then.pair;
+    if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
+    computeLegal(); updateAll(); return;
   }
+  afterAction();
+}
+function dropGroup(def) { const s = UI.sel; if (def && def.group && s.chain) s.chain = s.chain.filter(d => d.group !== def.group); }
+// On-call Rotation: the analyst goes on the tool, the named specialist comes back.
+function runRotation(specMeepleUid) {
+  const p = human(), s = UI.sel, m = meepleOf(p, s.meepleUid), dept = deptOf(p, s.deptUid);
+  if (!m || !dept) { resetSel(); updateAll(); return; }
+  pushUndo();
+  const ctx = activateDept(p, m, dept, [], { rotate: specMeepleUid });
+  log(describeHealCtx(p, meepleLabel(p, m), DEPT_DEFS[dept.type].name, ctx), "good"); sfx("place");
   afterAction();
 }
 // The strip line that says what the last specialist follow-up did. Cleared by
@@ -3122,12 +3438,13 @@ function finishSpec(opt) {
   sfx(s.ctx.discharged.length ? "discharge" : "heal");
   queueBonusFx(s.ctx);
   finishSpecLog();
-  afterAction();
+  dropGroup(s.spec);
+  nextFollowUp();
 }
 function onSpecChoice(mode) {
   if (!inPhase("activate", "human") || UI.sel.state !== "choice") return;
   const p = human(), s = UI.sel, o = s.specOpts;
-  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); if (mode !== "yes") setSpecNote(`${s.spec.name} follow-up declined.`); afterAction(); return; }
+  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); if (mode !== "yes") setSpecNote(`${s.spec.name} follow-up declined.`); nextFollowUp(); return; }
   if (o.choice === "admissions") {
     if (mode === "return") { if (!boardDice(p).length) return; s.state = "admReturn"; computeLegal(); updateAll(); return; }
     if (mode === "admit") { if (!emptyBeds(p).length) return; applySpec(p, s.spec, s.ctx, [], { mode: "admit" }); }
@@ -3136,7 +3453,7 @@ function onSpecChoice(mode) {
     const hadNotes = s.ctx.notes.length;
     finishSpecLog();
     if (!hadNotes) setSpecNote(`${s.spec.name} follow-up skipped.`);
-    afterAction();
+    nextFollowUp();
   }
 }
 function skipSpec() {
@@ -3145,7 +3462,7 @@ function skipSpec() {
   const s = UI.sel, name = s.spec.name, hadNotes = s.ctx && s.ctx.notes.length;
   finishSpecLog();
   if (!hadNotes) setSpecNote(`${name} follow-up skipped.`);
-  afterAction();
+  nextFollowUp();
 }
 function afterAction() { resetSel(); saveGame(); computeLegal(); updateAll(); }
 function onIntelHeal() {
@@ -3202,6 +3519,7 @@ function cancelSel() {
   switch (s.state) {
     case "targeting": s.state = "meepleSel"; s.deptUid = null; s.dice = []; break;
     case "intelHeal": case "tokenHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); s.token = null; break;
+    case "rotation": s.state = "meepleSel"; s.deptUid = null; break;
     case "intelRecolour": case "intelColour": s.state = "targeting"; s.pending = null; break;
     case "colour": if (s.colourFor === "spec") { s.state = "spec"; } else { s.state = "targeting"; } s.colourQueue = null; break;
     case "meepleSel": case "returning": resetSel(); break;
@@ -3232,10 +3550,11 @@ function computeLegal() {
   UI.legalTargets = new Set(); UI.legalByDept = {};
   if (!G || G.phase !== "activate" || G.step !== "human") return;
   const p = human(), s = UI.sel;
-  for (const d of allDepts(p)) UI.legalByDept[d.uid] = canActivate(d, p);
+  const mm = meepleOf(p, s.meepleUid);
+  for (const d of allDepts(p)) UI.legalByDept[d.uid] = canActivate(d, p) && (effDef(d).op !== "rotation" || !mm || mm.kind === "nurse"); // the rotation takes an analyst
   if (s.state === "targeting") {
     const dept = deptOf(p, s.deptUid);
-    if (dept) UI.legalTargets = narrowTargets(DEPT_DEFS[dept.type].sel, boardDice(p), s.dice);
+    if (dept) UI.legalTargets = narrowTargets(effDef(dept).sel, boardDice(p), s.dice);
   } else if (s.state === "spec") {
     const o = s.specOpts;
     for (const set of o.sets) {
@@ -3302,6 +3621,8 @@ function dispatchAct(el) {
     case "queue": onQueueClick(idx); break;
     case "place": onPlaceWard(parseInt(el.dataset.ward, 10)); break;
     case "cityTile": onCityTile(idx); break;
+    case "vendor": onInvestLine(el.dataset.colour); break;
+    case "itoken": onInvestToken(idx); break;
     case "dispDept": onDisplayClick("dept", idx); break;
     case "dispSpec": onDisplayClick("spec", idx); break;
     case "admin": onAdminPick(el.dataset.id); break;
@@ -3387,7 +3708,7 @@ function botPlaceDice(p) {
     }
   }
 }
-function deptPower(def) { return def.pinkHeal ? def.pinkHeal + (def.heal || 0) * (def.sel.n - 1) : def.heal ? def.heal * def.sel.n : 2 * def.sel.n; }
+function deptPower(def) { if (def.power) return def.power; if (def.star) return def.star.heal + 1; return def.pinkHeal ? def.pinkHeal + (def.heal || 0) * (def.sel.n - 1) : def.heal ? def.heal * def.sel.n : 2 * def.sel.n; }
 function botPickImprovement(p) {
   const opts = [];
   const board = boardDice(p);
@@ -3429,7 +3750,8 @@ function botColour(p) {
   return COLOURS.slice().sort((a, b) => tags[b] - tags[a])[0];
 }
 function botOpt(p, dept, dice) {
-  const def = DEPT_DEFS[dept.type];
+  const def = effDef(dept);
+  if (def.op === "rotation") { const used = p.meeples.filter(m => m.kind === "spec" && m.used && !m.off && !m.invest); return { rotate: used.length ? used[0].uid : null }; }
   if (def.op !== "recolour") return {};
   const c = botColour(p), colours = {};
   for (const d of dice) colours[d.uid] = c;
@@ -3462,8 +3784,7 @@ function simulateAction(p, m, dept, dice) {
   const pc = clone(p);
   const mc = meepleOf(pc, m.uid), dc = deptOf(pc, dept.uid), dicec = dice.map(d => findDie(pc, d.uid));
   const ctx = activateDept(pc, mc, dc, dicec, botOpt(pc, dc, dicec));
-  const def = specDefForMeeple(pc, mc);
-  if (def && !def.special) { const o = specOptions(def, ctx, pc); if (o) botApplySpec(pc, def, ctx, o); }
+  applyFollowUps(pc, followUpDefs(pc, mc, dc), ctx);
   const v = boardValue(pc);
   UI.simulating = false;
   return v;
@@ -3549,7 +3870,14 @@ function botActivate(p) {
     if (nurse) reps.push(nurse);
     for (const m of reps) {
       for (const dept of allDepts(p).filter(d => canActivate(d, p))) {
-        const def = DEPT_DEFS[dept.type];
+        const def = effDef(dept);
+        if (def.op === "rotation") {
+          // Worth an analyst when the freed specialist would still find a ready tool.
+          if (m.kind !== "nurse") continue;
+          const left = allDepts(p).filter(d => d.uid !== dept.uid && canActivate(d, p)).length;
+          if (left > meeples.length - 1) opts.push({ score: 2.5 + rnd() * 0.01, m, dept, set: [] });
+          continue;
+        }
         let sets = legalSets(def.sel, board);
         if (sets.length > 24) sets = shuffle(sets).slice(0, 24);
         for (const set of sets) opts.push({ score: simulateAction(p, m, dept, set) - before + rnd() * 0.01, m, dept, set });
@@ -3559,8 +3887,7 @@ function botActivate(p) {
     const best = botPick(good, p.skill === 1 ? 1 : (p.skill === 0 ? 0 : 2));
     if (!best) break;
     const ctx = activateDept(p, best.m, best.dept, best.set, botOpt(p, best.dept, best.set));
-    const def = specDefForMeeple(p, best.m);
-    if (def && !def.special) { const o = specOptions(def, ctx, p); if (o) botApplySpec(p, def, ctx, o); }
+    applyFollowUps(p, followUpDefs(p, best.m, best.dept), ctx);
     parts.push(DEPT_DEFS[best.dept.type].name + (ctx.discharged.length ? " ✓" : ""));
   }
   botBloodBag(p);
@@ -3607,6 +3934,7 @@ function botAnswerWait() {
   else if (ph === "intake" && st === "cityOrder") { while (p.tokens.includes("lane") && botLaneWorth(p)) useLane(p); p.laneDone = true; }
   else if (ph === "intake" && st === "place") { if (G.overflow) { G.overflow.marked = botChooseFatalities(p, G.overflow.shortage); applyOverflow(); } else if (p.twinsPending) applyTwins(p, 2); else botPlaceDice(p); }
   else if (ph === "improve" && st === "take") { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; }
+  else if (ph === "improve" && st === "invest") { if (G.invest && G.invest.pid === p.id) botChooseInvest(p); else botInvest(p); p.invested = true; G.invest = null; }
   else if (ph === "improve" && st === "return") { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); }
   else if (ph === "activate" && st === "consultant") applyConsultant(p, botConsultant(p));
   else if (ph === "activate" && st === "human") { botActivate(p); applyEndActivation(p); }
@@ -3897,6 +4225,7 @@ function updateAll() {
   if (UI.headless || !G) return;
   document.getElementById("app").classList.toggle("p4", G.players.length >= 4);
   document.getElementById("app").classList.toggle("city", !!G.cfg.city);
+  document.getElementById("app").classList.toggle("invest", !!G.cfg.invest);
   UI.wideTable = window.matchMedia(WIDE_TABLE_MQ).matches;
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
@@ -3917,6 +4246,7 @@ function attentionTarget() {
   if (st === "extraReveal") return "strip";
   if (ph === "intake" && st.startsWith("city")) return st === "cityOrder" || human().keepPending ? "strip" : "table";
   if (ph === "intake") return st === "place" && human().twinsPending ? "strip" : st === "place" && (G.overflow || G.cfg.maternity) ? "wards" : "table";
+  if (ph === "improve" && st === "invest") { const I = G.invest; return I && I.pid === 0 && I.kept ? "tools" : (I && I.pid === 0) || s.meepleUid ? "table" : "staff"; }
   if (ph === "improve") return st === "take" ? "table" : "strip";
   if (ph === "activate" && st === "consultant") return "staff";
   if (ph === "activate" && st === "human") {
@@ -3926,6 +4256,7 @@ function attentionTarget() {
         return canAct ? "staff" : "strip";
       }
       case "meepleSel": return "tools";
+      case "rotation": return "staff";
       case "targeting": case "spec": case "intelHeal": case "tokenHeal": case "intelRecolour": case "admReturn": return "wards";
       case "choice": case "colour": case "intelColour": return "strip";
       default: return null;
@@ -4055,13 +4386,20 @@ function renderMeeple(p, m, key) {
   if (returning && spec) cls.push("returnable");
   if (consult && spec && spec.type !== "consultant") cls.push("clickable");
   if (consult && spec && p.consultantCopy === spec.type && spec.type !== "consultant") cls.push("sel");
+  // Procurement: who goes to the desk; the Apprentice as a home for a kept upgrade.
+  const investing = G.phase === "improve" && G.step === "invest" && G.actor === 0 && !UI.animating;
+  if (investing && !G.invest && !m.used && !m.off) cls.push("avail");
+  if (investing && !G.invest && s.meepleUid === m.uid) cls.push("sel");
+  if (investing && G.invest && G.invest.pid === 0 && G.invest.kept && spec && tokenPlaceableSpec(p, spec, G.invest.kept)) cls.push("clickable");
+  if (live && s.state === "rotation" && m.kind === "spec" && m.used && !m.off && !m.invest) cls.push("clickable");
+  if (m.invest) cls.push("invest");
   let ability = m.temp ? "A one-shift analyst: any one unused tool." : "Any one unused tool.";
   if (def) {
     ability = specDesc(def);
     if (def.special === "copy" && p.consultantCopy) ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`;
   }
   const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
 }
 // The guest segment under a quarantine segment: its guests, and the
 // placement it offers while it holds any.
@@ -4088,6 +4426,7 @@ function renderBoard() {
   const returning = (G.phase === "improve" && G.step === "return" && !UI.animating) || (live && s.state === "returning");
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
+  const investing = G.phase === "improve" && G.step === "invest" && G.actor === 0 && !UI.animating;
   let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
   // On a wide viewport the shared table sits in the side column, above the
   // rivals, so the board column keeps its height for the SOC itself.
@@ -4101,8 +4440,10 @@ function renderBoard() {
   html += `<section class="grp grp-tools" aria-label="Tools"><div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
   for (const d of p.departments) {
     const cls = [];
-    const def = DEPT_DEFS[d.type];
+    const def = effDef(d);
     let why = deptDesc(def);
+    if (investing && G.invest && G.invest.pid === 0 && G.invest.kept && tokenPlaceable(p, d, G.invest.kept)) { cls.push("can"); why = "Fit the upgrade here. " + why; }
+    if ((d.tokens || []).length) why += " Upgrades: " + d.tokens.map(t => `${INVEST_KINDS[t.kind].name} (${t.colour}): ${INVEST_KINDS[t.kind].desc(t.colour)}`).join(" ");
     if (d.used) { cls.push("used"); why = "Used this shift. " + why; }
     if (live && (s.state === "meepleSel" || s.state === "targeting")) {
       if (UI.legalByDept[d.uid] && !d.used) cls.push("can");
@@ -4114,7 +4455,7 @@ function renderBoard() {
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
     const clickable = cls.includes("can") || cls.includes("returnable");
-    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
   }
   html += '</div></section>';
   html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
@@ -4203,6 +4544,8 @@ function renderCenter() {
     html += '<div class="center-title">Incoming hosts — place each</div><div class="keep-row">';
     for (const d of p.pendingDice) html += renderDie(d, { cls: cur && cur.uid === d.uid ? "sel" : "dim" });
     html += `</div><div class="hint">${p.twinsPending ? "Choose the guests below." : p.pendingDice.length ? "Hypervisors first. Click a glowing segment." : "All placed."}</div>`;
+  } else if (ph === "improve" && st === "invest" && G.cfg.invest) {
+    html += '<div class="center-title">Procurement desk</div>' + renderProcurement();
   } else if (ph === "improve") {
     html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
   } else if (ph === "activate" && st === "consultant") {
@@ -4270,6 +4613,28 @@ function renderCity(interactive) {
   html += `</div>`;
   return html;
 }
+function upgChip(t) { return `<span class="upg c-${t.colour}" title="${esc(INVEST_KINDS[t.kind].desc(t.colour))}">${esc(INVEST_KINDS[t.kind].name)}</span>`; }
+// The procurement desk: three vendor lines with their slots and piles, then
+// the drawn upgrades to choose from, then where the kept one goes.
+function renderProcurement() {
+  const p = human(), I = G.invest, mine = G.actor === 0 && !UI.animating;
+  const canPick = mine && !I && !!meepleOf(p, UI.sel.meepleUid);
+  let html = '<div class="vendors">';
+  for (const c of COLOURS) {
+    const occ = G.investBoard[c].map(id => PLAYER_CHIPS[id]), open = investLineOpen(c);
+    const attrs = canPick && open ? ` data-act="vendor" data-colour="${c}" role="button" tabindex="0"` : "";
+    html += `<div class="vendor c-${c} ${canPick && open ? "can" : ""} ${open ? "" : "full"}"${attrs} title="${esc(COLOUR_NAME[c] + " vendor line: upgrades that work on " + c + " hosts")}"><div class="vn">${COLOUR_NAME[c]}</div><div class="vs">${G.investPiles[c].length} in pile</div><div class="vo">${Array.from({ length: investCapacity() }, (_, i) => `<span class="vslot ${occ[i] ? "on" : ""}">${occ[i] || ""}</span>`).join("")}</div></div>`;
+  }
+  html += '</div>';
+  if (I && I.pid === 0 && I.drawn.length) {
+    html += '<div class="center-title">Upgrades drawn — keep one</div><div class="itokens">';
+    I.drawn.forEach((t, i) => { html += `<div class="itoken c-${t.colour}" data-act="itoken" data-idx="${i}" role="button" tabindex="0"><div class="in"><span class="mini-dot dot c-${t.colour}"></span> ${esc(INVEST_KINDS[t.kind].name)}</div><div class="id">${esc(INVEST_KINDS[t.kind].desc(t.colour))}</div></div>`; });
+    html += '</div><div class="hint">The others go back under their piles.</div>';
+  } else if (I && I.pid === 0 && I.kept) {
+    html += `<div class="hint">Fit the <b>${esc(INVEST_KINDS[I.kept.kind].name)}</b> (${I.kept.colour}) to a glowing tool${p.specialists.some(x => x.type === "apprentice") ? " or the Apprentice" : ""}: two per tool, for good.</div>`;
+  } else html += `<div class="hint">One staff member per SOC may spend the shift here: look at ${INVEST.draw} upgrades of that colour, keep one, fit it to a tool at once. Each line takes ${investCapacity()} per shift.</div>`;
+  return html;
+}
 function renderDisplay(pickable, note) {
   let html = `<div id="display" class="${UI.quickPicks ? "quick" : ""}">`;
   const dd = G.deptDisplay, sd = G.specDisplay;
@@ -4323,8 +4688,8 @@ function renderStrip() {
       html += `<div class="strip-rule"><b>${esc(meepleLabel(p, m))}</b> — ${def ? esc(specDesc(def)) : "staffs any one unused tool."}</div>`;
     }
     if (dept && !["spec", "choice", "admReturn"].includes(s.state)) {
-      const def = DEPT_DEFS[dept.type];
-      html += `<div class="strip-rule"><b>${esc(def.name)}</b> — ${esc(deptDesc(def))}<span class="strip-count">${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""} selected</span></div>`;
+      const def = effDef(dept);
+      html += `<div class="strip-rule"><b>${esc(def.name)}</b> — ${esc(deptDesc(def))}${def.op === "rotation" ? "" : `<span class="strip-count">${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""} selected</span>`}</div>`;
     }
     if (["spec", "choice", "admReturn"].includes(s.state)) {
       html += `<div class="strip-rule amber"><b>${esc(s.spec.name)}</b> — ${esc(specDesc(s.spec))}</div>`;
@@ -4383,6 +4748,7 @@ function renderRivals() {
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
     html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, [d.treated ? "treated" : "", d.infant ? "infant" : "", d.ready ? "ready" : ""].join(" "))).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
+    if (G.cfg.invest) { const n = sum(p.departments.map(d => (d.tokens || []).length)) + sum(p.specialists.map(x => (x.tokens || []).length)); html += `<div class="rl"><span>${n} ${plural(n, "upgrade")}</span>${p.meeples.some(m => m.invest) ? "<span>at the desk</span>" : ""}</div>`; }
     if (G.cfg.city) html += `<div class="rl"><span>${p.order ? "#" + p.order + " in order" : "order unset"}</span>${G.city.heli === p.id ? "<span>remote access</span>" : ""}${p.tokens.map(t => `<span class="token recon" title="${esc(CITY_TOKENS[t].desc)}">${esc(CITY_TOKENS[t].name)}</span>`).join("")}</div>`;
     if (p.botSummary) html += `<div class="rs">${esc(p.botSummary)}</div>`;
     html += '</div>';
@@ -4439,6 +4805,13 @@ function promptFor() {
     const text = !die ? "" : isMother(die) ? `Place the hypervisor (${die.value}) in a highlighted segment: one with no other hypervisor. It only degrades when other hosts share its segment, and it brings guests.` : `Place the ${die.colour} host (${die.value}) in a highlighted segment. Keep coloured hosts away from hypervisors, or the hypervisor degrades too.`;
     return { text, buttons: [B("Auto-place the rest", "onAutoPlace()")] };
   }
+  if (ph === "improve" && st === "invest") {
+    const I = G.invest;
+    if (I && I.pid === 0 && I.drawn.length) return { text: "Keep one upgrade: click it." };
+    if (I && I.pid === 0 && I.kept) return { text: "Click a tool with room to fit the upgrade.", buttons: [B("Put it back", "onInvestDiscard()")] };
+    if (s.meepleUid) return { text: "Now click a vendor line with a free slot.", buttons: [B("Skip procurement", "onInvestSkip()")] };
+    return { text: "Procurement: click a free staff member, then a vendor line. Or skip.", buttons: [B("Skip procurement", "onInvestSkip()", { primary: true })] };
+  }
   if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
   if (ph === "improve" && st === "return") return { text: "Return one improvement for an intel token, or keep everything.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
   if (ph === "activate" && st === "consultant") return { text: "Pick a specialist for the Consultant to shadow this shift.", buttons: [B("Skip", "onConsultantSkip()")] };
@@ -4449,6 +4822,7 @@ function promptFor() {
       case "idle": return { text: "Click an analyst, then a tool.", buttons: [endB] };
       case "meepleSel": return { text: "Now click a glowing tool.", buttons: [B("Cancel", "cancelSel()")] };
       case "returning": return { text: "Click the tool or specialist to return for an intel token.", buttons: [B("Cancel", "cancelSel()")] };
+      case "rotation": return { text: "On-call Rotation: click the placed specialist to bring back.", buttons: [B("Cancel", "cancelSel()")] };
       case "targeting": return { text: "Click glowing hosts; double-click the last one to confirm.", buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete(), key: "Enter" }), B("Cancel", "cancelSel()")] };
       case "spec": return { text: `Select ${s.specOpts.ordered ? "the host to heal, then the host to degrade" : "the follow-up target"}, or skip.`, buttons: [B("Confirm", "confirmTargets()", { primary: true, disabled: !targetsComplete() }), B("Skip", "skipSpec()")] };
       case "choice": return { text: "Choose the follow-up above, or skip.", buttons: [B("Skip", "skipSpec()")] };
@@ -4686,6 +5060,18 @@ function showHowToPlay(tab) {
         <li><b>With Virtualization.</b> A few zones spawn hypervisors instead of coloured hosts. A responder collects at most one hypervisor per shift and passes over any others as if the zone were empty. Hypervisors on the map never drop below 1.</li>
       </ul>
       <p>Not printed in the rulebook, so approximated: the links on the 20 zone tiles (4 crossroads, 8 T-junctions, 4 straights, 4 corners here), the split of the 30 recon tokens (5 of each kind) and the number of hypervisor zones by table size (2, 3, 4).</p>
+      <h4>Procurement</h4>
+      <p>Switch it on under Expansions in the setup menu (rival games only). <b>Upgrades</b> are fitted to your tools for good, two per tool, and add an effect that fires after the tool's own. The display shows one more tool and one more specialist, and intake rolls one extra host (two from shift 5) into the top queue or queues, as a fourth host that goes home with them.</p>
+      <ul>
+        <li><b>The desk.</b> After the improvement picks, in response order, each SOC may send one free staff member to a vendor line (red, yellow or green); it is placed for the shift. Look at the top two upgrades of that colour, keep one, fit it to a tool at once; the rest go back under the pile. A line takes one SOC per shift, two with three rivals.</li>
+        <li><b>Upgrades.</b> Rescue: heal a different host of the colour at 1 or 2 by 2 steps. Boost: heal one host of the colour the tool worked on 1 more step. Match, Step Up, Step Down: heal a different host of the colour 1 step whose value equals, is 1 above or 1 below one the tool worked on (values before the tool). Retarget: the tool works on the upgrade's colour instead of its own, and that applies before anything else. Headcount: not fitted; a permanent extra analyst at once.</li>
+        <li><b>Order.</b> The tool's own effect, then its upgrades (each optional), then the specialist's follow-up, then upgrades on an Apprentice card. Everything keys off what the tool itself did.</li>
+        <li><b>Tools.</b> On-call Rotation: an unused analyst goes here to bring back one specialist already placed this shift. Red, Yellow and Green Hardening Bay: heal one host of that colour 2 steps and park two other hosts as worked.</li>
+        <li><b>Specialists.</b> Procurement Lead: at the desk it also looks at two upgrades from a second line and keeps one of four. Vendor Manager: draws three at the desk. Integration Engineer: when it works a tool, it may also fire one upgrade from another tool. Automation Engineer: may fire one of the tool's upgrades a second time. Apprentice: parks two queued hosts as worked; upgrades fitted to its card fire instead.</li>
+        <li><b>Scoring.</b> No bonus for clearing every segment. Vendor Partnership directive: +1 in a shift in which one of your upgrades fired.</li>
+        <li><b>With Virtualization.</b> No 4th analyst. With Network: no supplemental hosts.</li>
+      </ul>
+      <p>Not printed in the rulebook, so approximated: the directive (an image), which three of the five specialists have two cards (Procurement Lead, Apprentice, Vendor Manager here), and the pink vendor line of the Virtualization combination, which is left out.</p>
     </div>
     <div ${panel("keys")}>
       <ul>
