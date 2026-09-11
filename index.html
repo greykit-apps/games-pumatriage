@@ -403,6 +403,9 @@ body::after {
 .dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--amber); outline-offset: 1px; box-shadow: 0 0 14px rgba(255,176,0,0.5); animation: chosen-lift .3s var(--ease-out-quart) both; }
 @keyframes chosen-lift { 0% { transform: none; } 100% { transform: translateY(-4px); } }
 .chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
+/* After your own pick the remaining rival picks run quick. */
+#display.quick .leaving { animation-duration: .3s; }
+#display.quick .chosen { animation-duration: .15s; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
 .dept-tile.leaving, .spec-card.leaving { animation: card-away .6s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
 @keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
@@ -936,7 +939,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null; UI.choosing = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null; UI.choosing = null; UI.quickPicks = false;
   if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
@@ -1626,7 +1629,8 @@ const STEP = {
         G.dealt = true;
         const n = G.deptDisplay.filter(Boolean).length + G.specDisplay.filter(Boolean).length;
         // Deal, then leave the whole display on the table long enough to read.
-        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 90 }, { type: "wait", delay: 90 * n + 380 + 1000, min: 90 * n + 500 }]);
+        UI.quickPicks = false;
+        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 68 }, { type: "wait", delay: 68 * n + 285 + 750, min: 68 * n + 375 }]);
       }
       // Your own pick gets its beat too: the card flies to your board and the
       // row closes up before any rival moves.
@@ -1655,14 +1659,20 @@ const STEP = {
             const c = botPickImprovement(p);
             if (!c) { p.took = true; continue; }
             UI.choosing = { kind: c.kind, idx: c.idx, pid: p.id, name: p.name };
-            return animate([{ type: "render" }, { type: "wait", delay: 700, min: 280 }]);
+            // Once you have picked, the rest no longer bears on you: rivals go at a clip.
+            UI.quickPicks = !!human().took;
+            return animate([{ type: "render" }, { type: "wait", delay: UI.quickPicks ? 200 : 525, min: UI.quickPicks ? 110 : 210 }]);
           }
           const c = paced ? UI.choosing : botPickImprovement(p);
           UI.choosing = null;
           if (!c) { p.took = true; continue; }
           const item = c.kind === "dept" ? G.deptDisplay[c.idx] : G.specDisplay[c.idx];
           applyTake(p, c.kind, c.idx);
-          if (paced) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 700, min: 320 }, { type: "render" }, { type: "wait", delay: 420, min: 200 }]); }
+          if (paced) {
+            UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name };
+            const q = UI.quickPicks;
+            return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: q ? 260 : 525, min: q ? 150 : 240 }, { type: "render" }, { type: "wait", delay: q ? 160 : 315, min: q ? 90 : 150 }]);
+          }
           continue;
         }
         G.actor = p.id; return WAIT;
@@ -3163,7 +3173,7 @@ function renderCenter() {
   return `<div id="table" class="${idle ? "idle" : ""}" aria-label="Shared table">${html}</div>`;
 }
 function renderDisplay(pickable) {
-  let html = '<div id="display">';
+  let html = `<div id="display" class="${UI.quickPicks ? "quick" : ""}">`;
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
   const lv = UI.leaving, ch = UI.choosing; // a rival's pick: first highlighted, then drawn once more on its way out
