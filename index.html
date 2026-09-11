@@ -138,6 +138,7 @@ body::after {
 }
 #hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 50px; }
+.stat .ot { color: var(--amber); font-size: 10px; letter-spacing: 1px; }
 #phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
 .pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
 .pstep.done { color: var(--green-dark); border-color: #163016; }
@@ -1342,6 +1343,7 @@ function newGame(seed) {
     roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
     city: null, cityPer: CITY.collect,
     investPiles: null, investBoard: null, invest: null,
+    overtime: 0, // Overtime: extra eight-shift blocks played on from the closing board
   };
   for (let i = 0; i < cfg.players; i++) G.players.push(makePlayer(i, PLAYER_NAMES[i], i > 0, cfg.rivalSkill));
   G.turnOrder = G.players.map(p => p.id);
@@ -2461,6 +2463,22 @@ const STEP = {
   },
   gameover: { done() { return WAIT; } },
 };
+// Overtime: the closing board plays on for another eight shifts. Nothing
+// resets but the shift counter: hosts, staff, tools, upgrades, reputation,
+// breaches and intel all carry over, and the final accounting is redone at
+// the next close over everything so far.
+function startOvertime() {
+  if (!G || !G.gameOver) return;
+  closeModal();
+  G.gameOver = false; G.final = null; G.collections = null;
+  G.overtime = (G.overtime || 0) + 1;
+  G.round = 0; // the shift change that follows opens shift 1
+  for (const p of G.players) { p.breakdown = null; p.total = undefined; }
+  log(`Overtime ${G.overtime}: the shift counter resets, the board stays.`, "warn");
+  go("shift", "run");
+  resetSel(); UI.undo = []; UI.undoBarrier = 0;
+  advance();
+}
 
 function stepExtraReveal(nextPhase, nextStep) {
   if (G.players.length === 2) {
@@ -4701,7 +4719,7 @@ function renderReports(clickable) {
 }
 function renderStrip() {
   const p = human(), s = UI.sel, live = G.phase === "activate" && G.step === "human";
-  let html = `<div id="strip" aria-live="off"><div class="strip-head"><span class="strip-phase">${esc(PHASE_NAMES[G.phase] || "")}</span><span class="strip-shift">shift ${Math.min(G.round, ROUNDS)} of ${ROUNDS}</span></div>`;
+  let html = `<div id="strip" aria-live="off"><div class="strip-head"><span class="strip-phase">${esc(PHASE_NAMES[G.phase] || "")}</span><span class="strip-shift">shift ${Math.min(G.round, ROUNDS)} of ${ROUNDS}${G.overtime ? ` · overtime ${G.overtime}` : ""}</span></div>`;
   if (live) {
     const m = s.meepleUid ? meepleOf(p, s.meepleUid) : null;
     const dept = s.deptUid ? deptOf(p, s.deptUid) : null;
@@ -4783,7 +4801,7 @@ function updateHUD() {
   const shiftN = Math.min(G.round, ROUNDS);
   const bag = `<span class="bagdots">${COLOURS.map(c => `<span class="mini-dot dot c-${c}"></span>${G.bag[c]}`).join(" ")}</span>`;
   const stats = [
-    ["Shift", `${shiftN}/${ROUNDS}`],
+    ["Shift", `${shiftN}/${ROUNDS}${G.overtime ? ` <span class="ot">OT${G.overtime}</span>` : ""}`, "", "", `${shiftN}/${ROUNDS}/${G.overtime || 0}`],
     ["Reputation", p.score, p.score < 0 ? "bad" : ""],
     ["Intel", p.bloodBags],
     ["Breaches", p.fatalities, p.fatalities ? "bad" : ""],
@@ -4803,7 +4821,7 @@ function updateHUD() {
 function promptFor() {
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   const B = (label, fn, opt = {}) => ({ label, fn, ...opt });
-  if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("New game", "showMainMenu()")] };
+  if (G.gameOver) return { text: "Shift log closed.", buttons: [B("Summary", "showGameOver()", { primary: true }), B("Overtime", "startOvertime()"), B("New game", "showMainMenu()")] };
   if (UI.animating) return { text: "…", buttons: [] };
   if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
   if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
@@ -5010,6 +5028,7 @@ function showHowToPlay(tab) {
     <div ${panel("overview")}>
       <p>You run a Security Operations Center. Compromised hosts arrive as dice: the face is the host's <b>integrity</b>, from 1 (about to be lost) to 6 (nearly clean). Staff your tools with analysts to raise integrity. A host pushed past 6 is <b>restored</b> to production and scores reputation. A host that drops below 1 is a <b>breach</b> and costs reputation at the end.</p>
       <p>Eight shifts. Most reputation wins. Dice colours are just colours: some tools and specialists only work on red, yellow or green hosts.</p>
+      <p><b>Overtime.</b> When the shift 8 scorecard comes up you may play on: the shift counter resets to 1 and everything else stays as it is, hosts, staff, tools, upgrades, reputation, breaches and intel. The scorecard at the next close counts everything since the start.</p>
       <h4>Your SOC</h4>
       <ul>
         <li><b>Quarantine segments</b> Q1–Q4 hold 3 hosts each: 12 slots total. A host sits in the upper <b>Queued</b> slot until it is worked on, then moves to the lower <b>Worked</b> slot.</li>
@@ -5130,7 +5149,7 @@ function showGameOver() {
   if (G.cfg.solo) {
     const p = human(), b = p.breakdown;
     sfx(b.total >= 30 ? "win" : "lose");
-    html = `<h2 class="${b.total >= 45 ? "win" : ""}">Shift 8 closed</h2><div class="grade ${b.total >= 45 ? "win" : ""}">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
+    html = `<h2 class="${b.total >= 45 ? "win" : ""}">${G.overtime ? `Overtime ${G.overtime} closed` : "Shift 8 closed"}</h2><div class="grade ${b.total >= 45 ? "win" : ""}">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
       <table class="score-table">
         <tr><td>Restorations and filed reports</td><td>${b.base}</td></tr>
         <tr><td>Breaches (${p.fatalities})</td><td>${b.fatalities}</td></tr>
@@ -5138,7 +5157,7 @@ function showGameOver() {
         <tr><td>Unfiled reports (${b.incompleteReports})</td><td>${b.reports}</td></tr>
         <tr><td class="tot">Final reputation</td><td class="tot">${b.total}</td></tr>
       </table>
-      <p style="text-align:center">${p.dischargedTotal} hosts restored over 8 shifts.</p>`;
+      <p style="text-align:center">${p.dischargedTotal} hosts restored over ${ROUNDS * (1 + (G.overtime || 0))} shifts.</p>`;
   } else {
     sfx(won ? "win" : "lose");
     html = `<h2 class="${won ? "win" : ""}">${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
@@ -5147,9 +5166,9 @@ function showGameOver() {
       const p = G.players[id], b = p.breakdown;
       html += `<tr style="${id === 0 ? "color:var(--amber)" : ""}"><td>${i + 1}</td><td>${esc(p.name)}</td><td>${b.base}</td><td>${b.fatalities}</td><td>+${b.bloodBags}</td><td>${p.dischargedTotal}</td>${G.cfg.collections ? `<td>${b.collections + b.leftover}</td>` : ""}<td><b>${b.total}</b></td></tr>`;
     });
-    html += `</table><p class="hint">Ties break on fewer hosts left, then higher total integrity.</p>`;
+    html += `</table><p class="hint">${G.overtime ? `After ${G.overtime === 1 ? "one overtime" : G.overtime + " overtimes"}: ${ROUNDS * (1 + G.overtime)} shifts in all. ` : ""}Ties break on fewer hosts left, then higher total integrity.</p>`;
   }
-  mc.innerHTML = html + `<div class="modal-actions"><button class="action-btn primary" onclick="showMainMenu()">New game</button><button class="action-btn" onclick="closeModal()">Look at the board</button></div>`;
+  mc.innerHTML = html + `<div class="modal-actions"><button class="action-btn primary" onclick="showMainMenu()">New game</button><button class="action-btn" onclick="startOvertime()" title="Play on from this board for another eight shifts. Everything carries over; only the shift counter resets.">Overtime</button></div>`;
   openModal(true);
 }
 
