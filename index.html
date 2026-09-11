@@ -363,8 +363,6 @@ body::after {
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
 .meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
 .meeple .ab { font-size: 11px; color: var(--green-dim); line-height: 1.3; }
-.meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
-.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); } .meeple.b-pink { border-left-color: var(--pink); }
 .meeple.used::after { content: "PLACED"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
 .meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
 .meeple.returnable { border-color: var(--amber); cursor: pointer; }
@@ -376,6 +374,10 @@ body::after {
 .meeple.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.6); }
 .meeple.used { opacity: 0.45; }
 .meeple.off { opacity: 0.45; border-style: dashed; }
+/* The colour accent on the left edge outranks every state above (avail,
+   sel, returnable set border-color on all four sides): it comes last. */
+.meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
+.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); } .meeple.b-pink { border-left-color: var(--pink); }
 .mini-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
 
 #specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
@@ -385,9 +387,6 @@ body::after {
 }
 .spec-card .sn { color: var(--white); font-size: 11px; }
 .spec-card .sd { color: var(--green-dim); font-size: 11px; }
-.spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
-.spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
-.spec-card.tag-blue { border-top-color: var(--blue); } .spec-card.tag-pink { border-top-color: var(--pink); }
 .spec-card.returnable { border-color: var(--amber); cursor: pointer; }
 .spec-card.clickable { cursor: pointer; }
 .spec-card.clickable:hover { border-color: var(--green); }
@@ -431,6 +430,11 @@ body::after {
 .dept-tile.pickable:hover { box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); }
 .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
 .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
+/* The colour accent on the top edge outranks pickable/sel/returnable, which
+   set border-color on all four sides: it comes after them. */
+.spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
+.spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
+.spec-card.tag-blue { border-top-color: var(--blue); } .spec-card.tag-pink { border-top-color: var(--pink); }
 /* Dealing and taking. Cards deal in from the stacks; a taken card goes to
    its new owner: yours onto your board (a FLIP move), a rival's off toward
    the rivals panel with the rival's name on it. */
