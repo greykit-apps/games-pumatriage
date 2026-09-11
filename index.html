@@ -635,15 +635,42 @@ details.addons summary::-webkit-details-marker { display: none; }
   #depts { min-height: 90px; }
 }
 /* Short viewports (laptops): fitting the board beats reserving room for
-   growth, so the staff and tool rows size to their content there. */
+   growth, so nothing here holds space, and the three rows above the strip
+   pack down so the quarantine segments stay on screen without scrolling. */
 @media (max-height: 840px) {
   #staff, #depts { min-height: 0; }
   .grp { padding: 3px 8px 5px; margin-bottom: 5px; }
   .grp > .board-row { margin-bottom: 3px; }
-  .dept-tile { min-height: 60px; padding: 6px 10px; }
-  .meeple { min-height: 46px; padding: 5px 8px; }
+  /* Staff as one-line chips sized to the name: the ability is the tooltip,
+     and the strip spells it out once the analyst is picked. */
+  #staff { display: flex; flex-wrap: wrap; gap: 5px; }
+  .meeple { flex: 0 1 auto; flex-direction: row; align-items: center; gap: 8px; min-height: 0; padding: 4px 8px; }
+  .meeple .mh { gap: 6px; }
+  .meeple .ab { display: none; }
+  .meeple .key { margin-left: 4px; }
+  .meeple.used::after, .meeple.off::after { position: static; }
+  /* Tools: shorter tiles in narrower columns, so one more fits a row. */
+  #depts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
+  .dept-tile { min-height: 0; padding: 5px 18px 5px 8px; }
+  .dept-tile .dn { font-size: 12px; }
+  .dept-tile .dr { font-size: 11px; margin-top: 2px; }
+  .dept-tile .meep-on { right: 5px; bottom: 5px; }
   .ward { padding: 3px 6px 6px; }
-  #strip { margin-top: 8px; }
+  .slot { width: calc(var(--die) + 6px); height: calc(var(--die) + 6px); }
+  .bed { gap: 3px; }
+  .nursery { margin-top: 4px; padding: 2px 5px 3px; }
+  .nursery .nslots { min-height: 30px; }
+  .nursery .slot.g { width: 30px; height: 30px; }
+  #tray { min-height: 28px; }
+  /* The strip drops its head (the HUD already shows the phase and the
+     shift) and packs the prompt, the buttons and the intel/undo row into
+     two lines. */
+  #strip { margin-top: 6px; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .strip-head { display: none; }
+  .strip-rule { flex: 1 1 100%; padding: 1px 0; }
+  #phase-instructions { flex: 1 1 100%; min-height: 0; margin: 0; }
+  #action-buttons { flex: 0 0 auto; }
+  .strip-tools { flex: 1 1 auto; margin: 0; padding: 0; border-top: 0; }
 }
 @media (max-width: 960px) {
   :root { --die: clamp(36px, 9vw, 48px); }
