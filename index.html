@@ -3902,6 +3902,7 @@ function showMainMenu(keepScroll) {
   const mc = document.getElementById("modal-content");
   const scroll = keepScroll ? mc.scrollTop : 0;
   const preset = currentPreset();
+  const solo = houseRules.mode === 0; // solo has no levels: the difficulty pills sit dark
   const saved = hasSave();
   const keys = Object.keys(SLIDER_DEFS).filter(k => !SLIDER_DEFS[k].showIf || SLIDER_DEFS[k].showIf(houseRules));
   const base = keys.filter(k => !SLIDER_DEFS[k].addon && !SLIDER_DEFS[k].expansion), addons = keys.filter(k => SLIDER_DEFS[k].addon), expansions = keys.filter(k => SLIDER_DEFS[k].expansion);
@@ -3911,8 +3912,8 @@ function showMainMenu(keepScroll) {
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
     ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
     <div class="presets">
-      ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')" title="${esc(DIFFICULTY_PRESETS[id].title || "")}">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
-      <button class="action-btn preset-btn ${preset === null ? "on" : ""}" onclick="openHouseRules()" title="Any mix of rules that matches no preset. Click to see the house rules.">Custom</button>
+      ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${!solo && preset === id ? "on" : ""}" onclick="setPreset('${id}')" ${solo ? "disabled" : ""} title="${esc(solo ? "Difficulty presets are for rival games; solo has no levels" : DIFFICULTY_PRESETS[id].title || "")}">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
+      <button class="action-btn preset-btn ${!solo && preset === null ? "on" : ""}" onclick="openHouseRules()" ${solo ? "disabled" : ""} title="${solo ? "Solo has no levels; set the house rules below" : "Any mix of rules that matches no preset. Click to see the house rules."}">Custom</button>
       <span class="preset-sep" aria-hidden="true"></span>
       <button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" aria-pressed="${houseRules.mode === 0}" onclick="setMode(houseRules.mode === 0 ? 1 : 0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button>
     </div>
