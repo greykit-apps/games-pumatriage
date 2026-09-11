@@ -1,0 +1,14 @@
+{
+  "name": "PumaTriage",
+  "short_name": "PumaTriage",
+  "description": "An incident-response dice game. Run a Security Operations Center, work compromised hosts back to health, and restore them to production before dwell time finishes them off.",
+  "start_url": ".",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" },
+    { "src": "apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
