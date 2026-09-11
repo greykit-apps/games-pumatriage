@@ -680,8 +680,9 @@ details.addons summary::-webkit-details-marker { display: none; }
    ============================================================ */
 const COLOURS = ["red", "yellow", "green"];
 const COLOUR_ORDER = { red: 0, yellow: 1, green: 2 };
-const COLOUR_NAME = { red: "Red", yellow: "Yellow", green: "Green", white: "White", blue: "Blue" };
-const COLOUR_ABBR = { red: "R", yellow: "Y", green: "G" };
+const COLOUR_NAME = { red: "Red", yellow: "Yellow", green: "Green", white: "White", blue: "Blue", pink: "Pink" };
+const COLOUR_ABBR = { red: "R", yellow: "Y", green: "G", pink: "P" };
+const PINK = "pink"; // the Maternity expansion's dice: never in the bag, never recoloured
 
 const ROUNDS = 8;
 const WARDS = 4;                 // 4 wards on the starting board
@@ -698,10 +699,13 @@ const SPEC_PARTIAL_OK = false;   // specialist follow-ups must be fully resolvab
 const ADMIN_MOST_TIES_COUNT = true; // "discharged the most" — ties still count
 
 // Discharge points: 1st=1, 2nd–6th=2 each, 7th–8th=3, 9th–10th=4, 11th–12th=5. Index = count.
-const DISCHARGE_POINTS = [0, 1, 3, 5, 7, 9, 11, 14, 17, 21, 25, 30, 35];
+// 13–20 come from the Community Care chart (the Maternity expansion can
+// restore up to 20 in a shift). Its printed 16th value, 68, sits between
+// 52 and 75 and looks like a misprint for 58; it is kept as printed.
+const DISCHARGE_POINTS = [0, 1, 3, 5, 7, 9, 11, 14, 17, 21, 25, 30, 35, 40, 46, 52, 68, 75, 82, 90, 98];
 function dischargePoints(n) {
   if (n < DISCHARGE_POINTS.length) return DISCHARGE_POINTS[n];
-  return DISCHARGE_POINTS[DISCHARGE_POINTS.length - 1] + 5 * (n - (DISCHARGE_POINTS.length - 1));
+  return DISCHARGE_POINTS[DISCHARGE_POINTS.length - 1] + 8 * (n - (DISCHARGE_POINTS.length - 1));
 }
 
 // Dice per colour by table size. The box has 21 of each; 3p removes 3, 2p removes 6, solo removes 10.
@@ -713,6 +717,29 @@ const DICE_PER_COLOUR = { 2: 15, 3: 18, 4: 21, solo: 11 };
 const START_DEPTS = ["ccu", "oncology", "pharmacy", "intensive", "imaging", "clinic"];
 
 const NURSES_AT_START = 3;
+
+/* ============================================================
+   MATERNITY EXPANSION → "Virtualization" mode
+   Community Care's Maternity module, one-for-one: Mother → pink
+   hypervisor die, Infant → small pink guest die, Paediatric ward →
+   guest segment under each quarantine segment, Midwife die →
+   provisioning roll. Pink dice never enter the bag, never suffer
+   normal dwell time, cannot be recoloured, and a hypervisor is only
+   restored together with its guests.
+   Not printed in the rulebook: the Midwife die's face split (twins on
+   2 of 6 here) and which two of the 18 specialist cards are the third
+   copies (2 of each of the 8 here).
+   ============================================================ */
+const MAT = {
+  mothers: 16, infants: 24,          // dice in the box (the deluxe pack adds 4 and 6)
+  maxMothers: 4,                     // never more than 4 hypervisors in one SOC
+  startValue: 4,                     // new hypervisors and guests arrive at 4
+  twinsFaces: 2,                     // Midwife die faces that mean twins, of 6
+  extraNurses: 1,                    // every SOC starts with a 4th analyst
+  // Intake draws fewer coloured dice and adds hypervisors, by table size.
+  intake: { 2: { coloured: 7, mothers: 2 }, 3: { coloured: 10, mothers: 2 }, 4: { coloured: 12, mothers: 3 } },
+  displayExtra: { 2: 1, 3: 2, 4: 2 }, // maternity tools and specialists added to the display
+};
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
 const SKILL_NAMES = ["Script Kiddie", "Hacktivist", "Nation State"];
 
@@ -744,11 +771,24 @@ const DEPT_DEFS = {
   radiology:  { name: "EDR Sweep",       tag: "any",    sel: { n: 3, values: [1, 2, 3] }, heal: 1 },                         // Radiology
   triageCtr:  { name: "Triage Desk",     tag: "any",    sel: { n: 2, values: [1, 2, 3] }, heal: 2 },                         // Triage Centre
   // ---- Experimental Medicine mini-expansion (add-on) ----
-  drugTrial:  { name: "Beta Agent",      tag: "exp", addon: "experimental", sel: { n: 2 }, op: "reroll" },                   // Drug Trial Centre
-  physio:     { name: "Retagging Desk",  tag: "exp", addon: "experimental", sel: { n: 2, min: 1 }, op: "recolour" },         // Physiotherapy
-  expTherapy: { name: "Rollback Snapshot", tag: "exp", addon: "experimental", sel: { n: 1 }, op: "flip" },                   // Experimental Therapy
+  drugTrial:  { name: "Beta Agent",      tag: "exp", addon: "experimental", sel: { n: 2, noPink: true }, op: "reroll" },                   // Drug Trial Centre
+  physio:     { name: "Retagging Desk",  tag: "exp", addon: "experimental", sel: { n: 2, min: 1, noPink: true }, op: "recolour" },         // Physiotherapy
+  expTherapy: { name: "Rollback Snapshot", tag: "exp", addon: "experimental", sel: { n: 1, noPink: true }, op: "flip" },                   // Experimental Therapy
   training:   { name: "Tabletop Exercise", tag: "exp", addon: "experimental", sel: { n: 2, rel: "sameValue" }, heal: 1 },    // Training Department
+  // ---- Maternity expansion (Virtualization mode). Tag pink. ----
+  // The guest segment under each quarantine segment: a placement worth
+  // one step on one pink host, once per shift, while it holds guests.
+  nursery:    { name: "Guest Segment",   tag: "pink", nursery: true, sel: { n: 1, colour: PINK }, heal: 1 },                          // Paediatric Ward Chevron tile
+  clusterPatch:{ name: "Cluster Patch",  tag: "pink", maternity: true, sel: { n: 3, rel: "sameValue", pinkMin: 1 }, heal: 1, pinkHeal: 3 },                 // 3 same value, one pink: pink +3, others +1
+  liveMigrate:{ name: "Live Migration",  tag: "pink", maternity: true, sel: { n: 2, rel: "sameValue", pinkMin: 1 }, heal: 2, pinkHeal: 3, pinkOne: true },   // any +2 and a pink of equal value +3
+  fleetUpdate:{ name: "Fleet Update",    tag: "pink", maternity: true, sel: { n: 4, rel: "sameValue", needMother: true, needInfant: true }, heal: 1 },       // 4 equal, a hypervisor and a guest among them
+  bootChain:  { name: "Boot Chain",      tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "lowest" }, heal: 1, pinkHeal: 3 },        // consecutive, lowest is pink: pink +3, others +1
+  pipeline:   { name: "Pipeline Rebuild", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "middle" }, heal: 1, pinkHeal: 3 },       // consecutive, middle is pink
+  failover:   { name: "Failover Cluster", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "highest" }, heal: 1, pinkHeal: 3 },      // consecutive, highest is pink
+  isolation:  { name: "Isolation Bay",   tag: "pink", maternity: true, sel: { n: 3, pinkMin: 1, pinkMax: 1 }, pinkHeal: 3, op: "park" },                    // pink +3, two others moved down (worked, not healed)
+  guestReimage:{ name: "Guest Reimage",  tag: "pink", maternity: true, sel: { n: 2, pinkMin: 1, pinkMax: 1 }, pinkHeal: 2, op: "rerollOther" },             // pink +2, re-roll the other
 };
+const MATERNITY_DEPTS = ["clusterPatch", "liveMigrate", "fleetUpdate", "bootChain", "pipeline", "failover", "isolation", "guestReimage"];
 const IMPROVEMENT_DEPTS = ["opTheatre", "cardiology", "anaesthesia", "crash", "ent", "immunology", "allergy", "ortho", "urology", "renal", "radiology", "triageCtr"];
 const EXPERIMENTAL_DEPTS = ["drugTrial", "physio", "expTherapy", "training"];
 
@@ -777,7 +817,17 @@ const SPEC_DEFS = {
   medStudent:   { name: "Intern",             colour: "white",  addon: "experimental", when: { healedAny: true }, then: { from: "other", n: 1, heal: 1, and: { n: 1, heal: -1 } } }, // Medical Student
   physioTh:     { name: "Intel Analyst",      colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { from: "any", n: 1, op: "recolour" } }, // Physiotherapist
   haemTech:     { name: "Intel Broker",       colour: "white",  addon: "experimental", when: { dischargedAny: true }, then: { op: "bloodBag" } },            // Haematology Technician
+  // ---- Maternity expansion specialists (Virtualization mode). Pink meeples. ----
+  snapshotEng:  { name: "Snapshot Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "healedOf:pink", n: 1, heal: 2 } },      // that pink patient heals 2 more
+  clusterAdmin: { name: "Cluster Admin",      colour: PINK, maternity: true, when: { healedPink: true }, then: { pair: true, heal: 1 } },                       // another pink +1 and any host of that value +1
+  orchestrator: { name: "Orchestration Lead", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 2, heal: 1 } },       // two other pink +1 each
+  migrationEng: { name: "Migration Engineer", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 1, heal: 2 } }, // one other of equal value +2
+  platformEng:  { name: "Platform Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 2, heal: 1 } }, // two others of equal value +1 each
+  hypervisorSp: { name: "Hypervisor Specialist", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 1, heal: 2 } },    // a different pink +2
+  cloudArch:    { name: "Cloud Architect",    colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "other", n: 1, heal: 1 } },              // any other host +1
+  tenancyAud:   { name: "Tenancy Auditor",    colour: PINK, maternity: true, when: { dischargedPink: true }, then: { op: "bloodBag", n: 2 } },                  // restores a pink host → +2 intel
 };
+const MATERNITY_SPECS = ["snapshotEng", "clusterAdmin", "orchestrator", "migrationEng", "platformEng", "hypervisorSp", "cloudArch", "tenancyAud"];
 const BASE_SPECS = ["surgeon", "anaesthetist", "cardiologist", "pharmacist", "virologist", "microbiologist", "haematologist", "urologist", "radiologist", "triageNurse", "paramedic", "gp"];
 const PROMO_SPECS = ["consultant", "admissions"];
 const EXPERIMENTAL_SPECS = ["pathologist", "expChemist", "registrar", "medStudent", "physioTh", "haemTech"];
@@ -792,6 +842,9 @@ const ADMIN_DEFS = {
   yellowShield:{ name: "Yellow Containment",  kind: "shield", colour: "yellow" },
   greenShield:{ name: "Green Containment",    kind: "shield", colour: "green" },
   most:       { name: "Executive Visibility", kind: "most" },                         // discharged the most this round → +1
+  // Maternity expansion directives, shuffled in with the rest in Virtualization mode.
+  twins:      { name: "Provisioning Policy",  kind: "twins", maternity: true },       // choose one guest or twins instead of rolling
+  matPair:    { name: "Tenant Bonus",         kind: "matPair", maternity: true },     // 2 hypervisors and 2 guests restored in a shift → +3
 };
 function adminDesc(id) {
   const a = ADMIN_DEFS[id];
@@ -800,6 +853,8 @@ function adminDesc(id) {
     case "eachColour": return "Restore at least one host of each colour in a shift: +1 reputation.";
     case "shield": return `One queued ${a.colour} host does not degrade from dwell time each shift.`;
     case "most": return "Restore the most hosts in a shift: +1 reputation.";
+    case "twins": return "Each new hypervisor brings one guest or twins, your choice, instead of rolling for it.";
+    case "matPair": return "Restore two hypervisors and two guests in one shift: +3 reputation.";
   }
   return "";
 }
@@ -842,6 +897,8 @@ const SLIDER_DEFS = {
   rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Each SOC is dealt two and keeps one; a scoring or shielding rule for the whole game" },
   tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
+  // Expansions (whole modes; the Dice Hospital expansion modules)
+  maternity:   { label: "Virtualization",     min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "The Maternity expansion: pink hypervisors arrive with guest hosts in a segment of their own, only degrade when they share a segment, and are restored together. A 4th analyst, 8 new tools, 8 specialists and 2 directives." },
   // Add-ons
   promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
   experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Four experimental tools and six more specialists join the stacks" },
@@ -853,7 +910,7 @@ const SLIDER_DEFS = {
   soloDblFat:  { label: "Double breach penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: breaches cost 4 instead of 2" },
   soloDblRep:  { label: "Double report penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: incomplete Audit Reports subtract double" },
 };
-const ADDONS_OFF = { promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
+const ADDONS_OFF = { maternity: 0, promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
 const DIFFICULTY_PRESETS = {
   easy:   { label: "Beginner", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
   normal: { label: "Standard", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
@@ -877,6 +934,7 @@ function resolveConfig(h = houseRules) {
     epidemic: !!h.epidemic,
     superbug: !!h.superbug,
     collections: !solo && !!h.collections,
+    maternity: !solo && !!h.maternity,
     soloDblFat: solo && !!h.soloDblFat,
     soloDblRep: solo && !!h.soloDblRep,
     dicePerColour: solo ? DICE_PER_COLOUR.solo : DICE_PER_COLOUR[players],
@@ -3467,7 +3525,7 @@ function showMainMenu(keepScroll) {
   const preset = currentPreset();
   const saved = hasSave();
   const keys = Object.keys(SLIDER_DEFS).filter(k => !SLIDER_DEFS[k].showIf || SLIDER_DEFS[k].showIf(houseRules));
-  const base = keys.filter(k => !SLIDER_DEFS[k].addon), addons = keys.filter(k => SLIDER_DEFS[k].addon);
+  const base = keys.filter(k => !SLIDER_DEFS[k].addon && !SLIDER_DEFS[k].expansion), addons = keys.filter(k => SLIDER_DEFS[k].addon), expansions = keys.filter(k => SLIDER_DEFS[k].expansion);
   const addonsOn = addons.filter(k => houseRules[k]).length;
   mc.innerHTML = `
     <h2>PumaTriage</h2>
@@ -3480,6 +3538,7 @@ function showMainMenu(keepScroll) {
     </div>
     <div class="rules-head">Table</div>
     ${base.map(renderRuleRow).join("")}
+    ${expansions.length ? '<div class="rules-head">Expansions</div>' + expansions.map(renderRuleRow).join("") : ""}
     <details class="addons" ${UI.addonsOpen || addonsOn ? "open" : ""} ontoggle="UI.addonsOpen = this.open"><summary>House rules — ${addonsOn ? addonsOn + " on" : "all off"}</summary>
     ${addons.map(renderRuleRow).join("")}
     </details>
