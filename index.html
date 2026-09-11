@@ -388,7 +388,11 @@ body::after {
 /* Dealing and taking. Cards deal in from the stacks; a taken card goes to
    its new owner: yours onto your board (a FLIP move), a rival's off toward
    the rivals panel with the rival's name on it. */
-.dept-tile.dealt, .spec-card.dealt { animation: deal-in .32s var(--ease-out-quart) both; }
+.dept-tile.dealt, .spec-card.dealt { animation: deal-in .38s var(--ease-out-quart) both; }
+/* A rival weighing the display: its choice lifts under an amber outline, named. */
+.dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--amber); outline-offset: 1px; box-shadow: 0 0 14px rgba(255,176,0,0.5); animation: chosen-lift .3s var(--ease-out-quart) both; }
+@keyframes chosen-lift { 0% { transform: none; } 100% { transform: translateY(-4px); } }
+.chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
 .dept-tile.leaving, .spec-card.leaving { animation: card-away .6s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
 @keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
@@ -891,7 +895,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null; UI.choosing = null;
   if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
@@ -1536,7 +1540,7 @@ const STEP = {
         if (p.isBot) {
           applyPickAmbulance(p, botPickAmbulance(p));
           // One rival at a time, so each claim stamp lands on its own.
-          if (!UI.headless && !UI.reducedMotion) return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 450 }]);
+          if (!UI.headless && !UI.reducedMotion) return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 500, min: 180 }]);
           continue;
         }
         G.actor = p.id; return WAIT;
@@ -1580,7 +1584,8 @@ const STEP = {
       if (!G.dealt) {
         G.dealt = true;
         const n = G.deptDisplay.filter(Boolean).length + G.specDisplay.filter(Boolean).length;
-        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 70 }, { type: "wait", delay: 70 * n + 320 }]);
+        // Deal, then leave the whole display on the table long enough to read.
+        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 90 }, { type: "wait", delay: 90 * n + 380 + 1000, min: 90 * n + 500 }]);
       }
       // Your own pick gets its beat too: the card flies to your board and the
       // row closes up before any rival moves.
@@ -1600,14 +1605,23 @@ const STEP = {
         if (p.took) continue;
         if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; continue; }
         if (p.isBot) {
-          const c = botPickImprovement(p);
+          const paced = !UI.headless && !UI.reducedMotion;
+          // One rival at a time, in three beats: the rival's choice is
+          // highlighted on the table, then that card slides off toward its
+          // panel card, then the row closes up (the last render no longer
+          // carries the leaving card, so the cards FLIP into the gap).
+          if (paced && !(UI.choosing && UI.choosing.pid === p.id)) {
+            const c = botPickImprovement(p);
+            if (!c) { p.took = true; continue; }
+            UI.choosing = { kind: c.kind, idx: c.idx, pid: p.id, name: p.name };
+            return animate([{ type: "render" }, { type: "wait", delay: 700, min: 280 }]);
+          }
+          const c = paced ? UI.choosing : botPickImprovement(p);
+          UI.choosing = null;
           if (!c) { p.took = true; continue; }
           const item = c.kind === "dept" ? G.deptDisplay[c.idx] : G.specDisplay[c.idx];
           applyTake(p, c.kind, c.idx);
-          // One rival at a time, in two beats: the card it took slides off
-          // toward its panel card, then the row closes up (the second render
-          // no longer carries the leaving card, so the cards FLIP into the gap).
-          if (!UI.headless && !UI.reducedMotion) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 650 }, { type: "render" }, { type: "wait", delay: 380 }]); }
+          if (paced) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 700, min: 320 }, { type: "render" }, { type: "wait", delay: 420, min: 200 }]); }
           continue;
         }
         G.actor = p.id; return WAIT;
@@ -2597,8 +2611,10 @@ function processEventQueue() {
     case "wait": break;
     case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
   }
+  // Speed scales every wait, but a wait may carry a floor (`min`) so a story
+  // beat, like a rival weighing the display, stays legible even at ≫.
   if (UI.reducedMotion) delay = Math.min(delay, 30);
-  delay = Math.round(delay * SPEED_FACTOR[UI.speed]);
+  else delay = Math.max(Math.round(delay * SPEED_FACTOR[UI.speed]), evt.min || 0);
   UI.queueTimer = setTimeout(processEventQueue, delay);
 }
 function screenPulse(colour) {
@@ -3104,13 +3120,14 @@ function renderDisplay(pickable) {
   let html = '<div id="display">';
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
-  const lv = UI.leaving; // a rival's pick, drawn once more on its way out
+  const lv = UI.leaving, ch = UI.choosing; // a rival's pick: first highlighted, then drawn once more on its way out
+  const chosen = (kind, i) => ch && ch.kind === kind && ch.idx === i;
   dd.forEach((t, i) => {
-    if (t) html += renderDeptTile(t, pickable ? "pickable" : "", `data-key="d${i}" ` + (pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""));
+    if (t) html += renderDeptTile(t, chosen("dept", i) ? "chosen" : pickable ? "pickable" : "", `data-key="d${i}" ` + (chosen("dept", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "dept" && lv.idx === i) html += renderDeptTile(lv.item, "leaving", `data-key="d${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
   });
   sd.forEach((t, i) => {
-    if (t) html += renderSpecCard(t, pickable ? "pickable" : "", `data-key="s${i}" ` + (pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""));
+    if (t) html += renderSpecCard(t, chosen("spec", i) ? "chosen" : pickable ? "pickable" : "", `data-key="s${i}" ` + (chosen("spec", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "spec" && lv.idx === i) html += renderSpecCard(lv.item, "leaving", `data-key="s${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
   });
   html += '</div>';
@@ -3196,7 +3213,7 @@ function renderRivals() {
   let html = "";
   for (const p of G.players.slice(1)) {
     const dice = boardDice(p);
-    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
+    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id || (UI.choosing && UI.choosing.pid === p.id) ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
     html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, d.treated ? "treated" : "")).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
