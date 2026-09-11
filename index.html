@@ -162,11 +162,44 @@ body::after {
    DICE
    ============================================================ */
 .die {
-  display: inline-grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-  width: var(--die); height: var(--die); padding: 4px; gap: 1px;
+  display: inline-block; width: var(--die); height: var(--die); padding: 4px;
   background: #050805; border: 2px solid; border-radius: 6px; cursor: default;
   position: relative; vertical-align: middle; flex: none;
   transition: transform .3s var(--ease-out-quart), box-shadow .2s, opacity .3s;
+}
+/* The face is its own element so the odometer roll (on the face) and the
+   FLIP slide (on the die) never fight over one transform. */
+.die .face { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 1px; width: 100%; height: 100%; }
+.die .face.roll-up { animation: face-roll-up .26s ease-in-out; }
+.die .face.roll-down { animation: face-roll-down .26s ease-in-out; }
+@keyframes face-roll-up {
+  0% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+  49.9% { transform: perspective(160px) rotateX(90deg) translateY(-35%); opacity: .3; }
+  50% { transform: perspective(160px) rotateX(-90deg) translateY(35%); opacity: .3; }
+  100% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+}
+@keyframes face-roll-down {
+  0% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+  49.9% { transform: perspective(160px) rotateX(-90deg) translateY(35%); opacity: .3; }
+  50% { transform: perspective(160px) rotateX(90deg) translateY(-35%); opacity: .3; }
+  100% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+}
+/* Specialist follow-up landing on a host: a burst ring and a floating +N. */
+.die.bonus::before { content: ""; position: absolute; inset: -3px; border-radius: 8px; pointer-events: none; animation: die-bonus .8s ease-out forwards; }
+@keyframes die-bonus {
+  0% { box-shadow: 0 0 0 0 rgba(0,204,204,0.95), 0 0 16px 4px rgba(255,255,255,0.9); }
+  100% { box-shadow: 0 0 0 16px rgba(0,204,204,0), 0 0 30px 14px rgba(255,255,255,0); }
+}
+.die-pop {
+  position: absolute; left: 50%; top: -4px; z-index: 3; pointer-events: none;
+  font: bold 14px var(--font-mono); color: var(--cyan); text-shadow: 0 0 6px currentColor, 0 0 2px #000;
+  animation: die-pop .9s ease-out forwards;
+}
+.die-pop.down { color: var(--red); }
+@keyframes die-pop {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, -10px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -30px) scale(1); }
 }
 .die .pip { border-radius: 50%; opacity: 0; background: currentColor; }
 .die.v-1 .pip:nth-child(5),
@@ -818,7 +851,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null;
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
   UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
@@ -1081,7 +1114,7 @@ function narrowTargets(sel, dice, selectedUids) {
 }
 function selComplete(sel, selectedDice) { return matchesSel(sel, selectedDice); }
 
-function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [] }; }
+function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [], bonus: [] }; }
 function markTreated(p, die) {
   const x = findBed(p, die.uid);
   if (x && x.b.u === die) { x.b.t = die; x.b.u = null; }
@@ -1213,11 +1246,19 @@ function applySpec(p, def, ctx, dice, opt = {}) {
     const xPre = x.value, xColour = effColour(x);
     deteriorate(p, x, -t.and.heal, ctx);
     ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}, ${xColour} ${xPre}→${x.value <= 0 ? "breached" : x.value}`);
+    recordBonus(ctx, start); ctx.bonus.push({ uid: x.uid, delta: -1 });
     return;
   }
   const start = ctx.healed.length;
   for (const d of dice) heal(p, d, t.heal, ctx);
   ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}`);
+  recordBonus(ctx, start);
+}
+// Steps a specialist follow-up added per host, so the board can flag them.
+function recordBonus(ctx, start) {
+  const by = {};
+  for (const h of ctx.healed.slice(start)) by[h.uid] = (by[h.uid] || 0) + 1;
+  for (const uid in by) ctx.bonus.push({ uid: +uid, delta: by[uid] });
 }
 // "red 4→5, green 6→restored" from a run of ctx.healed entries.
 function describeHeals(entries) {
@@ -2063,7 +2104,7 @@ function runActivation(opt) {
     const o = specOptions(def, ctx, p);
     if (o) {
       if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(true); }
-      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(true); }
+      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); queueBonusFx(ctx); finishSpecLog(true); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
         o.ordered = !!def.then.and;
@@ -2088,10 +2129,13 @@ function finishSpecLog(auto) {
   }
   if (s.ctx && s.ctx.random) UI.undoBarrier = UI.undo.length;
 }
+// Hosts a follow-up just changed get a burst and a "+1" on the next render.
+function queueBonusFx(ctx) { if (ctx.bonus.length) UI.pendingBonus = new Map(ctx.bonus.map(b => [String(b.uid), b.delta])); }
 function finishSpec(opt) {
   const p = human(), s = UI.sel;
   applySpec(p, s.spec, s.ctx, selectedDice(), opt);
   sfx(s.ctx.discharged.length ? "discharge" : "heal");
+  queueBonusFx(s.ctx);
   finishSpecLog();
   afterAction();
 }
@@ -2491,26 +2535,64 @@ function showPhaseToast(text) {
   UI.phaseToastTimer = setTimeout(() => el.classList.remove("on"), 1400);
 }
 // FLIP: remember where every die was, rebuild the DOM, then slide each survivor from its old spot.
+function dieFace(el) { const m = /\bv-(\d)\b/.exec(el.className); return m ? +m[1] : null; }
 function snapshotRects() {
   UI.flipRects = new Map();
   if (UI.reducedMotion) return;
-  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, el.getBoundingClientRect()); });
+  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, { rect: el.getBoundingClientRect(), value: dieFace(el) }); });
 }
+// A die whose value changed rolls face by face; one that also moved holds
+// its old spot until the roll ends, then slides.
 function playFlip() {
+  const bonus = UI.pendingBonus; UI.pendingBonus = null;
   if (UI.reducedMotion || !UI.flipRects.size) return;
   document.querySelectorAll("#app .die[data-uid]").forEach(el => {
     const old = UI.flipRects.get(el.dataset.uid);
     if (!old) { el.classList.add("bump"); return; }
     const now = el.getBoundingClientRect();
-    const dx = old.left - now.left, dy = old.top - now.top;
-    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-    el.style.transition = "none";
-    el.style.transform = `translate(${dx}px, ${dy}px)`;
-    void el.offsetWidth;
-    el.style.transition = "";
-    el.style.transform = "";
+    const dx = old.rect.left - now.left, dy = old.rect.top - now.top;
+    const moved = Math.abs(dx) >= 1 || Math.abs(dy) >= 1;
+    const value = dieFace(el);
+    const rolls = old.value !== null && value !== null && old.value !== value;
+    if (!moved && !rolls) return;
+    const slide = () => { if (!el.isConnected) return; void el.offsetWidth; el.style.transition = ""; el.style.transform = ""; };
+    if (moved) { el.style.transition = "none"; el.style.transform = `translate(${dx}px, ${dy}px)`; }
+    if (rolls) rollDie(el, old.value, value, (bonus && bonus.get(el.dataset.uid)) || 0, moved ? slide : null);
+    else slide();
   });
   UI.flipRects = new Map();
+}
+const ROLL_STEP_MS = 260, ROLL_GAP_MS = 170;
+// Odometer roll: each step turns the face one pip up or down, pausing between
+// steps so a +3 reads as three distinct turns. The last |bonus| steps carry
+// the specialist's follow-up and get the burst. done() runs after the last step.
+function rollDie(el, from, to, bonus, done) {
+  const face = el.querySelector(".face");
+  if (!face) { if (done) done(); return; }
+  const dir = to > from ? 1 : -1, steps = Math.abs(to - from), bonusAt = steps - Math.abs(bonus);
+  el.classList.remove("v-" + to); el.classList.add("v-" + from);
+  let v = from, i = 0;
+  const step = () => {
+    if (!el.isConnected) return;
+    if (bonus && i === bonusAt) bonusFx(el, bonus);
+    const cls = dir > 0 ? "roll-up" : "roll-down";
+    face.classList.remove(cls); void face.offsetWidth; face.classList.add(cls);
+    setTimeout(() => { if (!el.isConnected) return; el.classList.remove("v-" + v); v += dir; el.classList.add("v-" + v); }, ROLL_STEP_MS / 2);
+    setTimeout(() => {
+      if (!el.isConnected) return;
+      face.classList.remove(cls);
+      if (++i < steps) setTimeout(step, ROLL_GAP_MS); else if (done) done();
+    }, ROLL_STEP_MS);
+  };
+  step();
+}
+function bonusFx(el, delta) {
+  el.classList.remove("bonus"); void el.offsetWidth; el.classList.add("bonus");
+  const pop = document.createElement("span");
+  pop.className = "die-pop" + (delta < 0 ? " down" : "");
+  pop.textContent = (delta < 0 ? "−" : "+") + Math.abs(delta);
+  el.appendChild(pop);
+  setTimeout(() => pop.remove(), 1000);
 }
 
 /* ============================================================
@@ -2615,7 +2697,7 @@ function updateAll() {
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
 }
-function pips() { return '<span class="pip"></span>'.repeat(9); }
+function pips() { return '<span class="face">' + '<span class="pip"></span>'.repeat(9) + '</span>'; }
 function renderDie(die, opts = {}) {
   const c = effColour(die);
   const cls = ["die", "c-" + c, "v-" + die.value];
