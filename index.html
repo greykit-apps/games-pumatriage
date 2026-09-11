@@ -212,6 +212,15 @@ body::after {
 .die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
 .die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
 .die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(0,255,65,0.45); }
+/* Terminal faces: 7 is whole (restored hosts stay this way in the ladder), 0 is gone. */
+.die.v-7 { background: currentColor; box-shadow: 0 0 14px 4px currentColor; }
+.die-sm.v-7 { box-shadow: 0 0 6px 1px currentColor; }
+.die.v-0 { background: #050505; color: #2a2a2a; border-color: #2a2a2a; box-shadow: none; }
+.die.ghost { transition: none; }
+.die.ghost.leave-up { animation: ghost-up .7s ease-in forwards; }
+.die.ghost.leave-down { animation: ghost-down .7s ease-in forwards; }
+@keyframes ghost-up { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-44px) scale(0.55); } }
+@keyframes ghost-down { 0% { opacity: 1; transform: translateY(0) rotate(0) scale(1); } 100% { opacity: 0; transform: translateY(44px) rotate(14deg) scale(0.55); } }
 .die.tmp { border-style: dashed; }
 .die.tmp::after {
   content: ""; position: absolute; right: -4px; top: -4px; width: 9px; height: 9px; border-radius: 50%;
@@ -851,7 +860,8 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null;
+  if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
   UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
@@ -1130,22 +1140,32 @@ function heal(p, die, n, ctx) {
   }
 }
 function deteriorate(p, die, n, ctx) {
+  const pre = die.value;
   die.value -= n;
   markTreated(p, die);
-  if (die.value <= 0) fatality(p, die, ctx);
+  if (die.value <= 0) fatality(p, die, ctx, pre);
 }
 function discharge(p, die, ctx) {
   removeDie(p, die.uid);
   p.dischargedThisRound.push({ uid: die.uid, colour: die.colour, value: die.value });
   p.dischargedTotal++;
   if (ctx) ctx.discharged.push(die.uid);
+  noteDeparture(die.uid, "restored");
 }
-function fatality(p, die, ctx) {
+// steps: how many faces the die fell through to reach 0 (1 for a write-off).
+function fatality(p, die, ctx, steps = 1) {
   removeDie(p, die.uid);
   returnToBag(die);
   p.fatalities++;
   p.breachesThisRound++;
   if (ctx) ctx.fatalities++;
+  noteDeparture(die.uid, "breach", steps);
+}
+// The board animates a die that left (restored or breached) on its next render.
+function noteDeparture(uid, kind, steps) {
+  if (UI.headless || UI.simulating) return;
+  if (!UI.departed) UI.departed = new Map();
+  UI.departed.set(String(uid), { kind, steps: steps || 1 });
 }
 
 // Department effect. opt.colours = { uid: colour } for recolour ops.
@@ -1307,7 +1327,7 @@ function runNeglect(p) {
     if (die.uid === shieldUid) { results.push({ uid: die.uid, colour: die.colour, shielded: true }); continue; }
     const pre = die.value;
     die.value -= dmg;
-    if (die.value <= 0) { fatality(p, die, null); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
+    if (die.value <= 0) { fatality(p, die, null, pre); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
     else results.push({ uid: die.uid, colour: die.colour, pre, post: die.value });
   }
   return results;
@@ -2539,13 +2559,20 @@ function dieFace(el) { const m = /\bv-(\d)\b/.exec(el.className); return m ? +m[
 function snapshotRects() {
   UI.flipRects = new Map();
   if (UI.reducedMotion) return;
-  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, { rect: el.getBoundingClientRect(), value: dieFace(el) }); });
+  const slots = [...document.querySelectorAll("#wards .slot")];
+  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, { rect: el.getBoundingClientRect(), value: dieFace(el), cls: el.className, slot: slots.indexOf(el.closest(".slot")) }); });
 }
 // A die whose value changed rolls face by face; one that also moved holds
-// its old spot until the roll ends, then slides.
+// its old spot until the roll ends, then slides. A die that left the board
+// as a restore or a breach plays out as a ghost where it last stood.
 function playFlip() {
   const bonus = UI.pendingBonus; UI.pendingBonus = null;
+  const departed = UI.departed; UI.departed = null;
   if (UI.reducedMotion || !UI.flipRects.size) return;
+  if (departed) {
+    const still = new Set([...document.querySelectorAll("#app .die[data-uid]")].map(el => el.dataset.uid));
+    for (const [uid, old] of UI.flipRects) if (!still.has(uid) && departed.has(uid)) ghostDie(old, departed.get(uid), (bonus && bonus.get(uid)) || 0);
+  }
   document.querySelectorAll("#app .die[data-uid]").forEach(el => {
     const old = UI.flipRects.get(el.dataset.uid);
     if (!old) { el.classList.add("bump"); return; }
@@ -2557,19 +2584,22 @@ function playFlip() {
     if (!moved && !rolls) return;
     const slide = () => { if (!el.isConnected) return; void el.offsetWidth; el.style.transition = ""; el.style.transform = ""; };
     if (moved) { el.style.transition = "none"; el.style.transform = `translate(${dx}px, ${dy}px)`; }
-    if (rolls) rollDie(el, old.value, value, (bonus && bonus.get(el.dataset.uid)) || 0, moved ? slide : null);
+    // A host rolling up to whole (restored) lingers on that face before it slides to the ladder.
+    const after = !moved ? null : value === DISCHARGE_THRESHOLD ? () => setTimeout(slide, GHOST_HOLD_MS) : slide;
+    if (rolls) rollDie(el, old.value, value, (bonus && bonus.get(el.dataset.uid)) || 0, after);
     else slide();
   });
   UI.flipRects = new Map();
 }
-const ROLL_STEP_MS = 260, ROLL_GAP_MS = 170;
+const ROLL_STEP_MS = 260, ROLL_GAP_MS = 170, GHOST_HOLD_MS = 450;
 // Odometer roll: each step turns the face one pip up or down, pausing between
 // steps so a +3 reads as three distinct turns. The last |bonus| steps carry
-// the specialist's follow-up and get the burst. done() runs after the last step.
-function rollDie(el, from, to, bonus, done) {
+// the specialist's follow-up and get the burst. done() runs after the last
+// step. single: one turn straight from `from` to `to` (a write-off).
+function rollDie(el, from, to, bonus, done, single) {
   const face = el.querySelector(".face");
   if (!face) { if (done) done(); return; }
-  const dir = to > from ? 1 : -1, steps = Math.abs(to - from), bonusAt = steps - Math.abs(bonus);
+  const dir = to > from ? 1 : -1, steps = single ? 1 : Math.abs(to - from), bonusAt = steps - Math.abs(bonus);
   el.classList.remove("v-" + to); el.classList.add("v-" + from);
   let v = from, i = 0;
   const step = () => {
@@ -2577,7 +2607,7 @@ function rollDie(el, from, to, bonus, done) {
     if (bonus && i === bonusAt) bonusFx(el, bonus);
     const cls = dir > 0 ? "roll-up" : "roll-down";
     face.classList.remove(cls); void face.offsetWidth; face.classList.add(cls);
-    setTimeout(() => { if (!el.isConnected) return; el.classList.remove("v-" + v); v += dir; el.classList.add("v-" + v); }, ROLL_STEP_MS / 2);
+    setTimeout(() => { if (!el.isConnected) return; el.classList.remove("v-" + v); v = single ? to : v + dir; el.classList.add("v-" + v); }, ROLL_STEP_MS / 2);
     setTimeout(() => {
       if (!el.isConnected) return;
       face.classList.remove(cls);
@@ -2585,6 +2615,42 @@ function rollDie(el, from, to, bonus, done) {
     }, ROLL_STEP_MS);
   };
   step();
+}
+// A restored host rolls up to a whole face and floats off; a breached host
+// rolls down to an empty face and sinks. Both play on a fixed-position copy
+// where the die last stood, since the board no longer has it.
+function ghostDie(old, dep, bonus) {
+  if (old.value === null) return;
+  const r = old.rect;
+  const g = document.createElement("div");
+  g.className = old.cls.replace(/\b(clickable|target-ok|sel|dim|bump|shake|rolling|bonus)\b/g, "").replace(/\s+/g, " ").trim() + " ghost";
+  g.innerHTML = pips();
+  // Fixed on the body so board rebuilds cannot destroy it; re-anchored to its
+  // slot after every render (repositionGhosts) so it rides layout shifts.
+  g.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:60;pointer-events:none;`;
+  document.body.appendChild(g);
+  const ghost = { el: g, slot: old.slot, w: r.width, h: r.height };
+  if (!UI.ghosts) UI.ghosts = new Set();
+  UI.ghosts.add(ghost);
+  const restored = dep.kind === "restored";
+  const single = !restored && dep.steps < old.value;
+  rollDie(g, old.value, restored ? DISCHARGE_THRESHOLD : 0, bonus, () => {
+    setTimeout(() => {
+      g.classList.add(restored ? "leave-up" : "leave-down");
+      setTimeout(() => { g.remove(); UI.ghosts.delete(ghost); }, 800);
+    }, GHOST_HOLD_MS);
+  }, single);
+}
+function repositionGhosts() {
+  if (!UI.ghosts || !UI.ghosts.size) return;
+  const slots = document.querySelectorAll("#wards .slot");
+  for (const gh of UI.ghosts) {
+    const slot = gh.slot >= 0 ? slots[gh.slot] : null;
+    if (!slot) continue;
+    const r = slot.getBoundingClientRect();
+    gh.el.style.left = (r.left + (r.width - gh.w) / 2) + "px";
+    gh.el.style.top = (r.top + (r.height - gh.h) / 2) + "px";
+  }
 }
 function bonusFx(el, delta) {
   el.classList.remove("bonus"); void el.offsetWidth; el.classList.add("bonus");
@@ -2696,6 +2762,7 @@ function updateAll() {
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
+  repositionGhosts();
 }
 function pips() { return '<span class="face">' + '<span class="pip"></span>'.repeat(9) + '</span>'; }
 function renderDie(die, opts = {}) {
@@ -2849,7 +2916,7 @@ function renderBoard() {
   html += `<span class="ladder" title="Reputation for hosts restored in one shift. Restore more at once for more per host."><span class="stack-info">restore</span>`;
   for (let i = 1; i <= 8; i++) html += `<span class="lcell ${i === n ? "cur" : i === n + 1 ? "next" : ""}">${i}<b>:${dischargePoints(i)}</b></span>`;
   html += '</span>';
-  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
+  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-${DISCHARGE_THRESHOLD}" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
   html += '</div></div>';
   html += renderStrip();
   el.innerHTML = html;
