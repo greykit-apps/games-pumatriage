@@ -833,7 +833,7 @@ const EVENT_DEFS = {
 
 /* ============================================================
    HOUSE RULES
-   The "Standard" preset is the base game. Everything with
+   The "SOC" preset is the base game. Everything with
    addon: true is layered on top and off by default.
    ============================================================ */
 const SLIDER_DEFS = {
@@ -855,10 +855,11 @@ const SLIDER_DEFS = {
 };
 const ADDONS_OFF = { promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
 const DIFFICULTY_PRESETS = {
-  easy:   { label: "Beginner", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
-  normal: { label: "Standard", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
+  // Presets read as the size of the operation you run, smallest first.
+  easy:   { label: "MSSP", title: "Managed service, one easy rival, no directives: the gentle start", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
+  normal: { label: "SOC",  title: "The base game: two rivals, directives on", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
   solo:   { label: "Solo",     sliders: { mode: 0, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
-  hard:   { label: "Hard",     sliders: { mode: 1, rivals: 3, rivalSkill: 2, admins: 1, tutorial: 0, ...ADDONS_OFF, crisis: 1, epidemic: 1, superbug: 1 } },
+  hard:   { label: "CIRT", title: "Three expert rivals, an inherited mess, a worm outbreak and persistent threats", sliders: { mode: 1, rivals: 3, rivalSkill: 2, admins: 1, tutorial: 0, ...ADDONS_OFF, crisis: 1, epidemic: 1, superbug: 1 } },
 };
 let houseRules = { ...DIFFICULTY_PRESETS.normal.sliders };
 
@@ -3474,7 +3475,7 @@ function showMainMenu(keepScroll) {
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
     ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
     <div class="presets">
-      ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
+      ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')" title="${esc(DIFFICULTY_PRESETS[id].title || "")}">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
       <span class="preset-sep" aria-hidden="true"></span>
       <button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" aria-pressed="${houseRules.mode === 0}" onclick="setMode(houseRules.mode === 0 ? 1 : 0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button>
     </div>

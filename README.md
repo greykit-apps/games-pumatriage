@@ -31,7 +31,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 - **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, the six starting tools, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
 - **Two modes** — Vs 1–3 AI SOCs (2–4 player rules, including the 2-player extra reveal) or the rulebook's solo score-chase with Audit Reports (draw 4 keep 3, one-of-each reveal, bottom-row filing)
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
-- **4 presets** — Beginner, Standard (the full base game vs two rivals), Solo, Hard
+- **3 presets, sized like the operation you run** — MSSP (one easy rival), SOC (the full base game vs two rivals), CIRT (three expert rivals plus the harder add-ons), and a Solo toggle
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
 - **The board is the table** — dice scale with the window, and one strip under the quarantine segments carries the current rule, the prompt and the buttons; a phase strip and the restoration ladder keep the round structure and scoring brackets in view
 - **Retro CRT aesthetic** — Scanlines, vignette, phosphor glow, monospace terminal look; FLIP-animated dice
