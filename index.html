@@ -21,6 +21,7 @@
   --red-dim: #cc2222;
   --yellow: #ffdd33;
   --blue: #6699ff;
+  --pink: #ff5fbf;
   --cyan: #00cccc;
   --white: #e8ffe8;
   --bg: #0a0a0a;
@@ -219,6 +220,10 @@ body::after {
 .die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
 .die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
 .die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(0,255,65,0.45); }
+.die.c-pink   { color: var(--pink);   border-color: var(--pink);   box-shadow: 0 0 6px rgba(255,95,191,0.45); }
+/* A pink host healed past 6 waits, ready, for the rest of its family. */
+.die.ready { outline: 2px solid var(--amber); outline-offset: 2px; }
+.die.ready::after { content: "✓"; position: absolute; right: -6px; top: -8px; font-size: 10px; color: var(--amber); }
 /* A restored host pulses on its 6 before it leaves for the ladder. The ring
    is its own class so a follow-up burst (also on ::before) can stand in for it. */
 .die.healed { animation: die-glow .7s ease-out; }
@@ -262,6 +267,23 @@ body::after {
 .ward { flex: 0 0 auto; border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
 .ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
 .ward .beds { display: flex; gap: 6px; justify-content: flex-start; }
+/* Placing incoming hosts (Virtualization): the segments that may take the current one. */
+.ward.place-ok { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.3); }
+.ward.place-ok .ward-h { color: var(--amber); cursor: pointer; }
+.ward-h .hv { color: var(--pink); margin-left: 4px; }
+/* The guest segment under each quarantine segment: face down until a
+   hypervisor arrives above it, then a placement like a tool. */
+.nursery { margin-top: 6px; border: 1px dashed color-mix(in srgb, var(--pink) 35%, transparent); border-radius: 4px; padding: 3px 6px 4px; position: relative; }
+.nursery.closed { opacity: 0.35; border-style: dotted; }
+.nursery .nh { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; }
+.nursery.open .nh span:first-child { color: var(--pink); }
+.nursery .nslots { display: flex; gap: 4px; min-height: 34px; align-items: center; }
+.nursery .slot.g { width: 34px; height: 34px; }
+.nursery.can { border-style: solid; border-color: var(--pink); box-shadow: 0 0 8px rgba(255,95,191,0.35); cursor: pointer; }
+.nursery.sel { border-style: solid; border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.4); }
+.nursery.used { opacity: 0.55; }
+.nursery.disabled { opacity: 0.5; }
+.nursery .meep-on { position: absolute; right: 5px; top: 5px; }
 .bed { display: flex; flex-direction: column; gap: 4px; }
 .slot {
   width: calc(var(--die) + 8px); height: calc(var(--die) + 8px);
@@ -319,6 +341,7 @@ body::after {
 .dept-tile.tag-green  { --tag: var(--green); }
 .dept-tile.tag-any    { --tag: var(--cyan); }
 .dept-tile.tag-exp    { --tag: var(--blue); }
+.dept-tile.tag-pink   { --tag: var(--pink); }
 /* An available tile lights up in its own colour; unavailable ones dim. */
 .dept-tile.can { border-color: var(--tag); box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); cursor: pointer; }
 .dept-tile.can .dn { text-shadow: 0 0 6px color-mix(in srgb, var(--tag) 50%, transparent); }
@@ -341,13 +364,13 @@ body::after {
 .meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
 .meeple .ab { font-size: 11px; color: var(--green-dim); line-height: 1.3; }
 .meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
-.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); }
+.meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); } .meeple.b-pink { border-left-color: var(--pink); }
 .meeple.used::after { content: "PLACED"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--amber); letter-spacing: 1px; }
 .meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
 .meeple.returnable { border-color: var(--amber); cursor: pointer; }
 .meeple.clickable { cursor: pointer; border-color: var(--green-dark); }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
-.dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); }
+.dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); } .dot.c-pink { background: var(--pink); }
 .meeple.avail { cursor: pointer; border-color: var(--green-dark); box-shadow: 0 0 6px rgba(0,255,65,0.2); }
 .meeple.avail:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
 .meeple.sel { border-color: var(--amber); box-shadow: 0 0 10px rgba(255,176,0,0.6); }
@@ -364,7 +387,7 @@ body::after {
 .spec-card .sd { color: var(--green-dim); font-size: 11px; }
 .spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
 .spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
-.spec-card.tag-blue { border-top-color: var(--blue); }
+.spec-card.tag-blue { border-top-color: var(--blue); } .spec-card.tag-pink { border-top-color: var(--pink); }
 .spec-card.returnable { border-color: var(--amber); cursor: pointer; }
 .spec-card.clickable { cursor: pointer; }
 .spec-card.clickable:hover { border-color: var(--green); }
@@ -679,7 +702,7 @@ details.addons summary::-webkit-details-marker { display: none; }
    the house-rules panel (see SLIDER_DEFS below).
    ============================================================ */
 const COLOURS = ["red", "yellow", "green"];
-const COLOUR_ORDER = { red: 0, yellow: 1, green: 2 };
+const COLOUR_ORDER = { red: 0, yellow: 1, green: 2, pink: 3 };
 const COLOUR_NAME = { red: "Red", yellow: "Yellow", green: "Green", white: "White", blue: "Blue", pink: "Pink" };
 const COLOUR_ABBR = { red: "R", yellow: "Y", green: "G", pink: "P" };
 const PINK = "pink"; // the Maternity expansion's dice: never in the bag, never recoloured
@@ -778,15 +801,15 @@ const DEPT_DEFS = {
   // ---- Maternity expansion (Virtualization mode). Tag pink. ----
   // The guest segment under each quarantine segment: a placement worth
   // one step on one pink host, once per shift, while it holds guests.
-  nursery:    { name: "Guest Segment",   tag: "pink", nursery: true, sel: { n: 1, colour: PINK }, heal: 1 },                          // Paediatric Ward Chevron tile
-  clusterPatch:{ name: "Cluster Patch",  tag: "pink", maternity: true, sel: { n: 3, rel: "sameValue", pinkMin: 1 }, heal: 1, pinkHeal: 3 },                 // 3 same value, one pink: pink +3, others +1
-  liveMigrate:{ name: "Live Migration",  tag: "pink", maternity: true, sel: { n: 2, rel: "sameValue", pinkMin: 1 }, heal: 2, pinkHeal: 3, pinkOne: true },   // any +2 and a pink of equal value +3
-  fleetUpdate:{ name: "Fleet Update",    tag: "pink", maternity: true, sel: { n: 4, rel: "sameValue", needMother: true, needInfant: true }, heal: 1 },       // 4 equal, a hypervisor and a guest among them
-  bootChain:  { name: "Boot Chain",      tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "lowest" }, heal: 1, pinkHeal: 3 },        // consecutive, lowest is pink: pink +3, others +1
-  pipeline:   { name: "Pipeline Rebuild", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "middle" }, heal: 1, pinkHeal: 3 },       // consecutive, middle is pink
-  failover:   { name: "Failover Cluster", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "highest" }, heal: 1, pinkHeal: 3 },      // consecutive, highest is pink
-  isolation:  { name: "Isolation Bay",   tag: "pink", maternity: true, sel: { n: 3, pinkMin: 1, pinkMax: 1 }, pinkHeal: 3, op: "park" },                    // pink +3, two others moved down (worked, not healed)
-  guestReimage:{ name: "Guest Reimage",  tag: "pink", maternity: true, sel: { n: 2, pinkMin: 1, pinkMax: 1 }, pinkHeal: 2, op: "rerollOther" },             // pink +2, re-roll the other
+  nursery:    { name: "Guest Segment",   tag: "pink", nursery: true, sel: { n: 1, colour: PINK }, heal: 1, rule: "1 pink host → +1", desc: "Guest segment: while it holds guests, one placement here heals one pink host (hypervisor or guest) 1 step. A specialist's follow-up applies as usual." }, // Paediatric Ward Chevron tile
+  clusterPatch:{ name: "Cluster Patch",  tag: "pink", maternity: true, sel: { n: 3, rel: "sameValue", pinkMin: 1 }, heal: 1, pinkHeal: 3, rule: "3 hosts, same value, one pink → pink +3, others +1", desc: "Heal exactly 3 hosts of the same value, at least one of them pink. Pink hosts heal 3 steps, the others 1." }, // 3 same value, one pink
+  liveMigrate:{ name: "Live Migration",  tag: "pink", maternity: true, sel: { n: 2, rel: "sameValue", pinkMin: 1 }, heal: 2, pinkHeal: 3, pinkOne: true, rule: "1 host +2, and a pink host of equal value +3", desc: "Heal one host of any colour 2 steps and a different pink host of equal value 3 steps." }, // any +2 and a pink of equal value +3
+  fleetUpdate:{ name: "Fleet Update",    tag: "pink", maternity: true, sel: { n: 4, rel: "sameValue", needMother: true, needInfant: true }, heal: 1, rule: "4 hosts, same value, incl. a hypervisor and a guest → +1 each", desc: "Heal exactly 4 hosts of the same value 1 step each. One must be a hypervisor and one a guest; the other two may be any colour." }, // 4 equal, a hypervisor and a guest among them
+  bootChain:  { name: "Boot Chain",      tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "lowest" }, heal: 1, pinkHeal: 3, rule: "3 consecutive, lowest pink → pink +3, others +1", desc: "Heal exactly 3 hosts of consecutive values where the lowest is pink. The pink host heals 3 steps, the others 1." }, // consecutive, lowest is pink
+  pipeline:   { name: "Pipeline Rebuild", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "middle" }, heal: 1, pinkHeal: 3, rule: "3 consecutive, middle pink → pink +3, others +1", desc: "Heal exactly 3 hosts of consecutive values where the middle one is pink. The pink host heals 3 steps, the others 1." }, // consecutive, middle is pink
+  failover:   { name: "Failover Cluster", tag: "pink", maternity: true, sel: { n: 3, rel: "consecutive", pinkPos: "highest" }, heal: 1, pinkHeal: 3, rule: "3 consecutive, highest pink → pink +3, others +1", desc: "Heal exactly 3 hosts of consecutive values where the highest is pink. The pink host heals 3 steps, the others 1." }, // consecutive, highest is pink
+  isolation:  { name: "Isolation Bay",   tag: "pink", maternity: true, sel: { n: 3, pinkMin: 1 }, pinkHeal: 3, pinkOne: true, op: "park", rule: "1 pink host +3, park 2 others", desc: "Heal one pink host 3 steps and move two other hosts to their Worked slot without healing them: they escape dwell time." }, // pink +3, two others moved down
+  guestReimage:{ name: "Guest Reimage",  tag: "pink", maternity: true, sel: { n: 2, pinkMin: 1, pinkMax: 1 }, pinkHeal: 2, op: "rerollOther", rule: "1 pink host +2, re-roll another", desc: "Heal one pink host 2 steps and re-roll one other, non-pink host. You must accept the new result; both count as worked." }, // pink +2, re-roll the other
 };
 const MATERNITY_DEPTS = ["clusterPatch", "liveMigrate", "fleetUpdate", "bootChain", "pipeline", "failover", "isolation", "guestReimage"];
 const IMPROVEMENT_DEPTS = ["opTheatre", "cardiology", "anaesthesia", "crash", "ent", "immunology", "allergy", "ortho", "urology", "renal", "radiology", "triageCtr"];
@@ -818,14 +841,14 @@ const SPEC_DEFS = {
   physioTh:     { name: "Intel Analyst",      colour: "blue",   addon: "experimental", when: { healedAny: true }, then: { from: "any", n: 1, op: "recolour" } }, // Physiotherapist
   haemTech:     { name: "Intel Broker",       colour: "white",  addon: "experimental", when: { dischargedAny: true }, then: { op: "bloodBag" } },            // Haematology Technician
   // ---- Maternity expansion specialists (Virtualization mode). Pink meeples. ----
-  snapshotEng:  { name: "Snapshot Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "healedOf:pink", n: 1, heal: 2 } },      // that pink patient heals 2 more
-  clusterAdmin: { name: "Cluster Admin",      colour: PINK, maternity: true, when: { healedPink: true }, then: { pair: true, heal: 1 } },                       // another pink +1 and any host of that value +1
-  orchestrator: { name: "Orchestration Lead", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 2, heal: 1 } },       // two other pink +1 each
-  migrationEng: { name: "Migration Engineer", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 1, heal: 2 } }, // one other of equal value +2
-  platformEng:  { name: "Platform Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 2, heal: 1 } }, // two others of equal value +1 each
-  hypervisorSp: { name: "Hypervisor Specialist", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 1, heal: 2 } },    // a different pink +2
-  cloudArch:    { name: "Cloud Architect",    colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "other", n: 1, heal: 1 } },              // any other host +1
-  tenancyAud:   { name: "Tenancy Auditor",    colour: PINK, maternity: true, when: { dischargedPink: true }, then: { op: "bloodBag", n: 2 } },                  // restores a pink host → +2 intel
+  snapshotEng:  { name: "Snapshot Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "healedOf:pink", n: 1, heal: 2 }, desc: "When it heals a hypervisor or guest: that host heals 2 more steps." },      // that pink patient heals 2 more
+  clusterAdmin: { name: "Cluster Admin",      colour: PINK, maternity: true, when: { healedPink: true }, then: { pair: true, heal: 1 }, desc: "When it heals a hypervisor or guest: heal a different pink host 1 step, then any other host of that same value 1 step." }, // another pink +1 and any host of that value +1
+  orchestrator: { name: "Orchestration Lead", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 2, heal: 1 }, desc: "When it heals a hypervisor or guest: heal two different pink hosts 1 step each." },       // two other pink +1 each
+  migrationEng: { name: "Migration Engineer", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 1, heal: 2 }, desc: "When it heals a hypervisor or guest: heal a different host of any colour whose value equals what the pink host was before healing, 2 steps." }, // one other of equal value +2
+  platformEng:  { name: "Platform Engineer",  colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherValueEqPre:pink", n: 2, heal: 1 }, desc: "When it heals a hypervisor or guest: heal two different hosts of any colour whose value equals what the pink host was before healing, 1 step each." }, // two others of equal value +1 each
+  hypervisorSp: { name: "Hypervisor Specialist", colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "otherOf:pink", n: 1, heal: 2 }, desc: "When it heals a hypervisor or guest: heal a different hypervisor or guest 2 steps." },    // a different pink +2
+  cloudArch:    { name: "Cloud Architect",    colour: PINK, maternity: true, when: { healedPink: true }, then: { from: "other", n: 1, heal: 1 }, desc: "When it heals a hypervisor or guest: heal any other host 1 step." },              // any other host +1
+  tenancyAud:   { name: "Tenancy Auditor",    colour: PINK, maternity: true, when: { dischargedPink: true }, then: { op: "bloodBag", n: 2 }, desc: "When it restores a hypervisor or guest: +2 intel tokens." },                  // restores a pink host → +2 intel
 };
 const MATERNITY_SPECS = ["snapshotEng", "clusterAdmin", "orchestrator", "migrationEng", "platformEng", "hypervisorSp", "cloudArch", "tenancyAud"];
 const BASE_SPECS = ["surgeon", "anaesthetist", "cardiologist", "pharmacist", "virologist", "microbiologist", "haematologist", "urologist", "radiologist", "triageNurse", "paramedic", "gp"];
@@ -1018,7 +1041,11 @@ function resetRuntime() {
   UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
 }
 
-function makeDie(colour, value) { return { uid: G.nextUid++, colour, value, tmpColour: null, treated: false }; }
+function makeDie(colour, value) { return { uid: G.nextUid++, colour, value, tmpColour: null, treated: false, ready: false, infant: false, family: null }; }
+// Maternity dice: a hypervisor (Mother) or a guest (Infant). Never from the bag.
+function makePinkDie(kind, value) { const d = makeDie(PINK, value); d.infant = kind === "infant"; return d; }
+function isPink(d) { return d.colour === PINK; }
+function isMother(d) { return d.colour === PINK && !d.infant; }
 function effColour(die) { return die.tmpColour || die.colour; }
 function bagTotal() { return G.bag.red + G.bag.yellow + G.bag.green; }
 function drawDieFromBag() {
@@ -1031,7 +1058,7 @@ function drawDieFromBag() {
   }
   return null;
 }
-function returnToBag(die) { if (!UI.simulating) G.bag[die.colour]++; }
+function returnToBag(die) { if (UI.simulating) return; if (isPink(die)) G.supply[die.infant ? "infant" : "mother"]++; else G.bag[die.colour]++; }
 function rollValue() {           // re-roll 1s and 6s, as the intake rule says
   let v;
   do { v = 1 + rint(6); } while (v === 1 || v === 6);
@@ -1043,10 +1070,15 @@ function makePlayer(id, name, isBot, skill) {
   const wards = [];
   for (let w = 0; w < WARDS; w++) { const beds = []; for (let b = 0; b < BEDS; b++) beds.push({ u: null, t: null }); wards.push(beds); }
   const meeples = [];
-  for (let i = 0; i < NURSES_AT_START; i++) meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false });
+  const nurses = NURSES_AT_START + (G.cfg.maternity ? MAT.extraNurses : 0);
+  for (let i = 0; i < nurses; i++) meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false });
   const departments = START_DEPTS.map(type => ({ uid: G.nextUid++, type, used: false, improvement: false, idleRounds: 0 }));
+  // Virtualization: a guest segment under each quarantine segment, face down
+  // until a hypervisor arrives above it. Works like a tool while it holds guests.
+  const nurseries = [];
+  if (G.cfg.maternity) for (let w = 0; w < WARDS; w++) nurseries.push({ uid: G.nextUid++, type: "nursery", ward: w, open: false, used: false, dice: [], improvement: false, idleRounds: 0 });
   return {
-    id, name, isBot, skill, wards, meeples, departments, specialists: [], admin: null, adminChoice: null,
+    id, name, isBot, skill, wards, meeples, departments, nurseries, specialists: [], admin: null, adminChoice: null,
     bloodBags: 0, fatalities: 0, score: 0, dischargedThisRound: [], dischargedTotal: 0, lastDischarges: 0,
     pendingDice: [], consultantCopy: null, botSummary: "", ambulance: null, breachesThisRound: 0,
     collected: 0, startDice: [],
@@ -1077,7 +1109,10 @@ function buildStacks(cfg) {
     // Each promo card replaces a random specialist card in the deck.
     for (const t of PROMO_SPECS) { specs.splice(rint(specs.length), 1); specs.push(t); }
   }
-  return { deptStack: shuffle(depts), specStack: shuffle(specs) };
+  // Virtualization: separate face-down piles, 2 of each maternity tool and specialist.
+  const matDepts = [], matSpecs = [];
+  if (cfg.maternity) { for (const t of MATERNITY_DEPTS) matDepts.push(t, t); for (const t of MATERNITY_SPECS) matSpecs.push(t, t); }
+  return { deptStack: shuffle(depts), specStack: shuffle(specs), matDeptStack: shuffle(matDepts), matSpecStack: shuffle(matSpecs) };
 }
 
 function newGame(seed) {
@@ -1090,6 +1125,7 @@ function newGame(seed) {
     players: [], firstPlayer: 0, turnOrder: [],
     bag: { red: cfg.dicePerColour, yellow: cfg.dicePerColour, green: cfg.dicePerColour },
     ambulances: [], deptStack: [], deptDisplay: [], specStack: [], specDisplay: [], adminDeck: [],
+    matDeptStack: [], matSpecStack: [], supply: { mother: cfg.maternity ? MAT.mothers : 0, infant: cfg.maternity ? MAT.infants : 0 },
     extraChoice: null, solo: null, events: null, currentEvent: null,
     roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
   };
@@ -1097,10 +1133,10 @@ function newGame(seed) {
   G.turnOrder = G.players.map(p => p.id);
   G.firstPlayer = cfg.solo ? 0 : rint(cfg.players);
   const stacks = buildStacks(cfg);
-  G.deptStack = stacks.deptStack; G.specStack = stacks.specStack;
+  G.deptStack = stacks.deptStack; G.specStack = stacks.specStack; G.matDeptStack = stacks.matDeptStack; G.matSpecStack = stacks.matSpecStack;
   for (let i = 1; i <= cfg.ambulances; i++) G.ambulances.push({ num: i, dice: [], takenBy: null });
   if (cfg.admins) {
-    G.adminDeck = shuffle(Object.keys(ADMIN_DEFS));
+    G.adminDeck = shuffle(Object.keys(ADMIN_DEFS).filter(id => !ADMIN_DEFS[id].maternity || cfg.maternity));
     for (const p of G.players) p.adminChoice = [G.adminDeck.pop(), G.adminDeck.pop()];
   }
   if (cfg.solo) {
@@ -1114,6 +1150,7 @@ function newGame(seed) {
   for (const p of G.players) {
     p.startDice = [];
     vals.forEach(v => { const d = drawDieFromBag(); d.value = v; p.startDice.push(d); });
+    p.startMother = !!cfg.maternity; // plus a hypervisor at 4 in a segment of its own, with one guest
   }
   refillDisplay(true);
   log(`New game: ${cfg.solo ? "solo score-chase" : (cfg.players - 1) + " rival SOC" + (cfg.players > 2 ? "s" : "")}. Shift 1 of ${ROUNDS}.`, "sys");
@@ -1124,51 +1161,104 @@ function newGame(seed) {
 // Display sizes: players−1 face-up of each, plus the 2-player extra pick.
 function displaySizes() {
   const cfg = G.cfg;
-  if (cfg.solo) return { dept: 1, spec: 1 };
+  if (cfg.solo) return { dept: 1, spec: 1, mat: 0 };
   return {
     dept: cfg.displaySize + (G.extraChoice === "dept" ? 1 : 0),
     spec: cfg.displaySize + (G.extraChoice === "spec" ? 1 : 0),
+    mat: cfg.maternity ? MAT.displayExtra[cfg.players] || 2 : 0, // maternity tools and specialists, from their own piles
   };
 }
+function isMatDept(t) { return !!DEPT_DEFS[t].maternity; }
+function isMatSpec(t) { return !!SPEC_DEFS[t].maternity; }
 function refillDisplay(initial) {
   if (G.cfg.solo) return; // solo reveals one of each during the improvement phase itself
   const sz = displaySizes();
   G.deptDisplay = G.deptDisplay.filter(Boolean);
   G.specDisplay = G.specDisplay.filter(Boolean);
   const before = G.deptDisplay.length + G.specDisplay.length;
-  while (G.deptDisplay.length < sz.dept && G.deptStack.length) G.deptDisplay.push(G.deptStack.pop());
-  while (G.specDisplay.length < sz.spec && G.specStack.length) G.specDisplay.push(G.specStack.pop());
+  while (G.deptDisplay.filter(t => !isMatDept(t)).length < sz.dept && G.deptStack.length) G.deptDisplay.push(G.deptStack.pop());
+  while (G.specDisplay.filter(t => !isMatSpec(t)).length < sz.spec && G.specStack.length) G.specDisplay.push(G.specStack.pop());
+  while (G.deptDisplay.filter(isMatDept).length < sz.mat && G.matDeptStack.length) G.deptDisplay.push(G.matDeptStack.pop());
+  while (G.specDisplay.filter(isMatSpec).length < sz.mat && G.matSpecStack.length) G.specDisplay.push(G.matSpecStack.pop());
   if (G.deptDisplay.length + G.specDisplay.length > before) G.dealt = false; // the improve phase deals them in
 }
 function recycleDisplay() {
   // Unclaimed tiles/cards go to the bottom of their stacks in random order.
   const d = shuffle(G.deptDisplay.filter(Boolean)), s = shuffle(G.specDisplay.filter(Boolean));
-  G.deptStack.unshift(...d); G.specStack.unshift(...s);
+  G.deptStack.unshift(...d.filter(t => !isMatDept(t))); G.matDeptStack.unshift(...d.filter(isMatDept));
+  G.specStack.unshift(...s.filter(t => !isMatSpec(t))); G.matSpecStack.unshift(...s.filter(isMatSpec));
   G.deptDisplay = []; G.specDisplay = [];
 }
 
 function human() { return G.players[0]; }
 function beds(p) { const out = []; p.wards.forEach((w, wi) => w.forEach((b, bi) => out.push({ b, wi, bi }))); return out; }
-function boardDice(p) { const out = []; for (const { b } of beds(p)) { if (b.u) out.push(b.u); if (b.t) out.push(b.t); } return out; }
+function boardDice(p) { const out = []; for (const { b } of beds(p)) { if (b.u) out.push(b.u); if (b.t) out.push(b.t); } for (const n of p.nurseries || []) out.push(...n.dice); return out; }
+function wardDice(p, wi) { const out = []; for (const b of p.wards[wi]) { if (b.u) out.push(b.u); if (b.t) out.push(b.t); } return out; }
+function wardOf(p, uid) { const x = findBed(p, uid); return x ? x.wi : -1; }
+function mothersOf(p) { return boardDice(p).filter(isMother); }
+function wardHasMother(p, wi) { return wardDice(p, wi).some(isMother); }
+function nurseryDice(p) { let out = []; for (const n of p.nurseries || []) out = out.concat(n.dice); return out; }
+// A hypervisor and its guests are healed apart but restored together.
+function familyOf(p, die) {
+  const mother = die.infant ? findDie(p, die.family) : die;
+  if (!mother) return null;
+  const infants = boardDice(p).filter(d => d.infant && d.family === mother.uid);
+  return { mother, infants, all: [mother, ...infants] };
+}
+// Where a new hypervisor may go: a segment with no hypervisor. `swap`
+// segments are full, allowed by the one exception to the no-moving rule:
+// a host there moves to a free bed elsewhere to make room.
+function motherWardOptions(p) {
+  const free = [], swap = [];
+  p.wards.forEach((w, wi) => {
+    if (wardHasMother(p, wi)) return;
+    if (w.some(b => !b.u && !b.t)) free.push(wi); else swap.push(wi);
+  });
+  return { free, swap: emptyBeds(p).length ? swap : [] };
+}
+// Places a hypervisor in segment wi, opens the guest segment under it and
+// provisions its guests (1 or twins) from the supply.
+function admitMother(p, die, wi, infants) {
+  if (!p.wards[wi].some(b => !b.u && !b.t)) {
+    const mover = wardDice(p, wi).filter(d => !isPink(d)).sort((a, b) => a.value - b.value)[0];
+    const e = emptyBeds(p).find(x => !wardHasMother(p, x.wi)) || emptyBeds(p)[0]; // away from other hypervisors when it can
+    if (!mover || !e) return false;
+    const x = findBed(p, mover.uid);
+    if (x.b.t === mover) { x.b.t = null; e.b.t = mover; } else { x.b.u = null; e.b.u = mover; }
+    log(`${p.name}: ${COLOUR_NAME[mover.colour]} host moved to Q${e.wi + 1} to make room for the hypervisor.`, "sys");
+  }
+  if (!placeDie(p, die, wi)) return false;
+  const n = p.nurseries[wi]; n.open = true;
+  const k = Math.max(0, Math.min(infants, G.supply.infant));
+  for (let i = 0; i < k; i++) { G.supply.infant--; const g = makePinkDie("infant", MAT.startValue); g.family = die.uid; n.dice.push(g); }
+  return true;
+}
+// The Midwife die: 1 guest or twins. Null when a directive lets the SOC choose.
+function rollInfants(p) { if (p.admin && ADMIN_DEFS[p.admin].kind === "twins") return null; return rint(6) < MAT.twinsFaces ? 2 : 1; }
 function untreatedDice(p) { return beds(p).filter(x => x.b.u).map(x => x.b.u); }
 function emptyBeds(p) { return beds(p).filter(x => !x.b.u && !x.b.t); }
 function findBed(p, uid) { for (const x of beds(p)) if ((x.b.u && x.b.u.uid === uid) || (x.b.t && x.b.t.uid === uid)) return x; return null; }
 function findDie(p, uid) { return boardDice(p).find(d => d.uid === uid) || null; }
-function placeDie(p, die) {
-  const e = emptyBeds(p)[0];
+function placeDie(p, die, wi) {
+  const e = wi === undefined ? emptyBeds(p)[0] : emptyBeds(p).find(x => x.wi === wi);
   if (!e) return false;
   e.b.u = die; die.treated = false; die.tmpColour = null;
   return true;
 }
 function removeDie(p, uid) {
   const x = findBed(p, uid);
-  if (!x) return null;
-  const die = x.b.u && x.b.u.uid === uid ? x.b.u : x.b.t;
-  if (x.b.u === die) x.b.u = null; else x.b.t = null;
-  return die;
+  if (x) {
+    const die = x.b.u && x.b.u.uid === uid ? x.b.u : x.b.t;
+    if (x.b.u === die) x.b.u = null; else x.b.t = null;
+    return die;
+  }
+  for (const n of p.nurseries || []) { const i = n.dice.findIndex(d => d.uid === uid); if (i >= 0) return n.dice.splice(i, 1)[0]; }
+  return null;
 }
 function meepleOf(p, uid) { return p.meeples.find(m => m.uid === uid); }
-function deptOf(p, uid) { return p.departments.find(d => d.uid === uid); }
+// Every placement a meeple can take: tools, plus the open guest segments.
+function allDepts(p) { return (p.nurseries || []).length ? p.departments.concat(p.nurseries) : p.departments; }
+function deptOf(p, uid) { return allDepts(p).find(d => d.uid === uid); }
 function specOf(p, uid) { return p.specialists.find(s => s.uid === uid); }
 function specDefForMeeple(p, m) {
   if (m.kind !== "spec") return null;
@@ -1196,8 +1286,16 @@ function addDepartment(p, type) {
 }
 function totalDiceOnTable() {
   let n = bagTotal();
-  for (const p of G.players) n += boardDice(p).length + p.pendingDice.length + p.dischargedThisRound.length + p.startDice.length;
-  for (const a of G.ambulances) n += a.dice.length;
+  const notPink = ds => ds.filter(d => !isPink(d)).length;
+  for (const p of G.players) n += notPink(boardDice(p)) + notPink(p.pendingDice) + notPink(p.dischargedThisRound) + p.startDice.length;
+  for (const a of G.ambulances) n += notPink(a.dice);
+  return n;
+}
+function totalPinkOnTable() {
+  let n = G.supply.mother + G.supply.infant;
+  const pink = ds => ds.filter(isPink).length;
+  for (const p of G.players) n += pink(boardDice(p)) + pink(p.pendingDice) + pink(p.dischargedThisRound);
+  for (const a of G.ambulances) n += pink(a.dice);
   return n;
 }
 
@@ -1229,8 +1327,14 @@ function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
    Pure functions over a player + G. Nothing here touches the DOM,
    so the same code drives the human, the bots and the headless sims.
    ============================================================ */
+// A pink host already waiting to be restored is set aside; no tool reaches it.
 function selPool(sel, dice) {
-  return dice.filter(d => (!sel.colour || effColour(d) === sel.colour) && (!sel.values || sel.values.includes(d.value)));
+  return dice.filter(d => !d.ready && (!sel.noPink || !isPink(d)) && (!sel.colour || effColour(d) === sel.colour) && (!sel.values || sel.values.includes(d.value)));
+}
+function selNeedsCombos(sel) { return !!(sel.rel || sel.pinkMin || sel.pinkMax !== undefined || sel.needMother || sel.needInfant || sel.pinkPos); }
+function pinkAtPos(sel, dice) {
+  const sorted = dice.slice().sort((a, b) => a.value - b.value);
+  return sel.pinkPos === "lowest" ? sorted[0] : sel.pinkPos === "highest" ? sorted[sorted.length - 1] : sorted[Math.floor(sorted.length / 2)];
 }
 function matchesSel(sel, dice) {
   const min = sel.min !== undefined ? sel.min : sel.n;
@@ -1238,7 +1342,15 @@ function matchesSel(sel, dice) {
   for (const d of dice) {
     if (sel.colour && effColour(d) !== sel.colour) return false;
     if (sel.values && !sel.values.includes(d.value)) return false;
+    if (d.ready || (sel.noPink && isPink(d))) return false;
   }
+  // Maternity tools: how many pink hosts, which kind, and where in the run.
+  const pinks = dice.filter(isPink).length;
+  if (sel.pinkMin && pinks < sel.pinkMin) return false;
+  if (sel.pinkMax !== undefined && pinks > sel.pinkMax) return false;
+  if (sel.needMother && !dice.some(isMother)) return false;
+  if (sel.needInfant && !dice.some(d => d.infant)) return false;
+  if (sel.pinkPos && dice.length && !isPink(pinkAtPos(sel, dice))) return false;
   if (sel.rel === "sameValue" && !dice.every(d => d.value === dice[0].value)) return false;
   if (sel.rel === "consecutive") {
     const vs = dice.map(d => d.value).sort((a, b) => a - b);
@@ -1258,13 +1370,13 @@ function firstLegalSet(sel, dice) {
   const pool = selPool(sel, dice), min = sel.min !== undefined ? sel.min : sel.n;
   for (let k = sel.n; k >= min; k--) {
     if (pool.length < k || k === 0) continue;
-    if (!sel.rel) return pool.slice(0, k);
+    if (!selNeedsCombos(sel)) return pool.slice(0, k);
     for (const c of combos(pool, k)) if (matchesSel(sel, c)) return c;
   }
   return null;
 }
 function canActivate(dept, p) {
-  if (dept.used) return false;
+  if (dept.used || (dept.type === "nursery" && !dept.open)) return false;
   return firstLegalSet(DEPT_DEFS[dept.type].sel, boardDice(p)) !== null;
 }
 // Dice that can still be part of a legal set containing everything already selected.
@@ -1277,7 +1389,7 @@ function narrowTargets(sel, dice, selectedUids) {
 }
 function selComplete(sel, selectedDice) { return matchesSel(sel, selectedDice); }
 
-function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [], bonus: [] }; }
+function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [], bonus: [], dischargedPink: false }; }
 function markTreated(p, die) {
   const x = findBed(p, die.uid);
   if (x && x.b.u === die) { x.b.t = die; x.b.u = null; }
@@ -1285,22 +1397,40 @@ function markTreated(p, die) {
 }
 function heal(p, die, n, ctx) {
   for (let i = 0; i < n; i++) {
+    if (die.ready) return; // already set aside, waiting for the rest of its family
     const pre = die.value;
     die.value++;
     markTreated(p, die);
     ctx.healed.push({ uid: die.uid, pre, post: die.value, colour: effColour(die) });
-    if (die.value >= DISCHARGE_THRESHOLD) { discharge(p, die, ctx); return; }
+    if (die.value >= DISCHARGE_THRESHOLD) { if (isPink(die)) readyPink(p, die, ctx); else discharge(p, die, ctx); return; }
   }
 }
+// A pink host healed past 6 waits at 6 until its whole family is ready,
+// then they are restored together. Left waiting at the end of the shift,
+// it stays at 6 and must be healed to 7 again.
+function readyPink(p, die, ctx) {
+  die.value = DISCHARGE_THRESHOLD - 1; die.ready = true;
+  if (ctx && ctx.healed.length) ctx.healed[ctx.healed.length - 1].ready = true;
+  const fam = familyOf(p, die);
+  if (!fam || !fam.all.every(d => d.ready)) return;
+  for (const d of fam.all) { d.value = DISCHARGE_THRESHOLD; discharge(p, d, ctx); }
+  if (ctx) ctx.dischargedPink = true;
+}
+function unreadyPink(p) {
+  let n = 0;
+  for (const d of boardDice(p)) if (d.ready) { d.ready = false; n++; }
+  return n;
+}
 function deteriorate(p, die, n, ctx) {
+  if (die.infant) return;                       // guests never lose a step, for any reason
   const pre = die.value;
-  die.value -= n;
+  die.value = isPink(die) ? Math.max(1, die.value - n) : die.value - n; // hypervisors never breach
   markTreated(p, die);
   if (die.value <= 0) fatality(p, die, ctx, pre);
 }
 function discharge(p, die, ctx) {
   removeDie(p, die.uid);
-  p.dischargedThisRound.push({ uid: die.uid, colour: die.colour, value: die.value });
+  p.dischargedThisRound.push({ uid: die.uid, colour: die.colour, value: die.value, infant: !!die.infant });
   p.dischargedTotal++;
   if (ctx) ctx.discharged.push(die.uid);
   noteDeparture(die.uid, "restored");
@@ -1326,7 +1456,18 @@ function resolveDept(p, dept, dice, ctx, opt = {}) {
   const def = DEPT_DEFS[dept.type];
   dept.used = true;
   dept.idleRounds = 0;
-  if (def.heal) {
+  if (def.pinkHeal) {
+    // Maternity tools: the pink host (the one at the named position, the
+    // first one, or all of them) takes the big heal; the others heal, are
+    // parked as worked, or are re-rolled.
+    const stars = new Set(def.sel.pinkPos ? [pinkAtPos(def.sel, dice).uid] : def.pinkOne ? [dice.find(isPink).uid] : dice.filter(isPink).map(d => d.uid));
+    for (const d of dice) {
+      if (stars.has(d.uid)) { heal(p, d, def.pinkHeal, ctx); continue; }
+      if (def.op === "park") markTreated(p, d);
+      else if (def.op === "rerollOther") { ctx.random = true; const pre = d.value; d.value = rollAny(); markTreated(p, d); if (d.value > pre) ctx.healed.push({ uid: d.uid, pre, post: d.value, colour: effColour(d) }); }
+      else heal(p, d, def.heal, ctx);
+    }
+  } else if (def.heal) {
     for (const d of dice) heal(p, d, def.heal, ctx);
   } else if (def.op === "reroll") {
     ctx.random = true;
@@ -1356,12 +1497,14 @@ function activateDept(p, m, dept, dice, opt) {
 function specEligible(def, ctx) {
   if (!def || !def.when) return false;
   if (def.when.healedColour) return ctx.healed.some(h => h.colour === def.when.healedColour);
+  if (def.when.healedPink) return ctx.healed.some(h => h.colour === PINK);
+  if (def.when.dischargedPink) return !!ctx.dischargedPink;
   if (def.when.healedAny) return ctx.healed.length > 0;
   if (def.when.dischargedAny) return ctx.discharged.length > 0;
   return false;
 }
 function specPool(then, ctx, p) {
-  const board = boardDice(p);
+  const board = boardDice(p).filter(d => !d.ready);
   const healedUids = new Set(ctx.healed.map(h => h.uid));
   const [kind, c] = (then.from || "any").split(":");
   let pool;
@@ -1379,6 +1522,7 @@ function specPool(then, ctx, p) {
     default: pool = board;
   }
   if (then.values) pool = pool.filter(d => then.values.includes(d.value));
+  if (then.op === "reroll" || then.op === "recolour") pool = pool.filter(d => !isPink(d)); // pink hosts are never re-rolled or retagged
   return pool;
 }
 // What a specialist can do right now: { kind:"sets", sets } | { kind:"choice", choice } | { kind:"auto" } | null
@@ -1388,12 +1532,19 @@ function specOptions(def, ctx, p) {
   if (t.choice === "admissions") return { kind: "choice", choice: "admissions", count: ctx.discharged.length };
   if (t.choice === "pathologist") return p.fatalities > 0 ? { kind: "choice", choice: "pathologist" } : null;
   if (t.op === "score" || t.op === "bloodBag") return { kind: "auto" };
+  if (t.pair) {
+    // Cluster Admin: another pink host, then any host of that same value. Ordered.
+    const board = boardDice(p).filter(d => !d.ready), healedUids = new Set(ctx.healed.map(h => h.uid));
+    const sets = [];
+    for (const a of board) if (isPink(a) && !healedUids.has(a.uid)) for (const b of board) if (b.uid !== a.uid && !healedUids.has(b.uid) && b.value === a.value) sets.push([a, b]);
+    return sets.length ? { kind: "sets", sets, ordered: true } : null;
+  }
   const pool = specPool(t, ctx, p);
   let sets = legalSets({ n: t.n, min: SPEC_PARTIAL_OK ? 1 : t.n }, pool);
   if (t.and) {
     // Intern: heal one, deteriorate a different one. Sets are [healTarget, deteriorateTarget].
     const out = [];
-    for (const s of sets) for (const d of pool) if (d.uid !== s[0].uid) out.push([s[0], d]);
+    for (const s of sets) for (const d of pool) if (d.uid !== s[0].uid && !isPink(d)) out.push([s[0], d]);
     sets = out;
   }
   if (!sets.length) return null;
@@ -1403,7 +1554,7 @@ function applySpec(p, def, ctx, dice, opt = {}) {
   const t = def.then;
   ctx.specFired = true;
   if (t.op === "score") { p.score += t.n; ctx.notes.push(`${def.name}: +${t.n} reputation`); return; }
-  if (t.op === "bloodBag") { p.bloodBags++; ctx.notes.push(`${def.name}: +1 intel token`); return; }
+  if (t.op === "bloodBag") { const k = t.n || 1; p.bloodBags += k; ctx.notes.push(`${def.name}: +${k} intel ${plural(k, "token")}`); return; }
   if (t.choice === "pathologist") { if (opt.yes && p.fatalities > 0) { p.fatalities--; p.bloodBags++; ctx.notes.push(`${def.name}: breach record closed, +1 intel`); } return; }
   if (t.choice === "admissions") {
     if (opt.mode === "return" && opt.uid) { const d = removeDie(p, opt.uid); if (d) { returnToBag(d); ctx.notes.push(`${def.name}: ${COLOUR_NAME[d.colour]} host handed off`); } }
@@ -1436,29 +1587,32 @@ function recordBonus(ctx, start) {
 // "red 4→5, green 6→restored" from a run of ctx.healed entries.
 function describeHeals(entries) {
   const byUid = {};
-  for (const h of entries) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
-  return Object.values(byUid).map(h => `${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`).join(", ");
+  for (const h of entries) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; if (h.ready) byUid[h.uid].ready = true; }
+  return Object.values(byUid).map(h => `${h.colour} ${h.pre}→${h.ready ? "ready" : h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`).join(", ");
 }
 // Why a specialist's follow-up did nothing this activation, in the player's words.
 function specMissReason(def, ctx, p) {
   const w = def.when, t = def.then;
   if (!specEligible(def, ctx)) {
     if (w.healedColour) return `no ${w.healedColour} host was healed`;
+    if (w.healedPink) return "no hypervisor or guest was healed";
+    if (w.dischargedPink) return "no hypervisor or guest was restored";
     if (w.dischargedAny) return "no host was restored";
     return "no host was healed";
   }
   if (t.choice === "pathologist") return "no breach record to close";
+  if (t.pair) return "no other pink host with a matching host";
   const [kind, c] = (t.from || "any").split(":");
   const vals = t.values ? ` at ${t.values.join("/")}` : "";
-  if (kind === "healedOf") return `every healed ${c} host was restored`;
-  if (kind === "otherOf") return `no other ${c} host`;
+  if (kind === "healedOf") return c === PINK ? "the healed hypervisor or guest is ready or restored" : `every healed ${c} host was restored`;
+  if (kind === "otherOf") return c === PINK ? "no other hypervisor or guest" : `no other ${c} host`;
   if (kind === "otherValueEqPre") {
     const pres = new Set();
     for (const h of ctx.healed) if (h.colour === c) pres.add(h.pre);
     return `no other host at ${[...pres].sort().join("/")}`;
   }
   const n = specPool(t, ctx, p).length;
-  if (t.and || t.n === 2) return `needs two other hosts${vals}, ${n === 1 ? "only one" : "none"} available`;
+  if (t.and || t.n === 2) return `needs two other ${c === PINK ? "pink " : ""}hosts${vals}, ${n === 1 ? "only one" : "none"} available`;
   return kind === "other" ? `no other host${vals}` : `no host${vals}`;
 }
 
@@ -1475,9 +1629,18 @@ function runNeglect(p) {
     const cands = untreatedDice(p).filter(d => d.colour === c).sort((a, b) => a.value - b.value);
     if (cands.length) shieldUid = cands[0].uid;
   }
-  for (const die of untreatedDice(p)) {
+  for (const { b, wi } of beds(p)) {
+    const die = b.u;
+    if (!die) continue;
     if (dmg === 0) break;
     if (die.uid === shieldUid) { results.push({ uid: die.uid, colour: die.colour, shielded: true }); continue; }
+    if (isPink(die)) {
+      // A hypervisor only degrades when other hosts share its segment, and never below 1.
+      if (!wardDice(p, wi).some(d => d.uid !== die.uid)) { results.push({ uid: die.uid, colour: die.colour, alone: true }); continue; }
+      const pre = die.value; die.value = Math.max(1, die.value - dmg);
+      results.push({ uid: die.uid, colour: die.colour, pre, post: die.value, unchanged: pre === die.value });
+      continue;
+    }
     const pre = die.value;
     die.value -= dmg;
     if (die.value <= 0) { fatality(p, die, null, pre); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
@@ -1487,7 +1650,7 @@ function runNeglect(p) {
 }
 function dischargeCounts(p) {
   const c = { red: 0, yellow: 0, green: 0 };
-  for (const d of p.dischargedThisRound) c[d.colour]++;
+  for (const d of p.dischargedThisRound) if (c[d.colour] !== undefined) c[d.colour]++;
   return c;
 }
 function scoreDischarges(p) {
@@ -1495,11 +1658,12 @@ function scoreDischarges(p) {
   const pts = dischargePoints(n);
   const notes = [];
   let bonus = 0;
-  if (emptyBeds(p).length === WARDS * BEDS) { bonus += EMPTY_WARDS_BONUS; notes.push(`all segments clear +${EMPTY_WARDS_BONUS}`); }
+  if (emptyBeds(p).length === WARDS * BEDS && !nurseryDice(p).length) { bonus += EMPTY_WARDS_BONUS; notes.push(`all segments clear +${EMPTY_WARDS_BONUS}`); }
   if (p.admin) {
     const a = ADMIN_DEFS[p.admin], c = dischargeCounts(p);
     if (a.kind === "colourTwo" && c[a.colour] >= 2) { bonus += 1; notes.push(`${a.name} +1`); }
     if (a.kind === "eachColour" && c.red && c.yellow && c.green) { bonus += 1; notes.push(`${a.name} +1`); }
+    if (a.kind === "matPair" && p.dischargedThisRound.filter(d => d.colour === PINK && !d.infant).length >= 2 && p.dischargedThisRound.filter(d => d.infant).length >= 2) { bonus += 3; notes.push(`${a.name} +3`); }
   }
   p.score += pts + bonus;
   p.lastDischarges = n;
@@ -1629,12 +1793,20 @@ const STEP = {
       }
       const per = 3 + extra;
       const dice = [];
-      for (const a of G.ambulances) for (let i = 0; i < per; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
+      if (G.cfg.maternity) {
+        // Virtualization: fewer coloured hosts, plus hypervisors from the supply, by table size.
+        const tab = MAT.intake[G.players.length] || MAT.intake[4];
+        for (let i = 0; i < tab.coloured + extra * G.ambulances.length; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
+        for (let i = 0; i < tab.mothers && G.supply.mother > 0; i++) { G.supply.mother--; dice.push(makePinkDie("mother", rollValue())); }
+      } else {
+        for (const a of G.ambulances) for (let i = 0; i < per; i++) { const d = drawDieFromBag(); if (!d) break; d.value = rollValue(); dice.push(d); }
+      }
       // Lowest values fill the lowest-numbered queue first. Same value: colour order, then draw order.
       dice.sort((a, b) => a.value - b.value || COLOUR_ORDER[a.colour] - COLOUR_ORDER[b.colour] || a.uid - b.uid);
       const ambs = G.ambulances.slice().sort((a, b) => a.num - b.num);
       let i = 0;
       for (const a of ambs) { a.dice = dice.slice(i, i + per); a.takenBy = null; i += per; }
+      if (G.cfg.maternity) separateMothers(ambs);
       if (G.cfg.epidemic) for (const p of G.players) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.pendingDice.push(d); } }
       G.cursor = 0;
       go("intake", "pick");
@@ -1644,6 +1816,7 @@ const STEP = {
     keep() {
       const p = human();
       if (p.pendingDice.length > 3 && !p.keptThisRound) { G.actor = 0; return WAIT; }
+      // (solo only; Virtualization is not offered in solo)
       p.keptThisRound = false;
       G.cursor = 0;
       go("intake", "place"); return NEXT;
@@ -1669,18 +1842,49 @@ const STEP = {
       if (G.firstPlayer !== lowest.id) log(`${lowest.name} took the lowest queue: +1 intel token and the Incident Commander role.`, "warn");
       else log(`${lowest.name} took the lowest queue: +1 intel token, stays Incident Commander.`, "warn");
       G.firstPlayer = lowest.id;
-      for (const p of G.players) { const a = G.ambulances.find(x => x.num === p.ambulance); if (a) { p.pendingDice.push(...a.dice); a.dice = []; } }
+      for (const p of G.players) {
+        const a = G.ambulances.find(x => x.num === p.ambulance);
+        if (!a) continue;
+        for (const d of a.dice) {
+          // A fifth hypervisor cannot be taken: it goes back to the supply and
+          // a coloured host from the bag, set to the same value, comes instead.
+          if (isMother(d) && mothersOf(p).length + p.pendingDice.filter(isMother).length >= MAT.maxMothers) {
+            G.supply.mother++;
+            const sub = drawDieFromBag();
+            if (sub) { sub.value = d.value; p.pendingDice.push(sub); }
+            log(`${p.name}: already running ${MAT.maxMothers} hypervisors; a ${sub ? sub.colour : "no"} host at ${d.value} comes instead.`, "warn");
+          } else p.pendingDice.push(d);
+        }
+        a.dice = [];
+      }
       G.cursor = 0;
       go("intake", "place"); return NEXT;
     },
     place() {
       for (const p of playersInTurnOrder()) {
-        if (!p.pendingDice.length) continue;
-        const free = emptyBeds(p).length;
+        if (!p.pendingDice.length && !p.twinsPending) continue;
+        let free = emptyBeds(p).length;
         if (p.pendingDice.length > free) {
-          const shortage = p.pendingDice.length - free;
-          if (p.isBot) { for (const uid of botChooseFatalities(p, shortage)) { const d = findDie(p, uid); if (d) fatality(p, d, null); } log(`${p.name} ran out of quarantine space: ${shortage} ${plural(shortage, "breach", "breaches")}.`, "bad"); }
-          else { G.overflow = { pid: p.id, shortage, marked: [] }; G.actor = 0; return WAIT; }
+          // Pink hosts are never written off, so the shortage is capped by what can be.
+          const removable = boardDice(p).filter(d => !isPink(d) && findBed(p, d.uid)).length;
+          const shortage = Math.min(p.pendingDice.length - free, removable);
+          if (shortage > 0) {
+            if (p.isBot) { for (const uid of botChooseFatalities(p, shortage)) { const d = findDie(p, uid); if (d) fatality(p, d, null); } log(`${p.name} ran out of quarantine space: ${shortage} ${plural(shortage, "breach", "breaches")}.`, "bad"); }
+            else { G.overflow = { pid: p.id, shortage, marked: [] }; G.actor = 0; return WAIT; }
+          }
+          free = emptyBeds(p).length;
+          if (p.pendingDice.length > free) {
+            // Still no bed for some incoming hosts (only pink hosts left to write off): they go back.
+            p.pendingDice.sort((a, b) => (isMother(b) ? 1 : 0) - (isMother(a) ? 1 : 0));
+            const extra = p.pendingDice.splice(free);
+            for (const d of extra) { if (isPink(d)) G.supply.mother++; else returnToBag(d); }
+            log(`${p.name}: no room for ${extra.length} incoming ${plural(extra.length, "host")}; ${extra.length === 1 ? "it goes" : "they go"} back.`, "warn");
+          }
+        }
+        if (G.cfg.maternity) {
+          // Where a host goes now matters: hypervisors degrade only in company.
+          if (p.isBot) { botPlaceDice(p); continue; }
+          G.actor = 0; return WAIT;
         }
         const n = p.pendingDice.length;
         for (const d of p.pendingDice) placeDie(p, d);
@@ -1772,7 +1976,7 @@ const STEP = {
           if (ev.intelAll) p.bloodBags++;
           if (ev.staffShortage) { const m = p.meeples.find(x => x.kind === "nurse" && !x.off); if (m) m.off = true; }
           if (ev.autoHeal) { const ds = boardDice(p).sort((a, b) => a.value - b.value); if (ds.length) heal(p, ds[0], 1, newCtx()); }
-          if (ev.backupWindow) for (const d of boardDice(p).filter(x => x.value === 6)) discharge(p, d, null);
+          if (ev.backupWindow) for (const d of boardDice(p).filter(x => x.value === 6 && !x.ready)) heal(p, d, 1, newCtx());
         }
         if (ev.intelAll || ev.staffShortage || ev.autoHeal || ev.backupWindow) log(`${ev.name} applied.`, "warn");
       }
@@ -1830,6 +2034,8 @@ const STEP = {
     },
     score() {
       const ev = currentEvent();
+      // A pink host still waiting for the rest of its family stays at 6.
+      for (const p of G.players) { const n = unreadyPink(p); if (n && !p.isBot) log(`${n} pink ${plural(n, "host")} waited in vain: back to 6, the family restores together or not at all.`, "warn"); }
       const results = G.players.map(p => ({ p, r: scoreDischarges(p) }));
       const max = Math.max(...results.map(x => x.r.n));
       if (max > 0) for (const { p, r } of results) {
@@ -1841,7 +2047,7 @@ const STEP = {
           if (r.n) log(`Restored ${r.n} ${plural(r.n, "host")} this shift: +${r.pts} reputation${r.notes.length ? " (" + r.notes.join(", ") + ")" : ""}.`, "good");
           else log(`No hosts restored this shift.${r.notes.length ? " " + r.notes.join(", ") + "." : ""}`, "warn");
         } else if (r.n) log(`${p.name} restored ${r.n}: +${r.pts + r.bonus}.`, "sys");
-        for (const d of p.dischargedThisRound) G.bag[d.colour]++;
+        for (const d of p.dischargedThisRound) { if (d.colour === PINK) { if (d.infant) G.supply.infant++; else G.supply.mother++; } else G.bag[d.colour]++; }
         p.dischargedThisRound = [];
       }
       G.reportPool = null; G.reportsDone = false;
@@ -1858,6 +2064,8 @@ const STEP = {
         for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
         for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
         for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
+        // Guest segments: rested, and closed once their guests have left with the hypervisor.
+        for (const n of p.nurseries || []) { n.used = false; if (!n.dice.length) n.open = false; for (const d of n.dice) d.treated = false; }
         p.ambulance = null; p.took = false; p.returnDone = false; p.returnOpen = false; p.actDone = false; p.consultantDone = false; p.consultantCopy = null;
         p.breachesThisRound = 0; p.neglectResults = null; p.botSummary = "";
       }
@@ -1950,6 +2158,13 @@ function swapStartValues(p, uidA, uidB) {
 function applyStartConfirm(p) {
   for (const d of p.startDice) placeDie(p, d);
   p.startDice = [];
+  if (p.startMother && G.supply.mother > 0) {
+    G.supply.mother--;
+    const wi = motherWardOptions(p).free[0];
+    admitMother(p, makePinkDie("mother", MAT.startValue), wi, 1);
+    if (!p.isBot) log("A hypervisor at 4 and its guest start in a segment of their own.", "sys");
+  }
+  p.startMother = false;
 }
 function applyExtraChoice(kind) {
   G.extraChoice = kind;
@@ -1973,7 +2188,62 @@ function canPickAmbulance(p, num) {
   const a = G.ambulances.find(x => x.num === num);
   if (!a || a.takenBy !== null || p.ambulance !== null) return false;
   if (p.id === G.firstPlayer && num === 1) return false;
+  // At the hypervisor cap a queue carrying one is off limits, unless every open queue carries one.
+  if (G.cfg.maternity && a.dice.some(isMother) && mothersOf(p).length >= MAT.maxMothers) {
+    const open = G.ambulances.filter(x => x.takenBy === null && !(p.id === G.firstPlayer && x.num === 1));
+    if (open.some(x => !x.dice.some(isMother))) return false;
+  }
   return true;
+}
+// Intake rule: at most one hypervisor per queue. A second one moves to the
+// next queue up (else down) and a coloured host from there comes back, so the
+// coloured hosts stay in ascending order across the queues.
+function separateMothers(ambs) {
+  const byVal = (a, b) => a.value - b.value || COLOUR_ORDER[a.colour] - COLOUR_ORDER[b.colour] || a.uid - b.uid;
+  let guard = 0;
+  while (guard++ < 20) {
+    const k = ambs.findIndex(a => a.dice.filter(isMother).length > 1);
+    if (k < 0) return;
+    const mother = ambs[k].dice.filter(isMother).sort((a, b) => b.value - a.value)[0];
+    const cand = [k + 1, k - 1].filter(i => i >= 0 && i < ambs.length);
+    if (!cand.length) return;
+    const t = cand.find(i => !ambs[i].dice.some(isMother)) ?? cand[0];
+    const from = ambs[k], to = ambs[t];
+    from.dice.splice(from.dice.indexOf(mother), 1); to.dice.push(mother);
+    const movers = to.dice.filter(d => !isPink(d)).sort(byVal);
+    const back = t > k ? movers[0] : movers[movers.length - 1];
+    if (back) { to.dice.splice(to.dice.indexOf(back), 1); from.dice.push(back); }
+    from.dice.sort(byVal); to.dice.sort(byVal);
+  }
+}
+// ---- placement (Virtualization) ----
+// The host you are placing now: hypervisors first, so their segment is settled
+// before the coloured hosts fill in around them.
+function placingDie(p) { return p.pendingDice.find(isMother) || p.pendingDice[0] || null; }
+function placeOptions(p, die) {
+  if (isMother(die)) { const o = motherWardOptions(p); return o.free.concat(o.swap); }
+  return p.wards.map((w, wi) => wi).filter(wi => p.wards[wi].some(b => !b.u && !b.t));
+}
+function applyPlace(p, die, wi) {
+  p.pendingDice = p.pendingDice.filter(d => d.uid !== die.uid);
+  if (isMother(die)) {
+    const k = rollInfants(p);
+    if (!admitMother(p, die, wi, k === null ? 0 : k)) { G.supply.mother++; return false; }
+    if (k === null) p.twinsPending = die.uid; // the directive lets the SOC choose
+    else log(`${p.name}: hypervisor at ${die.value} into Q${wi + 1} with ${k === 2 ? "twin guests" : "one guest"}.`, p.isBot ? "sys" : "good");
+  } else {
+    if (!placeDie(p, die, wi)) return false;
+    if (!p.isBot) log(`${COLOUR_NAME[die.colour]} host at ${die.value} into Q${wi + 1}.`, "sys");
+  }
+  return true;
+}
+function applyTwins(p, k) {
+  const mother = findDie(p, p.twinsPending); p.twinsPending = null;
+  if (!mother) return;
+  const wi = wardOf(p, mother.uid), n = p.nurseries[wi];
+  const c = Math.max(0, Math.min(k, G.supply.infant));
+  for (let i = 0; i < c; i++) { G.supply.infant--; const g = makePinkDie("infant", MAT.startValue); g.family = mother.uid; n.dice.push(g); }
+  log(`${p.name}: Provisioning Policy, ${k === 2 ? "twin guests" : "one guest"} for the hypervisor in Q${wi + 1}.`, p.isBot ? "sys" : "good");
 }
 function applyPickAmbulance(p, num) {
   const a = G.ambulances.find(x => x.num === num);
@@ -2005,14 +2275,14 @@ function applyReturn(p, kind, uid) {
   if (kind === "dept") {
     const i = p.departments.findIndex(d => d.uid === uid && d.improvement);
     if (i < 0) return;
-    G.deptStack.unshift(p.departments[i].type);
+    (isMatDept(p.departments[i].type) ? G.matDeptStack : G.deptStack).unshift(p.departments[i].type);
     log(`${p.name} ${p.isBot ? "returns" : "return"} ${DEPT_DEFS[p.departments[i].type].name} for an intel token.`, "sys");
     p.departments.splice(i, 1);
   } else {
     const i = p.specialists.findIndex(s => s.uid === uid);
     if (i < 0) return;
     const s = p.specialists[i];
-    G.specStack.unshift(s.type);
+    (isMatSpec(s.type) ? G.matSpecStack : G.specStack).unshift(s.type);
     p.meeples = p.meeples.filter(m => m.uid !== s.meepleUid);
     log(`${p.name} ${p.isBot ? "returns" : "return"} the ${SPEC_DEFS[s.type].name} for an intel token.`, "sys");
     p.specialists.splice(i, 1);
@@ -2092,6 +2362,15 @@ function assertInvariants() {
   const expected = G.cfg.dicePerColour * 3;
   const got = totalDiceOnTable();
   if (got !== expected) throw new Error(`Dice conservation broken: ${got} vs ${expected} at ${G.phase}.${G.step} round ${G.round}`);
+  if (G.cfg.maternity) {
+    const pinkGot = totalPinkOnTable(), pinkExp = MAT.mothers + MAT.infants;
+    if (pinkGot !== pinkExp) throw new Error(`Pink dice conservation broken: ${pinkGot} vs ${pinkExp} at ${G.phase}.${G.step} round ${G.round}`);
+    for (const p of G.players) {
+      if (mothersOf(p).length > MAT.maxMothers) throw new Error("Too many hypervisors");
+      p.wards.forEach((w, wi) => { if (wardDice(p, wi).filter(isMother).length > 1) throw new Error("Two hypervisors in one segment"); });
+      for (const n of p.nurseries) for (const d of n.dice) if (!d.infant || !findDie(p, d.family)) throw new Error("Orphaned guest");
+    }
+  }
   const seen = new Set();
   for (const p of G.players) for (const d of boardDice(p)) {
     if (seen.has(d.uid)) throw new Error("Duplicate die uid " + d.uid);
@@ -2131,10 +2410,32 @@ function onQueueClick(num) { if (!inPhase("intake", "pick") || !canPickAmbulance
 function onOverflowToggle(uid) {
   const O = G.overflow; if (!O) return;
   const p = human();
-  if (!findDie(p, uid)) return;
+  const die = findDie(p, uid);
+  if (!die || isPink(die) || !findBed(p, uid)) return;
   const i = O.marked.indexOf(uid);
   if (i >= 0) O.marked.splice(i, 1); else if (O.marked.length < O.shortage) O.marked.push(uid);
   updateAll();
+}
+function onPlaceWard(wi) {
+  if (!inPhase("intake", "place") || G.overflow || !G.cfg.maternity) return;
+  const p = human(), die = placingDie(p);
+  if (!die || p.twinsPending || !placeOptions(p, die).includes(wi)) return;
+  applyPlace(p, die, wi);
+  sfx("place"); saveGame();
+  if (p.pendingDice.length || p.twinsPending) updateAll(); else advance();
+}
+function onTwins(k) {
+  if (!inPhase("intake", "place") || !human().twinsPending) return;
+  applyTwins(human(), k);
+  sfx("place"); saveGame();
+  if (human().pendingDice.length) updateAll(); else advance();
+}
+function onAutoPlace() {
+  if (!inPhase("intake", "place") || G.overflow || !G.cfg.maternity) return;
+  const p = human();
+  if (p.twinsPending) applyTwins(p, 2);
+  botPlaceDice(p);
+  sfx("place"); advance();
 }
 function onOverflowConfirm() { const O = G.overflow; if (!inPhase("intake", "place") || !O || O.marked.length !== O.shortage) return; applyOverflow(); advance(); }
 function onDisplayClick(kind, idx) {
@@ -2329,7 +2630,7 @@ function runActivation(opt) {
       else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); queueBonusFx(ctx); finishSpecLog(true); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
-        o.ordered = !!def.then.and;
+        o.ordered = !!def.then.and || !!def.then.pair;
         if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
         computeLegal(); updateAll(); return;
       }
@@ -2418,7 +2719,7 @@ function endActivation() {
   if (!inPhase("activate", "human")) return;
   const p = human();
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
-  const idle = p.meeples.filter(m => !m.used && !m.off).length && p.departments.some(d => canActivate(d, p));
+  const idle = p.meeples.filter(m => !m.used && !m.off).length && allDepts(p).some(d => canActivate(d, p));
   const ev = currentEvent();
   const dmg = ev && ev.neglectMod !== undefined ? ev.neglectMod : (G.cfg.superbug ? 2 : 1);
   const risk = untreatedDice(p).filter(d => d.value <= dmg).length;
@@ -2437,7 +2738,7 @@ function computeLegal() {
   UI.legalTargets = new Set(); UI.legalByDept = {};
   if (!G || G.phase !== "activate" || G.step !== "human") return;
   const p = human(), s = UI.sel;
-  for (const d of p.departments) UI.legalByDept[d.uid] = canActivate(d, p);
+  for (const d of allDepts(p)) UI.legalByDept[d.uid] = canActivate(d, p);
   if (s.state === "targeting") {
     const dept = deptOf(p, s.deptUid);
     if (dept) UI.legalTargets = narrowTargets(DEPT_DEFS[dept.type].sel, boardDice(p), s.dice);
@@ -2450,7 +2751,8 @@ function computeLegal() {
       else for (const d of set) UI.legalTargets.add(d.uid);
     }
   } else if (["intelHeal", "intelRecolour", "admReturn"].includes(s.state)) {
-    for (const d of boardDice(p)) UI.legalTargets.add(d.uid);
+    // Pink hosts are never retagged or handed off, and a ready one is set aside.
+    for (const d of boardDice(p)) if (!d.ready && (s.state === "intelHeal" || !isPink(d))) UI.legalTargets.add(d.uid);
   }
 }
 
@@ -2501,6 +2803,7 @@ function dispatchAct(el) {
     case "dept": onDeptClick(uid); break;
     case "spec": onSpecCardClick(uid); break;
     case "queue": onQueueClick(idx); break;
+    case "place": onPlaceWard(parseInt(el.dataset.ward, 10)); break;
     case "dispDept": onDisplayClick("dept", idx); break;
     case "dispSpec": onDisplayClick("spec", idx); break;
     case "admin": onAdminPick(el.dataset.id); break;
@@ -2519,7 +2822,7 @@ const V_PIP = [0, -6, -3, 0, 1, 2, 3];
 const V_DISCHARGE = 12, V_FATALITY = 8, V_BLOOD = 3, V_TREATED = 1;
 function boardValue(p) {
   let v = 0;
-  for (const d of boardDice(p)) v += V_PIP[d.value] + (d.treated ? V_TREATED : 0);
+  for (const d of boardDice(p)) v += V_PIP[d.value] + (d.treated ? V_TREATED : 0) + (d.ready ? 4 : 0);
   return v + V_DISCHARGE * p.dischargedThisRound.length - V_FATALITY * p.fatalities + V_BLOOD * p.bloodBags + p.score;
 }
 function botPick(options, skill) {
@@ -2555,20 +2858,42 @@ function botPickAmbulance(p) {
   const lowestOpen = Math.min(...G.ambulances.filter(a => a.takenBy === null).map(a => a.num));
   const opts = open.map(a => ({
     num: a.num,
-    score: sum(a.dice.map(d => V_PIP[d.value] + 1)) - V_FATALITY * Math.max(0, a.dice.length - free) + (a.num === lowestOpen ? V_BLOOD + 2 : 0) + 0.3 * (G.ambulances.length - a.num),
+    // A hypervisor brings guests at 4: extra restorations for a SOC with a segment to spare.
+    score: sum(a.dice.map(d => V_PIP[d.value] + 1 + (isMother(d) ? (motherWardOptions(p).free.length ? 4 : 1) : 0))) - V_FATALITY * Math.max(0, a.dice.length - free) + (a.num === lowestOpen ? V_BLOOD + 2 : 0) + 0.3 * (G.ambulances.length - a.num),
   }));
   return botPick(opts, p.skill).num;
 }
 function botChooseFatalities(p, k) {
   const tools = colourCounts([]);
   for (const d of p.departments) if (COLOURS.includes(DEPT_DEFS[d.type].tag)) tools[DEPT_DEFS[d.type].tag]++;
-  return boardDice(p).slice().sort((a, b) => V_PIP[a.value] - V_PIP[b.value] || tools[a.colour] - tools[b.colour]).slice(0, k).map(d => d.uid);
+  return boardDice(p).filter(d => !isPink(d) && findBed(p, d.uid)).sort((a, b) => V_PIP[a.value] - V_PIP[b.value] || tools[a.colour] - tools[b.colour]).slice(0, k).map(d => d.uid);
 }
-function deptPower(def) { return def.heal ? def.heal * def.sel.n : 2 * def.sel.n; }
+// Where a rival puts its new hosts: a hypervisor into an empty segment (then
+// the emptiest without one); coloured hosts away from hypervisors, filling
+// the busiest such segment first so an empty one stays free.
+function botPlaceDice(p) {
+  p.pendingDice.sort((a, b) => (isMother(b) ? 1 : 0) - (isMother(a) ? 1 : 0));
+  for (const d of p.pendingDice.slice()) {
+    if (isMother(d)) {
+      const o = motherWardOptions(p);
+      const wi = o.free.slice().sort((a, b) => wardDice(p, a).length - wardDice(p, b).length)[0] ?? o.swap[0];
+      if (wi === undefined) { p.pendingDice = p.pendingDice.filter(x => x.uid !== d.uid); G.supply.mother++; continue; }
+      applyPlace(p, d, wi);
+      if (p.twinsPending) applyTwins(p, 2);
+    } else {
+      const open = p.wards.map((w, wi) => wi).filter(wi => p.wards[wi].some(b => !b.u && !b.t));
+      const busiest = (a, b) => wardDice(p, b).length - wardDice(p, a).length;
+      const wi = open.filter(wi => !wardHasMother(p, wi)).sort(busiest)[0] ?? open.sort(busiest)[0];
+      if (wi === undefined) { p.pendingDice = p.pendingDice.filter(x => x.uid !== d.uid); returnToBag(d); continue; }
+      applyPlace(p, d, wi);
+    }
+  }
+}
+function deptPower(def) { return def.pinkHeal ? def.pinkHeal + (def.heal || 0) * (def.sel.n - 1) : def.heal ? def.heal * def.sel.n : 2 * def.sel.n; }
 function botPickImprovement(p) {
   const opts = [];
   const board = boardDice(p);
-  const usableDepts = p.departments.filter(d => firstLegalSet(DEPT_DEFS[d.type].sel, board)).length;
+  const usableDepts = allDepts(p).filter(d => canActivate(d, p)).length;
   const need = p.meeples.length >= usableDepts ? 1.5 : 0.8;
   G.deptDisplay.forEach((t, idx) => {
     if (!t) return;
@@ -2617,7 +2942,7 @@ function botApplySpec(p, def, ctx, o) {
   if (o.kind === "choice") {
     if (o.choice === "pathologist") { applySpec(p, def, ctx, [], { yes: true }); return; }
     if (o.choice === "admissions") {
-      const bad = untreatedDice(p).filter(d => d.value <= 2).sort((a, b) => a.value - b.value)[0];
+      const bad = untreatedDice(p).filter(d => d.value <= 2 && !isPink(d)).sort((a, b) => a.value - b.value)[0];
       if (bad) applySpec(p, def, ctx, [], { mode: "return", uid: bad.uid });
       else if (!UI.simulating && emptyBeds(p).length >= 2) applySpec(p, def, ctx, [], { mode: "admit" });
       return;
@@ -2657,7 +2982,7 @@ function botActivate(p) {
     const reps = meeples.filter(m => m.kind === "spec");
     if (nurse) reps.push(nurse);
     for (const m of reps) {
-      for (const dept of p.departments.filter(d => !d.used)) {
+      for (const dept of allDepts(p).filter(d => canActivate(d, p))) {
         const def = DEPT_DEFS[dept.type];
         let sets = legalSets(def.sel, board);
         if (sets.length > 24) sets = shuffle(sets).slice(0, 24);
@@ -2680,7 +3005,7 @@ function botActivate(p) {
 function botBloodBag(p) {
   let guard = 0;
   while (p.bloodBags > 0 && guard++ < 10) {
-    const six = boardDice(p).find(d => d.value === 6);
+    const six = boardDice(p).find(d => d.value === 6 && !d.ready);
     if (six) { useIntelHeal(p, six); continue; }
     const dying = untreatedDice(p).filter(d => d.value === 1)[0];
     if (dying && (G.round >= ROUNDS || p.skill >= 1)) { useIntelHeal(p, dying); continue; }
@@ -2710,7 +3035,7 @@ function botAnswerWait() {
   else if (st === "extraReveal") applyExtraChoice(botExtraChoice(p));
   else if (ph === "intake" && st === "keep") applyKeep(p, botKeep(p));
   else if (ph === "intake" && st === "pick") applyPickAmbulance(p, botPickAmbulance(p));
-  else if (ph === "intake" && st === "place") { G.overflow.marked = botChooseFatalities(p, G.overflow.shortage); applyOverflow(); }
+  else if (ph === "intake" && st === "place") { if (G.overflow) { G.overflow.marked = botChooseFatalities(p, G.overflow.shortage); applyOverflow(); } else if (p.twinsPending) applyTwins(p, 2); else botPlaceDice(p); }
   else if (ph === "improve" && st === "take") { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; }
   else if (ph === "improve" && st === "return") { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); }
   else if (ph === "activate" && st === "consultant") applyConsultant(p, botConsultant(p));
@@ -3019,13 +3344,13 @@ function attentionTarget() {
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   if (ph === "setup") return "table";
   if (st === "extraReveal") return "strip";
-  if (ph === "intake") return st === "place" && G.overflow ? "wards" : "table";
+  if (ph === "intake") return st === "place" && human().twinsPending ? "strip" : st === "place" && (G.overflow || G.cfg.maternity) ? "wards" : "table";
   if (ph === "improve") return st === "take" ? "table" : "strip";
   if (ph === "activate" && st === "consultant") return "staff";
   if (ph === "activate" && st === "human") {
     switch (s.state) {
       case "idle": {
-        const canAct = p.meeples.some(m => !m.used && !m.off) && p.departments.some(d => canActivate(d, p));
+        const canAct = p.meeples.some(m => !m.used && !m.off) && allDepts(p).some(d => canActivate(d, p));
         return canAct ? "staff" : "strip";
       }
       case "meepleSel": return "tools";
@@ -3067,9 +3392,12 @@ function renderDie(die, opts = {}) {
   const cls = ["die", "c-" + c, "v-" + die.value];
   if (die.tmpColour) cls.push("tmp", "o-" + die.colour);
   if (die.treated) cls.push("treated");
+  if (die.infant) cls.push("infant");
+  if (die.ready) cls.push("ready");
   if (opts.small) cls.push("die-sm");
   if (opts.cls) cls.push(opts.cls);
-  const label = `${COLOUR_NAME[c]} host at ${die.value}${die.tmpColour ? ", retagged from " + COLOUR_NAME[die.colour] : ""}${die.treated ? ", worked" : ""}${opts.aria || ""}`;
+  const who = isPink(die) ? (die.infant ? "Pink guest" : "Pink hypervisor") : `${COLOUR_NAME[c]} host`;
+  const label = `${who} at ${die.value}${die.tmpColour ? ", retagged from " + COLOUR_NAME[die.colour] : ""}${die.ready ? ", ready to restore with its family" : ""}${die.treated ? ", worked" : ""}${opts.aria || ""}`;
   const act = opts.act ? ' data-act="die" role="button" tabindex="0"' : ' role="img"';
   return `<div class="${cls.join(" ")}" data-uid="${die.uid}"${act} aria-label="${esc(label)}" title="${esc(label)}">${pips()}</div>`;
 }
@@ -3092,6 +3420,7 @@ function dieState(uid) {
   return { cls, act };
 }
 function deptRule(def) {
+  if (def.rule) return def.rule;
   const sel = def.sel;
   const colourWord = sel.colour ? COLOUR_NAME[sel.colour].toLowerCase() : "";
   const vals = sel.values ? " at " + sel.values.join("/") : "";
@@ -3102,6 +3431,7 @@ function deptRule(def) {
   return `${what} → ${eff}`;
 }
 function deptDesc(def) {
+  if (def.desc) return def.desc;
   const sel = def.sel;
   const colourWord = sel.colour ? COLOUR_NAME[sel.colour].toLowerCase() + " " : "";
   const vals = sel.values ? ` at value ${sel.values.join(" or ")}` : "";
@@ -3115,6 +3445,7 @@ function deptDesc(def) {
   return "";
 }
 function specDesc(def) {
+  if (def.desc) return def.desc;
   if (def.special === "copy") return "At the start of activation, copy the ability of another specialist you employ for this shift.";
   const t = def.then;
   const trig = def.when.healedColour ? `When it heals a ${def.when.healedColour} host` : def.when.dischargedAny ? "When it restores a host" : "When it heals a host";
@@ -3160,6 +3491,25 @@ function renderMeeple(p, m, key) {
   const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
   return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
 }
+// The guest segment under a quarantine segment: its guests, and the
+// placement it offers while it holds any.
+function renderNursery(p, wi) {
+  const n = p.nurseries[wi], s = UI.sel, live = G.phase === "activate" && G.step === "human";
+  const cls = ["nursery", n.open ? "open" : "closed"];
+  let why = n.open ? deptDesc(DEPT_DEFS.nursery) : "Guest segment: offline until a hypervisor is quarantined above it.";
+  if (n.used) { cls.push("used"); why = "Used this shift. " + why; }
+  if (live && n.open && (s.state === "meepleSel" || s.state === "targeting")) {
+    if (UI.legalByDept[n.uid] && !n.used) cls.push("can");
+    else if (!n.used) { cls.push("disabled"); why = "No valid targets right now. " + why; }
+  }
+  if (live && s.deptUid === n.uid) cls.push("sel");
+  const m = p.meeples.find(x => x.deptUid === n.uid);
+  const dot = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
+  let html = `<div class="${cls.join(" ")}" data-act="dept" data-uid="${n.uid}" role="button" tabindex="0" aria-disabled="${!cls.includes("can")}" aria-label="Guest segment ${wi + 1}, ${n.open ? n.dice.length + " " + plural(n.dice.length, "guest") : "offline"}" title="${esc(why)}"><div class="nh"><span>guests</span><span>${n.open ? "1 pink host → +1" : "offline"}</span></div><div class="nslots">`;
+  for (const d of n.dice) { const x = dieState(d.uid); html += `<div class="slot g">${renderDie(d, { cls: x.cls, act: x.act, small: true })}</div>`; }
+  html += `</div>${dot}</div>`;
+  return html;
+}
 function renderBoard() {
   const p = human(), el = document.getElementById("board"), s = UI.sel;
   const live = G.phase === "activate" && G.step === "human";
@@ -3196,19 +3546,29 @@ function renderBoard() {
   }
   html += '</div></section>';
   html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
+  // Virtualization: you place each incoming host; the segments that may take it glow.
+  const placing = intake && G.cfg.maternity && !G.overflow && G.actor === 0 && !UI.animating && !p.twinsPending;
+  const cur = placing ? placingDie(p) : null;
+  const opts = cur ? placeOptions(p, cur) : [];
+  const swaps = cur && isMother(cur) ? motherWardOptions(p).swap : [];
   p.wards.forEach((w, wi) => {
     const n = w.filter(b => b.u || b.t).length;
-    html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
+    const ok = opts.includes(wi), hv = G.cfg.maternity && wardHasMother(p, wi);
+    const headAttrs = ok ? ` data-act="place" data-ward="${wi}" role="button" tabindex="0" title="${swaps.includes(wi) ? "Full: one host moves out to make room" : "Place it here"}"` : "";
+    html += `<div class="ward${ok ? " place-ok" : ""}" aria-label="Quarantine segment ${wi + 1}${hv ? ", holds a hypervisor" : ""}"><div class="ward-h"${headAttrs}><span>Q${wi + 1}${hv ? '<span class="hv" title="Hypervisor here">HV</span>' : ""}</span><span>${n}/${BEDS}${ok ? " · place" : ""}</span></div><div class="beds">`;
     for (const b of w) {
       html += '<div class="bed">';
       for (const k of ["u", "t"]) {
         const d = b[k];
         const x = d ? dieState(d.uid) : null;
-        html += `<div class="slot ${k}${d ? "" : " empty"}${!d && k === "u" && intake ? " open" : ""}" aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+        const open = !d && k === "u" && (placing ? ok : intake);
+        html += `<div class="slot ${k}${d ? "" : " empty"}${open ? " open" : ""}"${open && ok ? ` data-act="place" data-ward="${wi}" role="button" tabindex="0"` : ""} aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
       }
       html += '</div>';
     }
-    html += '</div></div>';
+    html += '</div>';
+    if (G.cfg.maternity) html += renderNursery(p, wi);
+    html += '</div>';
   });
   html += '</div></section>';
   const n = p.dischargedThisRound.length;
@@ -3263,6 +3623,11 @@ function renderCenter() {
     html += `<div class="center-title">Quarantine full</div><div class="keep-row">`;
     for (const d of p.pendingDice) html += renderDie(d);
     html += `</div><div class="hint">${p.pendingDice.length} incoming, ${emptyBeds(p).length} free ${plural(emptyBeds(p).length, "slot")}. Mark ${O.shortage} existing ${plural(O.shortage, "host")} on your board to write off. Marked: ${O.marked.length}/${O.shortage}.</div>`;
+  } else if (ph === "intake" && st === "place" && G.cfg.maternity && G.actor === 0 && !UI.animating) {
+    const cur = placingDie(p);
+    html += '<div class="center-title">Incoming hosts — place each</div><div class="keep-row">';
+    for (const d of p.pendingDice) html += renderDie(d, { cls: cur && cur.uid === d.uid ? "sel" : "dim" });
+    html += `</div><div class="hint">${p.twinsPending ? "Choose the guests below." : p.pendingDice.length ? "Hypervisors first. Click a glowing segment." : "All placed."}</div>`;
   } else if (ph === "improve") {
     html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
   } else if (ph === "activate" && st === "consultant") {
@@ -3367,7 +3732,7 @@ function renderStrip() {
   if (live) {
     const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
     const idle = p.meeples.filter(x => !x.used && !x.off).length;
-    const usable = p.departments.filter(d => canActivate(d, p)).length;
+    const usable = allDepts(p).filter(d => canActivate(d, p)).length;
     html += '<div class="strip-tools">';
     html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token (the blood bag) to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
     html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
@@ -3392,7 +3757,7 @@ function renderRivals() {
     const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id || (UI.choosing && UI.choosing.pid === p.id) ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
-    html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, d.treated ? "treated" : "")).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
+    html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, [d.treated ? "treated" : "", d.infant ? "infant" : "", d.ready ? "ready" : ""].join(" "))).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
     if (p.botSummary) html += `<div class="rs">${esc(p.botSummary)}</div>`;
     html += '</div>';
   }
@@ -3411,8 +3776,9 @@ function updateHUD() {
     ["Restored", p.dischargedTotal],
     ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
   ];
+  if (G.cfg.maternity) stats.push(["Pool", `<span class="bagdots"><span class="mini-dot dot c-pink"></span>${G.supply.mother} · ${G.supply.infant}</span>`, "", "", `${G.supply.mother}/${G.supply.infant}`]);
   const el = document.getElementById("hud-stats");
-  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? `Dice left in the bag by colour. Stacks: ${G.deptStack.length} tools, ${G.specStack.length} specialists` : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
+  el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? `Dice left in the bag by colour. Stacks: ${G.deptStack.length} tools, ${G.specStack.length} specialists` : l === "Pool" ? "Hypervisors and guests still in the supply" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
   for (const [l, v, , , key] of stats) UI.prevHUD[l] = key || v;
   const ps = document.getElementById("phase-strip");
   const idx = PHASE_STEPS.findIndex(([id]) => id === G.phase);
@@ -3429,13 +3795,19 @@ function promptFor() {
   if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
   if (ph === "intake" && st === "pick") return { text: `Click an escalation queue to take it. The lowest number taken earns an intel token and the Incident Commander role${p.id === G.firstPlayer ? "; as Commander you may not take #1" : ""}.` };
   if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
-  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off${G.cfg.maternity ? " (pink hosts are never written off)" : ""}.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
+  if (ph === "intake" && st === "place" && p.twinsPending) return { text: "Provisioning Policy: does the new hypervisor bring one guest or twins?", buttons: [B("Twin guests", "onTwins(2)", { primary: true }), B("One guest", "onTwins(1)")] };
+  if (ph === "intake" && st === "place" && G.cfg.maternity) {
+    const die = placingDie(p);
+    const text = !die ? "" : isMother(die) ? `Place the hypervisor (${die.value}) in a highlighted segment: one with no other hypervisor. It only degrades when other hosts share its segment, and it brings guests.` : `Place the ${die.colour} host (${die.value}) in a highlighted segment. Keep coloured hosts away from hypervisors, or the hypervisor degrades too.`;
+    return { text, buttons: [B("Auto-place the rest", "onAutoPlace()")] };
+  }
   if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
   if (ph === "improve" && st === "return") return { text: "Return one improvement for an intel token, or keep everything.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
   if (ph === "activate" && st === "consultant") return { text: "Pick a specialist for the Consultant to shadow this shift.", buttons: [B("Skip", "onConsultantSkip()")] };
   if (ph === "activate" && st === "human") {
     const endLabel = UI.endConfirm ? (UI.endRisk ? `Sure? ${UI.endRisk} will breach` : "Sure?") : "End activation";
-    const endB = B(endLabel, "endActivation()", { primary: !p.meeples.some(m => !m.used && !m.off) || !p.departments.some(d => canActivate(d, p)), danger: UI.endConfirm, key: "E" });
+    const endB = B(endLabel, "endActivation()", { primary: !p.meeples.some(m => !m.used && !m.off) || !allDepts(p).some(d => canActivate(d, p)), danger: UI.endConfirm, key: "E" });
     switch (s.state) {
       case "idle": return { text: "Click an analyst, then a tool.", buttons: [endB] };
       case "meepleSel": return { text: "Now click a glowing tool.", buttons: [B("Cancel", "cancelSel()")] };
@@ -3583,7 +3955,7 @@ function newGameClick() {
 function showHowToPlay(tab) {
   tab = tab || "overview";
   const mc = document.getElementById("modal-content");
-  const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["keys", "Keys"], ["about", "About"]];
+  const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["expansions", "Expansions"], ["keys", "Keys"], ["about", "About"]];
   const panel = id => `class="help-panel ${tab === id ? "on" : ""}"`;
   const closeAction = G ? "closeModal()" : "showMainMenu()";
   const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
@@ -3643,6 +4015,20 @@ function showHowToPlay(tab) {
       </table>
       <h4>Incident Events</h4>
       <table class="help-table">${eventRows}</table>
+    </div>
+    <div ${panel("expansions")}>
+      <h4>Virtualization (the Maternity expansion)</h4>
+      <p>Switch it on under Expansions in the setup menu (rival games only). Pink dice join the table: <b>hypervisors</b> (full size) and their <b>guests</b> (small). Pink is a colour of its own: colour-specific tools and specialists ignore it, value-based and "any colour" effects work on it, and nothing can retag or re-roll a pink host.</p>
+      <ul>
+        <li><b>Setup.</b> Every SOC starts with a 4th analyst, a hypervisor at 4 alone in a segment, and one guest at 4 in the guest segment below it. Two maternity tools and two maternity specialists (one each with a single rival) join the display from their own piles.</li>
+        <li><b>Intake.</b> Fewer coloured hosts are rolled and hypervisors are added: 2 with one or two rivals, 3 with three. At most one hypervisor per queue: a second moves to the next queue and a coloured host swaps back. No SOC holds more than 4 hypervisors; at the cap a queue carrying one is off limits unless every open queue does, and then the hypervisor is swapped for a coloured host of the same value.</li>
+        <li><b>Placement.</b> You choose the segment for each incoming host. A hypervisor goes in a segment with no other hypervisor (a full one is allowed: one host there moves to a free bed elsewhere). It opens the guest segment below it and brings one guest or twins at value 4, rolled on the provisioning die. Hosts never move between segments otherwise.</li>
+        <li><b>Guest segments.</b> While it holds guests, each guest segment is a placement: one staff member there heals one pink host (hypervisor or guest) 1 step, once per shift. A specialist's follow-up applies as usual.</li>
+        <li><b>Dwell time.</b> A queued hypervisor only degrades when other hosts share its segment, and never below 1: hypervisors never breach. Guests never lose a step, for any reason.</li>
+        <li><b>Restoration.</b> A pink host healed past 6 is set aside, ready, until the hypervisor and all its guests are ready; then they restore together and score with everything else. Anything still waiting at the end of the shift drops back to 6. Up to 20 hosts can restore in a shift: 13–20 score 40, 46, 52, 68, 75, 82, 90, 98. The clear-segments bonus needs the guest segments empty too.</li>
+        <li><b>Directives.</b> Provisioning Policy: choose one guest or twins. Tenant Bonus: +3 for two hypervisors and two guests restored in one shift.</li>
+      </ul>
+      <p>Not printed in the rulebook: the provisioning die's faces (twins on 2 of 6 here) and which specialists are the third copies (two of each here). The printed 16th scoring value, 68, is kept though it reads like a misprint for 58.</p>
     </div>
     <div ${panel("keys")}>
       <ul>
