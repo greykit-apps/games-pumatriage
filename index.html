@@ -385,10 +385,12 @@ body::after {
 
 #display { display: flex; flex-direction: column; gap: 8px; }
 #display .disp-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
-/* Fixed widths: a card leaving must not resize its neighbours, only let
-   them slide over (a FLIP pass in playFlip does the sliding). */
-#display .disp-row .dept-tile { flex: 0 0 200px; }
-#display .disp-row .spec-card { flex: 0 0 240px; max-width: none; font-size: 11px; }
+/* Fixed widths: a card leaving must not resize its neighbours, and its
+   slot stays open behind it (a dashed gap), so the row never closes up and
+   what has gone is as legible as what is left. */
+#display .disp-row .dept-tile, #display .disp-row .disp-gap.gd { flex: 0 0 200px; }
+#display .disp-row .spec-card, #display .disp-row .disp-gap.gs { flex: 0 0 240px; max-width: none; font-size: 11px; }
+.disp-gap { border: 1px dashed color-mix(in srgb, var(--green-dark) 38%, transparent); min-height: 40px; }
 #display .disp-row .spec-card .sn { font-size: 13px; }
 #display .disp-row .spec-card .sd { font-size: 12px; }
 .dept-tile.pickable { cursor: pointer; border-color: var(--tag); }
@@ -403,6 +405,9 @@ body::after {
 .dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--amber); outline-offset: 1px; box-shadow: 0 0 14px rgba(255,176,0,0.5); animation: chosen-lift .3s var(--ease-out-quart) both; }
 @keyframes chosen-lift { 0% { transform: none; } 100% { transform: translateY(-4px); } }
 .chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
+/* After your own pick the remaining rival picks run quick. */
+#display.quick .leaving { animation-duration: .3s; }
+#display.quick .chosen { animation-duration: .15s; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
 .dept-tile.leaving, .spec-card.leaving { animation: card-away .6s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
 @keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
@@ -922,7 +927,7 @@ const WAIT = "wait", ANIM = "anim", NEXT = "next";
 const UI = {
   sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
   eventQueue: [], queueTimer: null, animating: false, headless: false, simulating: false,
-  flipRects: new Map(), prevHUD: {}, prevPhase: null, muted: false,
+  flipRects: new Map(), cardH: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
   lastDieClick: null, speed: 1, addonsOpen: false,
@@ -936,7 +941,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null; UI.choosing = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null; UI.choosing = null; UI.quickPicks = false;
   if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
@@ -1626,10 +1631,11 @@ const STEP = {
         G.dealt = true;
         const n = G.deptDisplay.filter(Boolean).length + G.specDisplay.filter(Boolean).length;
         // Deal, then leave the whole display on the table long enough to read.
-        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 90 }, { type: "wait", delay: 90 * n + 380 + 1000, min: 90 * n + 500 }]);
+        UI.quickPicks = false;
+        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 68 }, { type: "wait", delay: 68 * n + 285 + 750, min: 68 * n + 375 }]);
       }
-      // Your own pick gets its beat too: the card flies to your board and the
-      // row closes up before any rival moves.
+      // Your own pick gets its beat too: the card flies to your board, leaving
+      // its slot open, before any rival moves.
       if (UI.takeFrom && !UI.headless && !UI.reducedMotion) return animate([{ type: "render" }, { type: "wait", delay: 420 }]);
       if (G.cfg.solo) {
         const p = human();
@@ -1649,20 +1655,26 @@ const STEP = {
           const paced = !UI.headless && !UI.reducedMotion;
           // One rival at a time, in three beats: the rival's choice is
           // highlighted on the table, then that card slides off toward its
-          // panel card, then the row closes up (the last render no longer
-          // carries the leaving card, so the cards FLIP into the gap).
+          // panel card, then a breath with its slot standing empty (the last
+          // render swaps the faded card for the gap; nothing else moves).
           if (paced && !(UI.choosing && UI.choosing.pid === p.id)) {
             const c = botPickImprovement(p);
             if (!c) { p.took = true; continue; }
             UI.choosing = { kind: c.kind, idx: c.idx, pid: p.id, name: p.name };
-            return animate([{ type: "render" }, { type: "wait", delay: 700, min: 280 }]);
+            // Once you have picked, the rest no longer bears on you: rivals go at a clip.
+            UI.quickPicks = !!human().took;
+            return animate([{ type: "render" }, { type: "wait", delay: UI.quickPicks ? 200 : 525, min: UI.quickPicks ? 110 : 210 }]);
           }
           const c = paced ? UI.choosing : botPickImprovement(p);
           UI.choosing = null;
           if (!c) { p.took = true; continue; }
           const item = c.kind === "dept" ? G.deptDisplay[c.idx] : G.specDisplay[c.idx];
           applyTake(p, c.kind, c.idx);
-          if (paced) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 700, min: 320 }, { type: "render" }, { type: "wait", delay: 420, min: 200 }]); }
+          if (paced) {
+            UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name };
+            const q = UI.quickPicks;
+            return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: q ? 260 : 525, min: q ? 150 : 240 }, { type: "render" }, { type: "wait", delay: q ? 100 : 220, min: q ? 60 : 120 }]);
+          }
           continue;
         }
         G.actor = p.id; return WAIT;
@@ -2684,9 +2696,13 @@ function snapshotRects() {
   const slots = [...document.querySelectorAll("#wards .slot")];
   document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, { rect: el.getBoundingClientRect(), value: dieFace(el), cls: el.className, slot: slots.indexOf(el.closest(".slot")) }); });
   UI.cardRects = new Map();
-  document.querySelectorAll("#display [data-key]").forEach(el => UI.cardRects.set(el.dataset.key, el.getBoundingClientRect()));
+  document.querySelectorAll("#display [data-key]").forEach(el => {
+    const r = el.getBoundingClientRect(); UI.cardRects.set(el.dataset.key, r);
+    if (!el.classList.contains("leaving")) UI.cardH.set(el.dataset.key, r.height); // a gap keeps its card's height
+  });
 }
-// Display cards slide into the gap a taken card left, rather than snapping.
+// Display cards that do move (a row re-wrapping) slide rather than snap;
+// a taken card's slot stays open, so this is rarely more than a no-op.
 function playCardFlip() {
   const old = UI.cardRects; UI.cardRects = null;
   if (!old || !old.size || UI.reducedMotion) return;
@@ -3159,11 +3175,17 @@ function renderCenter() {
   // Between those moments the table still holds the face-up improvement
   // display, as it does on a real table, so the area never collapses.
   const idle = !html;
-  if (idle && G.deptDisplay) html = '<div class="center-title">Improvement display · refreshed at shift change</div>' + renderDisplay(false);
+  if (idle && G.deptDisplay) html = '<div class="center-title">Improvement display</div>' + renderDisplay(false, "refreshed at shift change");
   return `<div id="table" class="${idle ? "idle" : ""}" aria-label="Shared table">${html}</div>`;
 }
-function renderDisplay(pickable) {
-  let html = '<div id="display">';
+// The empty slot a taken card leaves, at the height that card had, so the
+// rows never close up or shrink; the gaps say what has gone.
+function gapSlot(cls, key) {
+  const h = UI.cardH.get(key);
+  return `<div class="disp-gap ${cls}" aria-hidden="true"${h ? ` style="min-height:${Math.round(h)}px"` : ""}></div>`;
+}
+function renderDisplay(pickable, note) {
+  let html = `<div id="display" class="${UI.quickPicks ? "quick" : ""}">`;
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
   const lv = UI.leaving, ch = UI.choosing; // a rival's pick: first highlighted, then drawn once more on its way out
@@ -3171,14 +3193,16 @@ function renderDisplay(pickable) {
   dd.forEach((t, i) => {
     if (t) html += renderDeptTile(t, chosen("dept", i) ? "chosen" : pickable ? "pickable" : "", `data-key="d${i}" ` + (chosen("dept", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "dept" && lv.idx === i) html += renderDeptTile(lv.item, "leaving", `data-key="d${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+    else html += gapSlot("gd", `d${i}`); // taken: its slot stays open
   });
   sd.forEach((t, i) => {
     if (t) html += renderSpecCard(t, chosen("spec", i) ? "chosen" : pickable ? "pickable" : "", `data-key="s${i}" ` + (chosen("spec", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "spec" && lv.idx === i) html += renderSpecCard(lv.item, "leaving", `data-key="s${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+    else html += gapSlot("gs", `s${i}`);
   });
   html += '</div>';
   if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
-  html += `<div class="stack-info">Tool stack ${G.deptStack.length} · Specialist deck ${G.specStack.length}</div></div>`;
+  html += `<div class="stack-info">Tool stack ${G.deptStack.length} · Specialist deck ${G.specStack.length}${note ? " · " + note : ""}</div></div>`;
   return html;
 }
 function renderReports(clickable) {
