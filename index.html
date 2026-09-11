@@ -222,10 +222,12 @@ body::after {
 .die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
 .die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
 .die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(0,255,65,0.45); }
-/* Terminal faces: 7 is whole (restored hosts stay this way in the ladder), 0 is gone. */
-.die.v-7 { background: currentColor; box-shadow: 0 0 14px 4px currentColor; }
-.die-sm.v-7 { box-shadow: 0 0 6px 1px currentColor; }
-.die.v-0 { background: #050505; color: #2a2a2a; border-color: #2a2a2a; box-shadow: none; }
+/* A restored host pulses on its 6 before it leaves for the ladder. The ring
+   is its own class so a follow-up burst (also on ::before) can stand in for it. */
+.die.healed { animation: die-glow .7s ease-out; }
+.die.healed-ring::before { content: ""; position: absolute; inset: -3px; border-radius: 8px; pointer-events: none; animation: die-healed .7s ease-out forwards; }
+@keyframes die-glow { 0%, 30% { filter: brightness(2) saturate(1.4); } 100% { filter: brightness(1); } }
+@keyframes die-healed { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.9; } 100% { box-shadow: 0 0 0 14px transparent; opacity: 0; } }
 .die.ghost { transition: none; }
 .die.ghost.leave-up { animation: ghost-up .7s ease-in forwards; }
 .die.ghost.leave-down { animation: ghost-down .7s ease-in forwards; }
@@ -2597,9 +2599,18 @@ function playFlip() {
     if (!moved && !rolls) return;
     const slide = () => { if (!el.isConnected) return; void el.offsetWidth; el.style.transition = ""; el.style.transform = ""; };
     if (moved) { el.style.transition = "none"; el.style.transform = `translate(${dx}px, ${dy}px)`; }
-    // A host rolling up to whole (restored) lingers on that face before it slides to the ladder.
-    const after = !moved ? null : value === DISCHARGE_THRESHOLD ? () => setTimeout(slide, GHOST_HOLD_MS) : slide;
-    if (rolls) rollDie(el, old.value, value, (bonus && bonus.get(el.dataset.uid)) || 0, after);
+    const b = (bonus && bonus.get(el.dataset.uid)) || 0;
+    const dep = departed && departed.get(el.dataset.uid);
+    if (dep && dep.kind === "restored") {
+      // Restored: reach 6, pulse on it, linger, then slide to the ladder. The
+      // step past 6 is never drawn, so a follow-up's burst that would have
+      // landed there plays with the pulse instead.
+      const shown = Math.max(0, b - 1);
+      const finish = () => { healedPulse(el, !(b && !shown)); if (b && !shown) bonusFx(el, b); setTimeout(slide, GHOST_HOLD_MS); };
+      if (rolls) rollDie(el, old.value, value, shown, finish, false, b); else finish();
+      return;
+    }
+    if (rolls) rollDie(el, old.value, value, b, moved ? slide : null);
     else slide();
   });
   UI.flipRects = new Map();
@@ -2608,8 +2619,9 @@ const ROLL_STEP_MS = 260, ROLL_GAP_MS = 170, GHOST_HOLD_MS = 450;
 // Odometer roll: each step turns the face one pip up or down, pausing between
 // steps so a +3 reads as three distinct turns. The last |bonus| steps carry
 // the specialist's follow-up and get the burst. done() runs after the last
-// step. single: one turn straight from `from` to `to` (a write-off).
-function rollDie(el, from, to, bonus, done, single) {
+// step. single: one turn straight from `from` to `to`. label: the number the
+// burst shows when it differs from the steps drawn.
+function rollDie(el, from, to, bonus, done, single, label) {
   const face = el.querySelector(".face");
   if (!face) { if (done) done(); return; }
   const dir = to > from ? 1 : -1, steps = single ? 1 : Math.abs(to - from), bonusAt = steps - Math.abs(bonus);
@@ -2617,7 +2629,7 @@ function rollDie(el, from, to, bonus, done, single) {
   let v = from, i = 0;
   const step = () => {
     if (!el.isConnected) return;
-    if (bonus && i === bonusAt) bonusFx(el, bonus);
+    if (bonus && i === bonusAt) bonusFx(el, label || bonus);
     const cls = dir > 0 ? "roll-up" : "roll-down";
     face.classList.remove(cls); void face.offsetWidth; face.classList.add(cls);
     setTimeout(() => { if (!el.isConnected) return; el.classList.remove("v-" + v); v = single ? to : v + dir; el.classList.add("v-" + v); }, ROLL_STEP_MS / 2);
@@ -2629,9 +2641,9 @@ function rollDie(el, from, to, bonus, done, single) {
   };
   step();
 }
-// A restored host rolls up to a whole face and floats off; a breached host
-// rolls down to an empty face and sinks. Both play on a fixed-position copy
-// where the die last stood, since the board no longer has it.
+// A host that left the board with no element to show for it plays out on a
+// fixed-position copy where it last stood. A breach counts down to 1 if it
+// has faces to fall through, lingers, then sinks; a write-off just sinks.
 function ghostDie(old, dep, bonus) {
   if (old.value === null) return;
   const r = old.rect;
@@ -2646,13 +2658,17 @@ function ghostDie(old, dep, bonus) {
   if (!UI.ghosts) UI.ghosts = new Set();
   UI.ghosts.add(ghost);
   const restored = dep.kind === "restored";
-  const single = !restored && dep.steps < old.value;
-  rollDie(g, old.value, restored ? DISCHARGE_THRESHOLD : 0, bonus, () => {
-    setTimeout(() => {
-      g.classList.add(restored ? "leave-up" : "leave-down");
-      setTimeout(() => { g.remove(); UI.ghosts.delete(ghost); }, 800);
-    }, GHOST_HOLD_MS);
-  }, single);
+  const leave = () => setTimeout(() => {
+    g.classList.add(restored ? "leave-up" : "leave-down");
+    setTimeout(() => { g.remove(); UI.ghosts.delete(ghost); }, 800);
+  }, GHOST_HOLD_MS);
+  if (restored) { healedPulse(g, !bonus); if (bonus) bonusFx(g, bonus); leave(); return; }
+  const countdown = dep.steps >= old.value && old.value > 1;
+  if (countdown) rollDie(g, old.value, 1, 0, leave); else leave();
+}
+function healedPulse(el, ring) {
+  el.classList.remove("healed", "healed-ring"); void el.offsetWidth;
+  el.classList.add("healed"); if (ring) el.classList.add("healed-ring");
 }
 function repositionGhosts() {
   if (!UI.ghosts || !UI.ghosts.size) return;
@@ -2929,7 +2945,7 @@ function renderBoard() {
   html += `<span class="ladder" title="Reputation for hosts restored in one shift. Restore more at once for more per host."><span class="stack-info">restore</span>`;
   for (let i = 1; i <= 8; i++) html += `<span class="lcell ${i === n ? "cur" : i === n + 1 ? "next" : ""}">${i}<b>:${dischargePoints(i)}</b></span>`;
   html += '</span>';
-  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-${DISCHARGE_THRESHOLD}" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
+  if (n) { html += '<span class="stack-info">restored:</span>'; for (const d of p.dischargedThisRound) html += `<div class="die die-sm c-${d.colour} v-6" data-uid="${d.uid}" role="img" aria-label="restored ${d.colour} host">${pips()}</div>`; }
   html += '</div></div>';
   html += renderStrip();
   el.innerHTML = html;
