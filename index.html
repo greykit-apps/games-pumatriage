@@ -276,6 +276,20 @@ body::after {
 .slot.drop-ok { border-color: var(--amber); box-shadow: inset 0 0 8px rgba(255,176,0,0.3); cursor: pointer; }
 .slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
 
+/* One tinted box, three sections (after PumaPurple's grouping boxes): set
+   --tint and the ground, the hairline and the heading all follow. */
+.grp {
+  --tint: var(--green);
+  border: 1px solid color-mix(in srgb, var(--tint) 28%, transparent); border-radius: 6px;
+  background: color-mix(in srgb, var(--tint) 6%, var(--bg));
+  padding: 6px 10px 8px; margin-bottom: 10px;
+}
+.grp-staff { --tint: var(--white); }
+.grp-tools { --tint: var(--cyan); }
+.grp-wards { --tint: var(--green); }
+.grp > .board-row .lbl { color: var(--tint); }
+.grp > .board-row { margin-bottom: 6px; }
+.grp > #staff, .grp > #depts, .grp > #wards { margin-bottom: 0; }
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
 .board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--amber); text-transform: uppercase; min-width: 64px; }
 
@@ -580,6 +594,12 @@ details.addons summary::-webkit-details-marker { display: none; }
    growth, so the staff and tool rows size to their content there. */
 @media (max-height: 840px) {
   #staff, #depts { min-height: 0; }
+  .grp { padding: 3px 8px 5px; margin-bottom: 5px; }
+  .grp > .board-row { margin-bottom: 3px; }
+  .dept-tile { min-height: 60px; padding: 6px 10px; }
+  .meeple { min-height: 46px; padding: 5px 8px; }
+  .ward { padding: 3px 6px 6px; }
+  #strip { margin-top: 8px; }
 }
 @media (max-width: 960px) {
   :root { --die: clamp(36px, 9vw, 48px); }
@@ -3030,11 +3050,11 @@ function renderBoard() {
   const center = renderCenter();
   const sideSlot = document.getElementById("side-table");
   if (UI.wideTable) { sideSlot.innerHTML = center; } else { sideSlot.innerHTML = ""; html += center; }
-  html += '<div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
+  html += '<section class="grp grp-staff" aria-label="Staff"><div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
   let key = 0;
   for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
-  html += '</div>';
-  html += `<div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
+  html += '</div></section>';
+  html += `<section class="grp grp-tools" aria-label="Tools"><div class="board-row"><span class="lbl">Tools</span><span class="stack-info">${p.departments.length} deployed</span></div><div id="depts">`;
   for (const d of p.departments) {
     const cls = [];
     const def = DEPT_DEFS[d.type];
@@ -3052,8 +3072,8 @@ function renderBoard() {
     const clickable = cls.includes("can") || cls.includes("returnable");
     html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner}</div>`;
   }
-  html += '</div>';
-  html += '<div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
+  html += '</div></section>';
+  html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
   p.wards.forEach((w, wi) => {
     const n = w.filter(b => b.u || b.t).length;
     html += `<div class="ward" aria-label="Quarantine segment ${wi + 1}"><div class="ward-h"><span>Q${wi + 1}</span><span>${n}/${BEDS}</span></div><div class="beds">`;
@@ -3068,7 +3088,7 @@ function renderBoard() {
     }
     html += '</div></div>';
   });
-  html += '</div>';
+  html += '</div></section>';
   const n = p.dischargedThisRound.length;
   html += '<div class="board-row"><span class="lbl">Shift</span><div id="tray">';
   if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
