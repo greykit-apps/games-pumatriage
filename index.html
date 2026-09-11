@@ -288,6 +288,17 @@ body::after {
 .grp-tools { --tint: var(--cyan); }
 .grp-wards { --tint: var(--green); }
 .grp > .board-row .lbl { color: var(--tint); }
+/* Where your next move is: a slow amber breath on that one container. */
+.attention { animation: attention-pulse 2.4s ease-in-out infinite; }
+@keyframes attention-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255,176,0,0), 0 0 0 1px rgba(255,176,0,0); }
+  50% { box-shadow: 0 0 18px 2px rgba(255,176,0,0.28), 0 0 0 1px rgba(255,176,0,0.55); }
+}
+#strip.attention { animation-name: attention-pulse-strip; }
+@keyframes attention-pulse-strip {
+  0%, 100% { box-shadow: 0 0 14px rgba(255,176,0,0.12), 0 6px 12px rgba(0,0,0,0.6); }
+  50% { box-shadow: 0 0 24px 3px rgba(255,176,0,0.4), 0 6px 12px rgba(0,0,0,0.6); }
+}
 .grp > .board-row { margin-bottom: 6px; }
 .grp > #staff, .grp > #depts, .grp > #wards { margin-bottom: 0; }
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -531,7 +542,9 @@ body::after {
 #modal-content ul { padding-left: 18px; margin: 4px 0; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
 .menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
-.presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.presets { display: flex; gap: 6px 22px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
+.preset-grp { display: inline-flex; gap: 6px; align-items: center; }
+.preset-lbl { font-size: 10px; letter-spacing: 2px; color: var(--text-dim); text-transform: uppercase; margin-right: 2px; }
 .preset-btn.on { background: rgba(255,176,0,0.15); border-color: var(--amber); color: var(--amber); }
 .rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
 .rule-row .rl { color: var(--white); }
@@ -820,7 +833,7 @@ const EVENT_DEFS = {
    addon: true is layered on top and off by default.
    ============================================================ */
 const SLIDER_DEFS = {
-  mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
+  mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], showIf: () => false, desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
   rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, labels: [null, "1 rival", "2 rivals", "3 rivals"], showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
   rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Each SOC is dealt two and keeps one; a scoring or shielding rule for the whole game" },
@@ -2922,7 +2935,43 @@ function updateAll() {
   playCardFlip();
   playTake();
   repositionGhosts();
+  markAttention();
   UI.leaving = null;
+}
+// The one section that holds your next move breathes softly: the shared
+// table when it is your pick, a section of your SOC when the move is there,
+// and the strip when its buttons are all that is left.
+function attentionTarget() {
+  if (G.gameOver || UI.animating || G.actor !== 0) return null;
+  const p = human(), s = UI.sel, ph = G.phase, st = G.step;
+  if (ph === "setup") return "table";
+  if (st === "extraReveal") return "strip";
+  if (ph === "intake") return st === "place" && G.overflow ? "wards" : "table";
+  if (ph === "improve") return st === "take" ? "table" : "strip";
+  if (ph === "activate" && st === "consultant") return "staff";
+  if (ph === "activate" && st === "human") {
+    switch (s.state) {
+      case "idle": {
+        const canAct = p.meeples.some(m => !m.used && !m.off) && p.departments.some(d => canActivate(d, p));
+        return canAct ? "staff" : "strip";
+      }
+      case "meepleSel": return "tools";
+      case "targeting": case "spec": case "intelHeal": case "intelRecolour": case "admReturn": return "wards";
+      case "choice": case "colour": case "intelColour": return "strip";
+      default: return null;
+    }
+  }
+  if (ph === "discharge" && st === "reports") return "table";
+  if (ph === "final" && st === "collections") return "wards";
+  return null;
+}
+function markAttention() {
+  const want = G ? attentionTarget() : null;
+  const map = { table: "#table", strip: "#strip", staff: ".grp-staff", tools: ".grp-tools", wards: ".grp-wards" };
+  document.querySelectorAll(".attention").forEach(el => el.classList.remove("attention"));
+  if (!want) return;
+  const el = document.querySelector(map[want]);
+  if (el && !el.classList.contains("idle")) el.classList.add("attention");
 }
 // The card you took travels from the display to its place on your board.
 function playTake() {
@@ -3377,11 +3426,15 @@ function setRule(key, val) {
   houseRules[key] = parseInt(val, 10);
   showMainMenu(true);
 }
-function setPreset(id) { houseRules = { ...DIFFICULTY_PRESETS[id].sliders }; showMainMenu(true); }
+// Difficulty and mode are separate choices: a preset sets everything but the
+// mode, and the mode pills set only that.
+function setPreset(id) { houseRules = { ...DIFFICULTY_PRESETS[id].sliders, mode: houseRules.mode }; showMainMenu(true); }
+function setMode(m) { houseRules = { ...houseRules, mode: m }; showMainMenu(true); }
 function currentPreset() {
   for (const id in DIFFICULTY_PRESETS) {
+    if (id === "solo") continue; // a mode, not a difficulty: the Mode pills own it
     const s = DIFFICULTY_PRESETS[id].sliders;
-    if (Object.keys(SLIDER_DEFS).every(k => (s[k] || 0) === (houseRules[k] || 0))) return id;
+    if (Object.keys(SLIDER_DEFS).every(k => k === "mode" || (s[k] || 0) === (houseRules[k] || 0))) return id;
   }
   return null;
 }
@@ -3397,7 +3450,10 @@ function showMainMenu(keepScroll) {
     <h2>PumaTriage</h2>
     <div class="menu-tagline">INCIDENT RESPONSE · A DICE GAME OF QUARANTINE AND RECOVERY</div>
     ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
-    <div class="presets">${Object.keys(DIFFICULTY_PRESETS).map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</div>
+    <div class="presets">
+      <span class="preset-grp" role="group" aria-label="Difficulty"><span class="preset-lbl">Difficulty</span>${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}</span>
+      <span class="preset-grp" role="group" aria-label="Mode"><span class="preset-lbl">Mode</span><button class="action-btn preset-btn ${houseRules.mode === 1 ? "on" : ""}" onclick="setMode(1)" title="The 2–4 player rules with AI SOCs">Vs rivals</button><button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" onclick="setMode(0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button></span>
+    </div>
     <div class="rules-head">Table</div>
     ${base.map(renderRuleRow).join("")}
     <details class="addons" ${UI.addonsOpen || addonsOn ? "open" : ""} ontoggle="UI.addonsOpen = this.open"><summary>House rules — ${addonsOn ? addonsOn + " on" : "all off"}</summary>
