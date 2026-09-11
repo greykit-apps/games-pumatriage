@@ -361,7 +361,7 @@ body::after {
 #queues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .queue {
   border: 1px solid var(--border); background: var(--panel-2); padding: 6px; min-width: 66px;
-  display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s, opacity .3s;
 }
 .queue .qn { color: var(--amber); font-size: 14px; letter-spacing: 1px; }
 .queue .qsum { font-size: 9px; color: var(--text-dim); }
@@ -382,6 +382,19 @@ body::after {
 .dept-tile.pickable:hover { box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); }
 .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
 .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
+/* Dealing and taking. Cards deal in from the stacks; a taken card goes to
+   its new owner: yours onto your board (a FLIP move), a rival's off toward
+   the rivals panel with the rival's name on it. */
+.dept-tile.dealt, .spec-card.dealt { animation: deal-in .32s var(--ease-out-quart) both; }
+@keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
+.dept-tile.leaving, .spec-card.leaving { animation: card-away .55s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
+@keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
+.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
+.dept-tile.pickable:active, .spec-card.pickable:active, .queue.pickable:active { transform: translateY(1px); }
+.rival-card.took { animation: took-flash .8s ease-out; }
+@keyframes took-flash { 0% { border-color: var(--amber); box-shadow: 0 0 12px rgba(255,176,0,0.6); } 100% { border-color: var(--border); box-shadow: none; } }
+.queue.just .qby { animation: stamp-in .35s var(--ease-out-quart); }
+@keyframes stamp-in { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
 .stack-info { font-size: 10px; color: var(--text-dim); }
 
 .keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
@@ -875,7 +888,7 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null;
   if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
@@ -999,8 +1012,10 @@ function refillDisplay(initial) {
   const sz = displaySizes();
   G.deptDisplay = G.deptDisplay.filter(Boolean);
   G.specDisplay = G.specDisplay.filter(Boolean);
+  const before = G.deptDisplay.length + G.specDisplay.length;
   while (G.deptDisplay.length < sz.dept && G.deptStack.length) G.deptDisplay.push(G.deptStack.pop());
   while (G.specDisplay.length < sz.spec && G.specStack.length) G.specDisplay.push(G.specStack.pop());
+  if (G.deptDisplay.length + G.specDisplay.length > before) G.dealt = false; // the improve phase deals them in
 }
 function recycleDisplay() {
   // Unclaimed tiles/cards go to the bottom of their stacks in random order.
@@ -1515,7 +1530,12 @@ const STEP = {
       while (G.cursor < n) {
         const p = G.players[(G.firstPlayer + G.cursor) % n];
         if (p.ambulance !== null) { G.cursor++; continue; }
-        if (p.isBot) { applyPickAmbulance(p, botPickAmbulance(p)); continue; }
+        if (p.isBot) {
+          applyPickAmbulance(p, botPickAmbulance(p));
+          // One rival at a time, so each claim stamp lands on its own.
+          if (!UI.headless && !UI.reducedMotion) return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 450 }]);
+          continue;
+        }
         G.actor = p.id; return WAIT;
       }
       // Everyone has a queue. Leftover dice go back in the bag; lowest queue = intel token + Incident Commander.
@@ -1553,12 +1573,19 @@ const STEP = {
   },
   improve: {
     take() {
+      // Freshly drawn cards deal onto the table before anyone picks.
+      if (!G.dealt) {
+        G.dealt = true;
+        const n = G.deptDisplay.filter(Boolean).length + G.specDisplay.filter(Boolean).length;
+        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 70 }, { type: "wait", delay: 70 * n + 320 }]);
+      }
       if (G.cfg.solo) {
         const p = human();
         if (p.took) { go("improve", "return"); return NEXT; }
         if (!G.deptDisplay.length && !G.specDisplay.length) {
           if (G.deptStack.length) G.deptDisplay = [G.deptStack.pop()];
           if (G.specStack.length) G.specDisplay = [G.specStack.pop()];
+          if (G.deptDisplay.length || G.specDisplay.length) { G.dealt = false; return NEXT; }
         }
         if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; go("improve", "return"); return NEXT; }
         G.actor = 0; return WAIT;
@@ -1566,7 +1593,15 @@ const STEP = {
       for (const p of playersInTurnOrder()) {
         if (p.took) continue;
         if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; continue; }
-        if (p.isBot) { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; continue; }
+        if (p.isBot) {
+          const c = botPickImprovement(p);
+          if (!c) { p.took = true; continue; }
+          const item = c.kind === "dept" ? G.deptDisplay[c.idx] : G.specDisplay[c.idx];
+          applyTake(p, c.kind, c.idx);
+          // One rival at a time: the card it took slides off toward its panel card.
+          if (!UI.headless && !UI.reducedMotion) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 750 }]); }
+          continue;
+        }
         G.actor = p.id; return WAIT;
       }
       go("improve", "return"); return NEXT;
@@ -1798,7 +1833,7 @@ function canPickAmbulance(p, num) {
 function applyPickAmbulance(p, num) {
   const a = G.ambulances.find(x => x.num === num);
   a.takenBy = p.id; p.ambulance = num;
-  G.cursor++;
+  G.cursor++; G.lastPick = num;
   log(`${p.name} ${p.isBot ? "takes" : "take"} queue #${num} (${a.dice.map(d => d.value).join(", ")}).`, p.isBot ? "sys" : "good");
 }
 function applyOverflow() {
@@ -1957,7 +1992,14 @@ function onOverflowToggle(uid) {
   updateAll();
 }
 function onOverflowConfirm() { const O = G.overflow; if (!inPhase("intake", "place") || !O || O.marked.length !== O.shortage) return; applyOverflow(); advance(); }
-function onDisplayClick(kind, idx) { if (!inPhase("improve", "take")) return; if (!applyTake(human(), kind, idx)) return; sfx("place"); advance(); }
+function onDisplayClick(kind, idx) {
+  if (!inPhase("improve", "take")) return;
+  const el = document.querySelector(`[data-act="${kind === "dept" ? "dispDept" : "dispSpec"}"][data-idx="${idx}"]`);
+  const uidFrom = G.nextUid;
+  if (!applyTake(human(), kind, idx)) return;
+  if (el) UI.takeFrom = { rect: el.getBoundingClientRect(), uidFrom };
+  sfx("place"); advance();
+}
 function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; applyReturn(human(), kind, uid); advance(); }
 function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
 function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
@@ -2719,6 +2761,7 @@ function playTone(freq, type, duration, gain, delay) {
 const SFX = {
   roll:      () => { for (let i = 0; i < 5; i++) playTone(180 + Math.random() * 220, "square", 0.05, 0.05, i * 0.06); },
   place:     () => playTone(520, "triangle", 0.08, 0.08),
+  deal:      () => { playTone(900, "triangle", 0.03, 0.04); playTone(1400, "triangle", 0.03, 0.03, 0.04); },
   heal:      () => { playTone(440, "sine", 0.1, 0.1); playTone(660, "sine", 0.12, 0.08, 0.08); },
   discharge: () => { playTone(523, "square", 0.1, 0.08); playTone(659, "square", 0.1, 0.08, 0.1); playTone(880, "square", 0.2, 0.1, 0.2); },
   breach:    () => { playTone(140, "sawtooth", 0.3, 0.12); playTone(90, "sawtooth", 0.4, 0.1, 0.15); },
@@ -2791,7 +2834,24 @@ function updateAll() {
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
+  playTake();
   repositionGhosts();
+  UI.leaving = null;
+}
+// The card you took travels from the display to its place on your board.
+function playTake() {
+  const t = UI.takeFrom; UI.takeFrom = null;
+  if (!t || UI.reducedMotion) return;
+  const el = [...document.querySelectorAll("#depts .dept-tile[data-uid], #staff .meeple[data-uid]")].find(e => +e.dataset.uid >= t.uidFrom);
+  if (!el) return;
+  el.classList.remove("new");
+  const r = el.getBoundingClientRect();
+  const dx = t.rect.left - r.left, dy = t.rect.top - r.top, sx = t.rect.width / r.width, sy = t.rect.height / r.height;
+  el.style.transition = "none"; el.style.transformOrigin = "top left";
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  void el.offsetWidth;
+  el.style.transition = "transform .38s var(--ease-out-quart)"; el.style.transform = "";
+  setTimeout(() => { if (el.isConnected) { el.style.transition = ""; el.style.transformOrigin = ""; } }, 420);
 }
 function pips() { return '<span class="face">' + '<span class="pip"></span>'.repeat(9) + '</span>'; }
 function renderDie(die, opts = {}) {
@@ -2971,7 +3031,7 @@ function renderCenter() {
     for (const a of G.ambulances.slice().sort((x, y) => x.num - y.num)) {
       const taken = a.takenBy !== null;
       const blocked = myTurn && !canPickAmbulance(p, a.num);
-      const cls = taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "";
+      const cls = (taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "") + (taken && a.num === G.lastPick ? " just" : "");
       const attrs = myTurn && !blocked ? `data-act="queue" data-idx="${a.num}" role="button" tabindex="0"` : "";
       html += `<div class="queue ${cls}" ${attrs} aria-label="Queue ${a.num}${taken ? ", taken by " + G.players[a.takenBy].name : ""}">${a.num === 1 && G.players[G.firstPlayer] ? '' : ''}<div class="qn">#${a.num}</div>`;
       for (const d of a.dice) html += renderDie(d, { small: true });
@@ -3016,8 +3076,15 @@ function renderDisplay(pickable) {
   let html = '<div id="display">';
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
-  dd.forEach((t, i) => { if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""); });
-  sd.forEach((t, i) => { if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""); });
+  const lv = UI.leaving; // a rival's pick, drawn once more on its way out
+  dd.forEach((t, i) => {
+    if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : "");
+    else if (lv && lv.kind === "dept" && lv.idx === i) html += renderDeptTile(lv.item, "leaving", `data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+  });
+  sd.forEach((t, i) => {
+    if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : "");
+    else if (lv && lv.kind === "spec" && lv.idx === i) html += renderSpecCard(lv.item, "leaving", `data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+  });
   html += '</div>';
   if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
   html += `<div class="stack-info">Tool stack ${G.deptStack.length} · Specialist deck ${G.specStack.length}</div></div>`;
@@ -3101,7 +3168,7 @@ function renderRivals() {
   let html = "";
   for (const p of G.players.slice(1)) {
     const dice = boardDice(p);
-    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : ""].join(" ");
+    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
     html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, d.treated ? "treated" : "")).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
