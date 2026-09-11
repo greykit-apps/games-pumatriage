@@ -88,6 +88,7 @@ body::after {
 #staff { min-height: 112px; align-content: start; }
 #depts { min-height: 180px; align-content: start; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+#side-table:empty { display: none; }
 
 .panel {
   background: var(--panel); border: 1px solid var(--border); padding: 8px;
@@ -138,12 +139,7 @@ body::after {
 #mute-btn[aria-pressed="false"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300ff41' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'%3E%3C/path%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'%3E%3C/path%3E%3C/svg%3E"); }
 #mute-btn[aria-pressed="true"]  { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300aa2a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cline x1='23' y1='9' x2='17' y2='15'%3E%3C/line%3E%3Cline x1='17' y1='9' x2='23' y2='15'%3E%3C/line%3E%3C/svg%3E"); }
 
-/* Screen pulse + phase toast */
-#screen-pulse {
-  position: fixed; inset: 0; z-index: 8000; pointer-events: none; opacity: 0;
-}
-#screen-pulse.on { animation: pulse-fade .6s ease-out; }
-@keyframes pulse-fade { 0% { opacity: 1; } 100% { opacity: 0; } }
+/* Phase toast */
 #phase-toast {
   position: fixed; left: 0; right: 0; top: 40%; z-index: 8500; pointer-events: none;
   text-align: center; padding: 14px 0; opacity: 0;
@@ -561,6 +557,30 @@ details.addons summary::-webkit-details-marker { display: none; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
   body::before, body::after { display: none; }
 }
+/* Wide viewports: the shared table lives in the side column above the
+   rivals (renderBoard routes it there), with cards narrowed to pair up in
+   that width; the board column then needs no table band at all. */
+@media (min-width: 1200px) {
+  #side-table #table { height: 292px; margin-bottom: 0; }
+  #app.p4 #side-table #table { height: 396px; }
+  /* Two cards per row whatever the column width; equal widths, so a card
+     leaving never resizes the rest. */
+  #side-table #display .disp-row > * { flex: 1 1 calc(50% - 4px); max-width: calc(50% - 4px); min-width: 0; }
+  #side-table #display .disp-row .spec-card { font-size: 10px; }
+  #side-table #display .disp-row .spec-card .sd { font-size: 10px; }
+  #side-table #queues, #side-table .collection, #side-table .keep-row { justify-content: flex-start; }
+  #side-table .admin-pick { flex-direction: column; }
+}
+/* Six starting tools fit one row from here up, so reserve one row; a 7th
+   tool adds a row once, during your own improvement pick. */
+@media (min-width: 1500px) {
+  #depts { min-height: 90px; }
+}
+/* Short viewports (laptops): fitting the board beats reserving room for
+   growth, so the staff and tool rows size to their content there. */
+@media (max-height: 840px) {
+  #staff, #depts { min-height: 0; }
+}
 @media (max-width: 960px) {
   :root { --die: clamp(36px, 9vw, 48px); }
   body { overflow: auto; }
@@ -598,11 +618,11 @@ details.addons summary::-webkit-details-marker { display: none; }
 
   <section id="board" class="panel" aria-label="Your SOC"></section>
   <aside id="side">
+    <div id="side-table"></div>
     <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
     <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
   </aside>
 </div>
-<div id="screen-pulse"></div>
 <div id="phase-toast" aria-hidden="true"></div>
 <div id="banner" aria-hidden="true"></div>
 <div id="modal-overlay" role="dialog" aria-modal="true"><div id="modal-content"></div></div>
@@ -888,6 +908,7 @@ const UI = {
   lastDieClick: null, speed: 1, addonsOpen: false,
 };
 const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
+const WIDE_TABLE_MQ = "(min-width: 1200px)"; // from here up the shared table sits in the side column (keep in step with the CSS)
 const SPEED_LABEL = { 1: "1×", 2: "2×", 3: "≫" };
 const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
 // Mutates in place: handlers hold a reference to UI.sel across a reset.
@@ -1689,7 +1710,7 @@ const STEP = {
           else if (hit) log(`Dwell time: ${hit} queued ${plural(hit, "host")} degraded.`, "warn");
           else if (res.some(r => r.shielded)) log("Dwell time: containment held.", "good");
           else log("Dwell time: nothing left in the queue to degrade.", "good");
-          if (dead) fx.push({ type: "pulse", colour: "rgba(255,51,51,0.35)" }, { type: "sfx", name: "breach" });
+          if (dead) fx.push({ type: "sfx", name: "breach" });
           else if (hit) fx.push({ type: "sfx", name: "degrade" });
         } else if (dead) log(`${p.name}: ${dead} ${plural(dead, "breach", "breaches")} from dwell time.`, "sys");
       }
@@ -2333,6 +2354,12 @@ function computeLegal() {
 
 // Keyboard: digits pick analysts, Enter confirms, Esc cancels, U undo, E end, B intel, H help, M mute.
 function setupInput() {
+  // Crossing the wide breakpoint moves the shared table between columns.
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (G && !UI.headless && UI.wideTable !== window.matchMedia(WIDE_TABLE_MQ).matches) updateAll(); }, 150);
+  });
   document.getElementById("app").addEventListener("click", e => {
     const el = e.target.closest("[data-act]");
     if (!el) return;
@@ -2606,7 +2633,6 @@ function processEventQueue() {
     case "log": log(evt.msg, evt.level); break;
     case "sfx": sfx(evt.name); break;
     case "fx": document.querySelectorAll(evt.sel).forEach((el, i) => { el.classList.remove(evt.cls); void el.offsetWidth; el.style.animationDelay = (i * (evt.stagger || 0)) + "ms"; el.classList.add(evt.cls); }); break;
-    case "pulse": screenPulse(evt.colour); break;
     case "banner": showBanner(evt.text, evt.sub); break;
     case "wait": break;
     case "callback": UI.animating = false; UI.eventQueue = []; if (evt.fn) evt.fn(); return;
@@ -2616,11 +2642,6 @@ function processEventQueue() {
   if (UI.reducedMotion) delay = Math.min(delay, 30);
   else delay = Math.max(Math.round(delay * SPEED_FACTOR[UI.speed]), evt.min || 0);
   UI.queueTimer = setTimeout(processEventQueue, delay);
-}
-function screenPulse(colour) {
-  const el = document.getElementById("screen-pulse");
-  el.style.background = colour;
-  el.classList.remove("on"); void el.offsetWidth; el.classList.add("on");
 }
 function showBanner(text, sub) {
   const el = document.getElementById("banner");
@@ -2874,6 +2895,7 @@ function rebuildLog() {
 function updateAll() {
   if (UI.headless || !G) return;
   document.getElementById("app").classList.toggle("p4", G.players.length >= 4);
+  UI.wideTable = window.matchMedia(WIDE_TABLE_MQ).matches;
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
@@ -3003,7 +3025,11 @@ function renderBoard() {
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
   let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
-  html += renderCenter();
+  // On a wide viewport the shared table sits in the side column, above the
+  // rivals, so the board column keeps its height for the SOC itself.
+  const center = renderCenter();
+  const sideSlot = document.getElementById("side-table");
+  if (UI.wideTable) { sideSlot.innerHTML = center; } else { sideSlot.innerHTML = ""; html += center; }
   html += '<div class="board-row"><span class="lbl">Staff</span></div><div id="staff">';
   let key = 0;
   for (const m of p.meeples) html += renderMeeple(p, m, m.off ? null : ++key);
