@@ -30,6 +30,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 
 - **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, the six starting tools, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
 - **Two modes** — Vs 1–3 AI SOCs (2–4 player rules, including the 2-player extra reveal) or the rulebook's solo score-chase with Audit Reports (draw 4 keep 3, one-of-each reveal, bottom-row filing)
+- **Expansion modes** — Virtualization ports the Community Care *Maternity* expansion: pink hypervisor dice arrive with guest hosts in a guest segment of their own, only degrade in company, never breach, and restore together as a family; a 4th analyst, 8 tools, 8 specialists, 2 directives, and restoration up to 20 hosts a shift
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
 - **3 presets, sized like the operation you run** — MSSP (one easy rival), SOC (the full base game vs two rivals), CIRT (three expert rivals plus the harder add-ons), and a Solo toggle
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
@@ -85,6 +86,21 @@ Red / Yellow / Green Priority (+1 for restoring two of that colour in a shift), 
 ## Solo mode
 
 No queues: roll 4 hosts and keep 3 each intake (a kept total under 9 earns an intel token). Each improvement phase reveals one tool and one specialist; take one. Six Audit Reports sit in two rows of three; during Restoration, file bottom-row reports with this shift's restored hosts, and the card above slides down. Filed reports add their value, reports still on display subtract it.
+
+## Virtualization (Maternity expansion)
+
+Switch it on under *Expansions* in the setup menu (rival games only). Mother → hypervisor, Infant → guest, Paediatric ward → guest segment, Midwife die → provisioning die. The rulebook doesn't print the Midwife die's faces (twins on 2 of 6 here) or which two specialist cards are the third copies (2 of each of the 8 here), and its printed 16th restoration value, 68, sits between 52 and 75 and looks like a misprint for 58; it is kept as printed.
+
+| Tool (original effect) | Effect |
+|---|---|
+| Cluster Patch | 3 hosts of the same value, one pink: pink +3, others +1 |
+| Live Migration | 1 host +2, and a pink host of equal value +3 |
+| Fleet Update | 4 hosts of the same value including a hypervisor and a guest: +1 each |
+| Boot Chain / Pipeline Rebuild / Failover Cluster | 3 consecutive values with the lowest / middle / highest one pink: pink +3, others +1 |
+| Isolation Bay | 1 pink host +3, two other hosts parked as worked |
+| Guest Reimage | 1 pink host +2, re-roll another host |
+
+Specialists (all trigger on healing a hypervisor or guest): Snapshot Engineer (that host +2 more), Cluster Admin (another pink +1, then any host of that value +1), Orchestration Lead (two other pink +1 each), Migration Engineer (another host of the pre-heal value +2), Platform Engineer (two others of the pre-heal value +1 each), Hypervisor Specialist (a different pink +2), Cloud Architect (any other host +1), Tenancy Auditor (+2 intel when it restores a pink host). Directives: Provisioning Policy (choose one guest or twins), Tenant Bonus (+3 for 2 hypervisors and 2 guests restored in a shift).
 
 ## What's approximated
 
