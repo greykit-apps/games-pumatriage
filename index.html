@@ -75,7 +75,17 @@ body::after {
 }
 #hud-top { grid-area: hud; }
 #board   { grid-area: board; overflow: auto; }
-#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; }
+/* The shared table keeps one fixed height across phases so the board below
+   never shifts; anything taller scrolls inside it. */
+#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; }
+#table.idle { border-color: var(--border); background: transparent; }
+#table.idle .center-title { color: var(--text-dim); }
+#table.idle #display { opacity: 0.55; }
+/* Staff and tool rows are reserved at their grown size too: the first
+   specialist hire (a three-line card) and the second row of tools would
+   otherwise push the quarantine segments down mid-game. */
+#staff { min-height: 92px; align-content: start; }
+#depts { min-height: 144px; align-content: start; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 
 .panel {
@@ -537,6 +547,9 @@ details.addons summary::-webkit-details-marker { display: none; }
     grid-template-areas: "hud" "board" "side";
   }
   #board { overflow: visible; }
+  #table { height: auto; overflow: visible; }
+  #table.idle { display: none; }
+  #staff, #depts { min-height: 0; }
   #strip { bottom: 0; }
   .h3-note { display: none; }
   #hud-top { grid-template-columns: 1fr auto; grid-template-areas: "title buttons" "strip strip" "stats stats"; }
@@ -2952,8 +2965,6 @@ function renderCenter() {
       html += '</div>';
     }
     html += '</div>';
-    if (st === "pick" && G.actor === 0 && p.id === G.firstPlayer) html += '<div class="hint">As Incident Commander you may not take queue #1.</div>';
-    html += '<div class="hint">The lowest-numbered queue taken hands its owner an intel token and the Incident Commander role.</div>';
   } else if (ph === "intake" && st === "keep") {
     const total = sum(s.dice.map(u => { const d = p.pendingDice.find(x => x.uid === u); return d ? d.value : 0; }));
     html += '<div class="center-title">Rolled hosts — keep 3</div><div class="keep-row">';
@@ -2979,7 +2990,11 @@ function renderCenter() {
     });
     html += '</div><div class="hint">Hand a host whose colour and value match an open slot: +1 each. Every host left at the end costs 1.</div>';
   }
-  return html ? `<div id="table" aria-label="Shared table">${html}</div>` : "";
+  // Between those moments the table still holds the face-up improvement
+  // display, as it does on a real table, so the area never collapses.
+  const idle = !html;
+  if (idle && G.deptDisplay) html = '<div class="center-title">Improvement display · refreshed at shift change</div>' + renderDisplay(false);
+  return `<div id="table" class="${idle ? "idle" : ""}" aria-label="Shared table">${html}</div>`;
 }
 function renderDisplay(pickable) {
   let html = '<div id="display">';
@@ -3108,7 +3123,7 @@ function promptFor() {
   if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
   if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
   if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
-  if (ph === "intake" && st === "pick") return { text: "Click an escalation queue to take it." };
+  if (ph === "intake" && st === "pick") return { text: `Click an escalation queue to take it. The lowest number taken earns an intel token and the Incident Commander role${p.id === G.firstPlayer ? "; as Commander you may not take #1" : ""}.` };
   if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
   if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
   if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
