@@ -34,7 +34,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
 - **3 presets, sized like the operation you run** — MSSP (one easy rival), SOC (the full base game vs two rivals), CIRT (three expert rivals plus the harder add-ons), and a Solo toggle
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
-- **The board is the table** — dice scale with the window, and one strip under the quarantine segments carries the current rule, the prompt and the buttons; a phase strip and the restoration ladder keep the round structure and scoring brackets in view
+- **The board is the table** — dice scale with the window, and one strip under the quarantine segments carries the current rule, the prompt and the buttons; a phase strip and the restoration ladder keep the round structure and scoring brackets in view; on laptop-height screens the staff row packs into chips and the strip loses its header so the quarantine segments stay on screen
 - **Retro CRT aesthetic** — Scanlines, vignette, phosphor glow, monospace terminal look; FLIP-animated dice
 - **Sound effects** — Web Audio API procedurally generated retro sounds (mutable)
 - **Tutorial** — 7-step introduction on first play
