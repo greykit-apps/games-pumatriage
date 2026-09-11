@@ -516,6 +516,9 @@ body::after {
 .ctile.trail { background: rgba(255,176,0,0.06); }
 .ctile .ctok, .ctile .van { position: absolute; z-index: 3; font-size: 8px; line-height: 12px; padding: 0 3px; background: var(--bg); border: 1px solid var(--amber); color: var(--amber); letter-spacing: 1px; }
 .ctile .ctok { right: 1px; top: 1px; }
+.strip-rule .ctok { display: inline-block; font-size: 9px; line-height: 12px; padding: 0 3px; border: 1px solid var(--amber); color: var(--amber); margin-right: 2px; }
+.strip-rule .ctok.t-red { color: var(--red); border-color: var(--red); } .strip-rule .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .strip-rule .ctok.t-green { color: var(--green); border-color: var(--green); }
+.strip-rule .ctok.t-contractor { color: var(--white); border-color: var(--white); }
 .ctile .ctok.t-red { color: var(--red); border-color: var(--red); } .ctile .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .ctile .ctok.t-green { color: var(--green); border-color: var(--green); }
 .ctile .ctok.t-contractor { color: var(--white); border-color: var(--white); }
 .ctile .van { border-color: var(--text-dim); color: var(--text); }
@@ -857,12 +860,12 @@ const CITY = {
   tokens: { lane: 5, hotfix: 5, red: 5, yellow: 5, green: 5, contractor: 5 },
 };
 const CITY_TOKENS = {
-  lane:       { name: "Priority Lane", abbr: "−2", botValue: 1.5, desc: "Intake: −2 to your intake total when the response order is set." },
-  hotfix:     { name: "Hotfix", abbr: "+1", heal: 1, botValue: 2.5, desc: "Activation: heal any host 1 step (it counts as worked)." },
-  red:        { name: "Red Hotfix", abbr: "+2", heal: 2, colour: "red", botValue: 3, desc: "Activation: heal a red host 2 steps (it counts as worked)." },
-  yellow:     { name: "Yellow Hotfix", abbr: "+2", heal: 2, colour: "yellow", botValue: 3, desc: "Activation: heal a yellow host 2 steps (it counts as worked)." },
-  green:      { name: "Green Hotfix", abbr: "+2", heal: 2, colour: "green", botValue: 3, desc: "Activation: heal a green host 2 steps (it counts as worked)." },
-  contractor: { name: "Contractor", abbr: "A", botValue: 5, desc: "Activation: a one-shift analyst. Gone at shift change." },
+  lane:       { name: "Priority Lane", abbr: "−2", botValue: 1.5, short: "−2 to your intake total for the order", desc: "Intake: −2 to your intake total when the response order is set." },
+  hotfix:     { name: "Hotfix", abbr: "+1", heal: 1, botValue: 2.5, short: "heal any host 1 step in activation", desc: "Activation: heal any host 1 step (it counts as worked)." },
+  red:        { name: "Red Hotfix", abbr: "+2", heal: 2, colour: "red", botValue: 3, short: "heal a red host 2 steps in activation", desc: "Activation: heal a red host 2 steps (it counts as worked)." },
+  yellow:     { name: "Yellow Hotfix", abbr: "+2", heal: 2, colour: "yellow", botValue: 3, short: "heal a yellow host 2 steps in activation", desc: "Activation: heal a yellow host 2 steps (it counts as worked)." },
+  green:      { name: "Green Hotfix", abbr: "+2", heal: 2, colour: "green", botValue: 3, short: "heal a green host 2 steps in activation", desc: "Activation: heal a green host 2 steps (it counts as worked)." },
+  contractor: { name: "Contractor", abbr: "A", botValue: 5, short: "an extra analyst for one shift", desc: "Activation: a one-shift analyst. Gone at shift change." },
 };
 const PLAYER_CHIPS = ["YOU", "A", "B", "C"];
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
@@ -4339,6 +4342,11 @@ function renderStrip() {
       html += '</div></div>';
     }
     if (UI.specNote && !["spec", "choice", "admReturn", "colour"].includes(s.state)) html += `<div class="strip-rule note">${esc(UI.specNote)}</div>`;
+  }
+  // Network intake: what the recon tokens in play do, so the map reads without the help.
+  if (G.cfg.city && G.phase === "intake" && G.step.startsWith("city") && G.actor === 0) {
+    const kinds = p.keepPending ? [...new Set(p.cityTokensRound)] : [...new Set(G.city.tiles.filter(t => t.token).map(t => t.token))];
+    if (kinds.length) html += `<div class="strip-rule"><b>Recon ${plural(kinds.length, "token")}${p.keepPending ? " picked up" : " on the map"}</b> — ${kinds.map(t => `<span class="ctok t-${t}">${CITY_TOKENS[t].abbr}</span> ${esc(CITY_TOKENS[t].name)}: ${esc(CITY_TOKENS[t].short)}`).join(" · ")}</div>`;
   }
   html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
   if (live) {
