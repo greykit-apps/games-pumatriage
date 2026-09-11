@@ -496,6 +496,45 @@ body::after {
 .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 11px; }
 .summary-grid .k { color: var(--text-dim); }
 
+/* Network map (City): zones on a grid, links drawn as bars to the edges,
+   the host on top; a jump host sits on the outside edge of its ingress. */
+.netmap { display: grid; gap: 3px; --tile: 56px; justify-content: center; margin: 2px 0 4px; }
+.ctile { position: relative; width: var(--tile); height: var(--tile); background: var(--panel-2); border: 1px solid var(--border); border-radius: 3px; }
+.ctile .rd { position: absolute; background: #1c4a1c; }
+.ctile .rd.n { top: 0; left: 50%; width: 8px; height: 50%; margin-left: -4px; }
+.ctile .rd.s { bottom: 0; left: 50%; width: 8px; height: 50%; margin-left: -4px; }
+.ctile .rd.e { right: 0; top: 50%; width: 50%; height: 8px; margin-top: -4px; }
+.ctile .rd.w { left: 0; top: 50%; width: 50%; height: 8px; margin-top: -4px; }
+.ctile .hub { position: absolute; left: 50%; top: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; background: #1c4a1c; border-radius: 2px; }
+.ctile .die { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.ctile.ent-n { border-top: 2px solid var(--amber-dim); } .ctile.ent-s { border-bottom: 2px solid var(--amber-dim); }
+.ctile.ent-e { border-right: 2px solid var(--amber-dim); } .ctile.ent-w { border-left: 2px solid var(--amber-dim); }
+.ctile.pink { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pink) 40%, transparent); }
+.ctile.can { cursor: pointer; border-color: var(--amber); box-shadow: 0 0 8px rgba(255,176,0,0.35); }
+.ctile.can:hover { background: rgba(255,176,0,0.1); }
+.ctile.here { outline: 2px solid var(--amber); outline-offset: 1px; }
+.ctile.trail { background: rgba(255,176,0,0.06); }
+.ctile .ctok, .ctile .van { position: absolute; z-index: 3; font-size: 8px; line-height: 12px; padding: 0 3px; background: var(--bg); border: 1px solid var(--amber); color: var(--amber); letter-spacing: 1px; }
+.ctile .ctok { right: 1px; top: 1px; }
+.strip-rule .ctok { display: inline-block; font-size: 9px; line-height: 12px; padding: 0 3px; border: 1px solid var(--amber); color: var(--amber); margin-right: 2px; }
+.strip-rule .ctok.t-red { color: var(--red); border-color: var(--red); } .strip-rule .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .strip-rule .ctok.t-green { color: var(--green); border-color: var(--green); }
+.strip-rule .ctok.t-contractor { color: var(--white); border-color: var(--white); }
+.ctile .ctok.t-red { color: var(--red); border-color: var(--red); } .ctile .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .ctile .ctok.t-green { color: var(--green); border-color: var(--green); }
+.ctile .ctok.t-contractor { color: var(--white); border-color: var(--white); }
+.ctile .van { border-color: var(--text-dim); color: var(--text); }
+.ctile .van.you { border-color: var(--amber); color: var(--amber); }
+.ctile .van.side-n { top: -1px; left: 50%; transform: translateX(-50%); } .ctile .van.side-s { bottom: -1px; left: 50%; transform: translateX(-50%); }
+.ctile .van.side-w { left: -1px; top: 50%; transform: translateY(-50%); } .ctile .van.side-e { right: -1px; top: 50%; transform: translateY(-50%); }
+.ctile .van.heli { left: 1px; top: 1px; border-style: dashed; }
+.ctile .pm { position: absolute; left: 3px; bottom: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); z-index: 3; }
+.city-order { font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 6px; }
+.city-order .you { color: var(--amber); }
+.token.recon { color: var(--amber); border-color: var(--amber-dim); }
+/* The map shares the table with the display, so the table gets taller. */
+#app.city #table { height: min(300px, 42vh); }
+#app.city #side-table #table { height: min(480px, 54vh); }
+#app.city.p4 #side-table #table { height: min(540px, 58vh); }
+
 /* ============================================================
    SIDE — rivals + SIEM log
    ============================================================ */
@@ -794,6 +833,41 @@ const MAT = {
   intake: { 2: { coloured: 7, mothers: 2 }, 3: { coloured: 10, mothers: 2 }, 4: { coloured: 12, mothers: 3 } },
   displayExtra: { 2: 1, 3: 2, 4: 2 }, // maternity tools and specialists added to the display
 };
+/* ============================================================
+   CITY EXPANSION → "Network" mode
+   Community Care's City module, one-for-one: City tile → network zone,
+   road → link, City Entrance → ingress point, ambulance → jump host,
+   Paramedic → field responder, Helicopter → remote access, City Bonus
+   token → recon token, Intake Tracker → intake total, Player Order
+   token → response order.
+   Not printed in the rulebook: the road layout of the 20 tiles (a mix
+   of crossroads, T-junctions, straights and corners here), the split of
+   the 30 bonus tokens (5 of each of the 6 kinds) and how many pink-spot
+   tiles each table size uses with Virtualization (2, 3 and 4 here).
+   ============================================================ */
+const CITY = {
+  size: { 2: [4, 3], 3: [4, 4], 4: [5, 4] },  // zones across × down, by table size
+  collect: 3,                                  // hosts each SOC collects per shift
+  moveRange: 2,                                // ingress points a jump host may move, either way
+  // Links on each of the 20 zone tiles, [north, east, south, west], before rotation.
+  shapes: [
+    [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1], [1, 1, 1, 1],
+    [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0], [1, 1, 1, 0],
+    [1, 0, 1, 0], [1, 0, 1, 0], [1, 0, 1, 0], [1, 0, 1, 0],
+    [1, 1, 0, 0], [1, 1, 0, 0], [1, 1, 0, 0], [1, 1, 0, 0],
+  ],
+  pinkTiles: { 2: 2, 3: 3, 4: 4 },             // zones that spawn hypervisors, with Virtualization
+  tokens: { lane: 5, hotfix: 5, red: 5, yellow: 5, green: 5, contractor: 5 },
+};
+const CITY_TOKENS = {
+  lane:       { name: "Priority Lane", abbr: "−2", botValue: 1.5, short: "−2 to your intake total for the order", desc: "Intake: −2 to your intake total when the response order is set." },
+  hotfix:     { name: "Hotfix", abbr: "+1", heal: 1, botValue: 2.5, short: "heal any host 1 step in activation", desc: "Activation: heal any host 1 step (it counts as worked)." },
+  red:        { name: "Red Hotfix", abbr: "+2", heal: 2, colour: "red", botValue: 3, short: "heal a red host 2 steps in activation", desc: "Activation: heal a red host 2 steps (it counts as worked)." },
+  yellow:     { name: "Yellow Hotfix", abbr: "+2", heal: 2, colour: "yellow", botValue: 3, short: "heal a yellow host 2 steps in activation", desc: "Activation: heal a yellow host 2 steps (it counts as worked)." },
+  green:      { name: "Green Hotfix", abbr: "+2", heal: 2, colour: "green", botValue: 3, short: "heal a green host 2 steps in activation", desc: "Activation: heal a green host 2 steps (it counts as worked)." },
+  contractor: { name: "Contractor", abbr: "A", botValue: 5, short: "an extra analyst for one shift", desc: "Activation: a one-shift analyst. Gone at shift change." },
+};
+const PLAYER_CHIPS = ["YOU", "A", "B", "C"];
 const PLAYER_NAMES = ["You", "Rival Alpha", "Rival Bravo", "Rival Charlie"];
 const SKILL_NAMES = ["Script Kiddie", "Hacktivist", "Nation State"];
 
@@ -953,6 +1027,7 @@ const SLIDER_DEFS = {
   tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
   // Expansions (whole modes; the Dice Hospital expansion modules)
   maternity:   { label: "Virtualization",     min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Pink hypervisors arrive with guest hosts in a segment of their own, only degrade when they share a segment, and are restored together. A 4th analyst, 8 new tools, 8 specialists and 2 directives." },
+  city:        { label: "Network",            min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "No escalation queues: send a responder out from your jump host along the links of a network map to collect 3 hosts. Hosts at 2 carry recon tokens. The lowest intake total goes first, holds remote access and earns intel; hosts left on the map degrade too." },
   // Add-ons
   promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
   experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Four experimental tools and six more specialists join the stacks" },
@@ -964,7 +1039,7 @@ const SLIDER_DEFS = {
   soloDblFat:  { label: "Double breach penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: breaches cost 4 instead of 2" },
   soloDblRep:  { label: "Double report penalty", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, showIf: h => h.mode === 0, desc: "Solo: incomplete Audit Reports subtract double" },
 };
-const ADDONS_OFF = { maternity: 0, promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
+const ADDONS_OFF = { maternity: 0, city: 0, promo: 0, experimental: 0, events: 0, crisis: 0, epidemic: 0, superbug: 0, collections: 0, soloDblFat: 0, soloDblRep: 0 };
 const DIFFICULTY_PRESETS = {
   // Presets read as the size of the operation you run, smallest first.
   easy:   { label: "MSSP", title: "Managed service, one easy rival, no directives: the gentle start", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
@@ -990,10 +1065,11 @@ function resolveConfig(h = houseRules) {
     superbug: !!h.superbug,
     collections: !solo && !!h.collections,
     maternity: !solo && !!h.maternity,
+    city: !solo && !!h.city,
     soloDblFat: solo && !!h.soloDblFat,
     soloDblRep: solo && !!h.soloDblRep,
     dicePerColour: solo ? DICE_PER_COLOUR.solo : DICE_PER_COLOUR[players],
-    ambulances: solo ? 0 : players + 1,
+    ambulances: solo || h.city ? 0 : players + 1, // the Network map replaces the queues
     displaySize: solo ? 1 : players - 1,
   };
 }
@@ -1060,7 +1136,7 @@ const UI = {
 const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
 const WIDE_TABLE_MQ = "(min-width: 1200px)"; // from here up the shared table sits in the side column (keep in step with the CSS)
 const SPEED_LABEL = { 1: "1×", 2: "2×", 3: "≫" };
-const SEL_DEFAULTS = { state: "idle", meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
+const SEL_DEFAULTS = { state: "idle", token: null, meepleUid: null, deptUid: null, dice: [], spec: null, specOpts: null, ctx: null, colourQueue: null, colours: null, colourFor: null, pending: null, prevState: null };
 // Mutates in place: handlers hold a reference to UI.sel across a reset.
 function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Object.assign(UI.sel, clone(SEL_DEFAULTS)); }
 function resetRuntime() {
@@ -1114,6 +1190,9 @@ function makePlayer(id, name, isBot, skill) {
     bloodBags: 0, fatalities: 0, score: 0, dischargedThisRound: [], dischargedTotal: 0, lastDischarges: 0,
     pendingDice: [], consultantCopy: null, botSummary: "", ambulance: null, breachesThisRound: 0,
     collected: 0, startDice: [],
+    // Network: the jump host's ingress zone, this shift's start and responder position, the hosts and recon tokens picked up, the intake total and the response order.
+    van: null, heliUsed: false, cityStart: null, cityAt: null, cityTrail: [], cityGot: [], cityTokensRound: [], cityDone: false, keepPending: false,
+    intakeTotal: 0, laneUsed: 0, laneDone: false, order: 0, tokens: [],
   };
 }
 
@@ -1160,6 +1239,7 @@ function newGame(seed) {
     matDeptStack: [], matSpecStack: [], supply: { mother: cfg.maternity ? MAT.mothers : 0, infant: cfg.maternity ? MAT.infants : 0 },
     extraChoice: null, solo: null, events: null, currentEvent: null,
     roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
+    city: null, cityPer: CITY.collect,
   };
   for (let i = 0; i < cfg.players; i++) G.players.push(makePlayer(i, PLAYER_NAMES[i], i > 0, cfg.rivalSkill));
   G.turnOrder = G.players.map(p => p.id);
@@ -1184,6 +1264,8 @@ function newGame(seed) {
     vals.forEach(v => { const d = drawDieFromBag(); d.value = v; p.startDice.push(d); });
     p.startMother = !!cfg.maternity; // plus a hypervisor at 4 in a segment of its own, with one guest
   }
+  // Network: the map is laid out and every zone gets a rolled host.
+  if (cfg.city) { G.city = buildCity(cfg); for (const t of G.city.tiles) cityFill(t); }
   refillDisplay(true);
   log(`New game: ${cfg.solo ? "solo score-chase" : (cfg.players - 1) + " rival SOC" + (cfg.players > 2 ? "s" : "")}. Shift 1 of ${ROUNDS}.`, "sys");
   if (!cfg.solo) log(`${G.players[G.firstPlayer].name} ${G.firstPlayer === 0 ? "are" : "is"} Incident Commander for shift 1.`, "sys");
@@ -1300,7 +1382,7 @@ function specDefForMeeple(p, m) {
   return SPEC_DEFS[s.type];
 }
 function meepleLabel(p, m) {
-  if (m.kind === "nurse") return "Analyst";
+  if (m.kind === "nurse") return m.temp ? "Contractor" : "Analyst";
   const s = specOf(p, m.specUid);
   return s ? SPEC_DEFS[s.type].name : "Specialist";
 }
@@ -1321,6 +1403,7 @@ function totalDiceOnTable() {
   const notPink = ds => ds.filter(d => !isPink(d)).length;
   for (const p of G.players) n += notPink(boardDice(p)) + notPink(p.pendingDice) + notPink(p.dischargedThisRound) + p.startDice.length;
   for (const a of G.ambulances) n += notPink(a.dice);
+  if (G.city) { n += notPink(G.city.tiles.map(t => t.die).filter(Boolean)); for (const p of G.players) n += notPink(p.cityGot); }
   return n;
 }
 function totalPinkOnTable() {
@@ -1328,6 +1411,7 @@ function totalPinkOnTable() {
   const pink = ds => ds.filter(isPink).length;
   for (const p of G.players) n += pink(boardDice(p)) + pink(p.pendingDice) + pink(p.dischargedThisRound);
   for (const a of G.ambulances) n += pink(a.dice);
+  if (G.city) { n += pink(G.city.tiles.map(t => t.die).filter(Boolean)); for (const p of G.players) n += pink(p.cityGot); }
   return n;
 }
 
@@ -1823,6 +1907,15 @@ const STEP = {
         go("intake", "keep");
         return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#table .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
       }
+      if (G.cfg.city) {
+        // Network: no queues. Jump hosts move, responders collect, the totals set the order.
+        G.cityPer = CITY.collect + extra;
+        if (G.round === 1) G.turnOrder = playersFrom(G.firstPlayer).map(p => p.id);
+        G.cursor = 0;
+        go("intake", "cityMove");
+        log(`Shift ${G.round}: ${G.city.tiles.filter(t => t.die).length} compromised hosts on the network map.`, "sys");
+        return animate([{ type: "render" }, { type: "wait", delay: 300 }]);
+      }
       const per = 3 + extra;
       const dice = [];
       if (G.cfg.maternity) {
@@ -1844,6 +1937,57 @@ const STEP = {
       go("intake", "pick");
       log(`Shift ${G.round}: ${G.ambulances.length} escalation queues rolled in.`, "sys");
       return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#queues .die", cls: "rolling" }, { type: "wait", delay: 500 }]);
+    },
+    // ---- Network: jump hosts move, responders collect, the totals set the response order ----
+    cityMove() {
+      for (const p of playersInTurnOrder()) {
+        if (p.cityStart !== null) continue;
+        if (p.isBot) {
+          applyCityMove(p, botCityMove(p, cityMoveOptions(p)));
+          return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 450, min: 150 }]);
+        }
+        G.actor = p.id; return WAIT;
+      }
+      go("intake", "cityCollect"); return NEXT;
+    },
+    cityCollect() {
+      for (const p of playersInTurnOrder()) {
+        if (p.cityDone) {
+          if (!p.keepPending) continue;
+          if (p.isBot) { applyKeepToken(p, botKeepToken(p)); continue; }
+          G.actor = p.id; return WAIT;
+        }
+        if (p.cityAt === null) {
+          // The responder steps off the jump host onto its zone: a host there must be taken.
+          const took = cityEnter(p, p.cityStart);
+          return animate([{ type: "render" }, { type: "sfx", name: took ? "place" : "deal" }, { type: "wait", delay: 320, min: 90 }]);
+        }
+        if (p.cityGot.length < G.cityPer && cityReachableDice(p) && p.cityTrail.length < 60) {
+          if (!p.isBot) { G.actor = p.id; return WAIT; }
+          const mv = botCityStep(p);
+          const took = cityEnter(p, mv);
+          return animate([{ type: "render" }, { type: "sfx", name: took ? "place" : "deal" }, { type: "wait", delay: 320, min: 90 }]);
+        }
+        const refilled = cityFinish(p);
+        if (p.keepPending && !p.isBot) { G.actor = p.id; return WAIT; }
+        if (refilled) return animate([{ type: "render" }, { type: "sfx", name: "roll" }, { type: "fx", sel: "#table .ctile .die", cls: "rolling" }, { type: "wait", delay: 450, min: 120 }]);
+        return NEXT;
+      }
+      go("intake", "cityOrder"); return NEXT;
+    },
+    cityOrder() {
+      // Priority Lane tokens come off before the totals are read.
+      for (const p of playersInTurnOrder()) {
+        if (p.laneDone) continue;
+        if (!p.tokens.includes("lane")) { p.laneDone = true; continue; }
+        if (p.isBot) { while (p.tokens.includes("lane") && botLaneWorth(p)) useLane(p); p.laneDone = true; continue; }
+        G.actor = p.id; return WAIT;
+      }
+      applyCityOrder();
+      if (G.cfg.epidemic) for (const p of G.players) { const d = drawDieFromBag(); if (d) { d.value = rollValue(); p.pendingDice.push(d); } }
+      G.cursor = 0;
+      go("intake", "place");
+      return animate([{ type: "render" }, { type: "wait", delay: 500, min: 150 }]);
     },
     keep() {
       const p = human();
@@ -2052,6 +2196,7 @@ const STEP = {
           else if (hit) fx.push({ type: "sfx", name: "degrade" });
         } else if (dead) log(`${p.name}: ${dead} ${plural(dead, "breach", "breaches")} from dwell time.`, "sys");
       }
+      if (G.cfg.city) { const r = cityNeglect(); if (r.dead) fx.push({ type: "sfx", name: "breach" }); }
       const ev = currentEvent();
       if (ev && ev.breachExtra) for (const p of G.players) if (p.breachesThisRound) p.score -= ev.breachExtra * p.breachesThisRound;
       go("discharge", G.cfg.solo ? "reports" : "score");
@@ -2093,7 +2238,9 @@ const STEP = {
   shift: {
     run() {
       for (const p of G.players) {
+        p.meeples = p.meeples.filter(m => !m.temp); // a Contractor works one shift
         for (const m of p.meeples) { m.used = false; m.deptUid = null; m.off = false; }
+        p.cityStart = null; p.cityAt = null; p.cityTrail = []; p.cityDone = false; p.keepPending = false; p.laneDone = false; p.heliUsed = false;
         for (const d of p.departments) { if (d.used) d.idleRounds = 0; else if (d.improvement) d.idleRounds++; d.used = false; }
         for (const { b } of beds(p)) if (b.t) { b.u = b.t; b.t = null; b.u.treated = false; b.u.tmpColour = null; }
         // Guest segments: rested, and closed once their guests have left with the hypervisor.
@@ -2247,6 +2394,272 @@ function separateMothers(ambs) {
     if (back) { to.dice.splice(to.dice.indexOf(back), 1); from.dice.push(back); }
     from.dice.sort(byVal); to.dice.sort(byVal);
   }
+}
+// ---- Network (City): the map, the jump hosts and the responders ----
+function rotShape(sh, r) { let out = sh.slice(); for (let i = 0; i < r; i++) out = [out[3], out[0], out[1], out[2]]; return out; }
+function tileLinked(tiles, w, i, j) {
+  const a = tiles[i], b = tiles[j];
+  if (a.y === b.y && b.x === a.x + 1) return !!(a.roads[1] && b.roads[3]);
+  if (a.y === b.y && b.x === a.x - 1) return !!(a.roads[3] && b.roads[1]);
+  if (a.x === b.x && b.y === a.y + 1) return !!(a.roads[2] && b.roads[0]);
+  if (a.x === b.x && b.y === a.y - 1) return !!(a.roads[0] && b.roads[2]);
+  return false;
+}
+function tileNeighbours(tiles, w, h, i) {
+  const t = tiles[i], out = [];
+  for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+    const x = t.x + dx, y = t.y + dy;
+    if (x < 0 || y < 0 || x >= w || y >= h) continue;
+    const j = y * w + x;
+    if (tileLinked(tiles, w, i, j)) out.push(j);
+  }
+  return out;
+}
+function tilesConnected(tiles, w, h) {
+  const seen = new Set([0]), q = [0];
+  while (q.length) for (const j of tileNeighbours(tiles, w, h, q.shift())) if (!seen.has(j)) { seen.add(j); q.push(j); }
+  return seen.size === tiles.length;
+}
+// Lays the zones as the rulebook does: the first rotated until its right and
+// bottom sides link, the rest of the top row rotated to link to the tile on
+// the left, later rows rotated for the most links to the tiles already down.
+// A layout that leaves a zone unreachable is redrawn, and as a last resort
+// linked by hand.
+function buildCity(cfg) {
+  const [w, h] = CITY.size[cfg.players] || CITY.size[4];
+  let tiles = null;
+  for (let attempt = 0; attempt < 60; attempt++) {
+    const shapes = shuffle(CITY.shapes.slice()).slice(0, w * h);
+    const t = [];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const i = y * w + x;
+      let best = null, bestScore = -1;
+      for (let r = 0; r < 4; r++) {
+        const rr = rotShape(shapes[i], r);
+        let score;
+        if (i === 0) score = (rr[1] ? 1 : 0) + (rr[2] ? 1 : 0);
+        else if (y === 0) score = rr[3] === t[i - 1].roads[1] ? 1 : 0;
+        else score = (rr[0] === t[i - w].roads[2] ? 1 : 0) + (x > 0 ? (rr[3] === t[i - 1].roads[1] ? 1 : 0) : 0);
+        if (score > bestScore) { bestScore = score; best = rr; }
+      }
+      t.push({ x, y, roads: best, die: null, token: null, pink: false });
+    }
+    if (tilesConnected(t, w, h)) { tiles = t; break; }
+    if (!tiles) tiles = t;
+  }
+  let guard = 0;
+  while (!tilesConnected(tiles, w, h) && guard++ < 40) {
+    const seen = new Set([0]), q = [0];
+    while (q.length) for (const j of tileNeighbours(tiles, w, h, q.shift())) if (!seen.has(j)) { seen.add(j); q.push(j); }
+    outer: for (const i of seen) {
+      const t = tiles[i];
+      for (const [dx, dy, a, b] of [[0, -1, 0, 2], [1, 0, 1, 3], [0, 1, 2, 0], [-1, 0, 3, 1]]) {
+        const x = t.x + dx, y = t.y + dy;
+        if (x < 0 || y < 0 || x >= w || y >= h) continue;
+        const j = y * w + x;
+        if (seen.has(j)) continue;
+        t.roads[a] = 1; tiles[j].roads[b] = 1; break outer;
+      }
+    }
+  }
+  // Ingress points: perimeter zones with a link to the outside, walked clockwise
+  // from the top left; a corner is one space however many sides link out.
+  const walk = [];
+  for (let x = 0; x < w; x++) walk.push(x);
+  for (let y = 1; y < h; y++) walk.push(y * w + w - 1);
+  for (let x = w - 2; x >= 0; x--) walk.push((h - 1) * w + x);
+  for (let y = h - 2; y >= 1; y--) walk.push(y * w);
+  const city = { w, h, tiles, entrances: [], pile: [], discard: [], heli: null };
+  city.entrances = walk.filter(i => cityExteriorOf(city, i).length);
+  if (city.entrances.length < cfg.players) { // every SOC needs an ingress of its own
+    for (const i of walk) { if (city.entrances.length >= cfg.players) break; if (city.entrances.includes(i)) continue; const t = tiles[i]; t.roads[t.y === 0 ? 0 : t.x === w - 1 ? 1 : t.y === h - 1 ? 2 : 3] = 1; city.entrances = walk.filter(k => cityExteriorOf(city, k).length); }
+  }
+  for (const [type, n] of Object.entries(CITY.tokens)) for (let i = 0; i < n; i++) city.pile.push(type);
+  city.pile = shuffle(city.pile);
+  if (cfg.maternity) for (const i of shuffle(tiles.map((_, i) => i)).slice(0, CITY.pinkTiles[cfg.players] || 4)) tiles[i].pink = true;
+  return city;
+}
+function cityExteriorOf(C, i) {
+  const t = C.tiles[i], out = [];
+  if (t.y === 0 && t.roads[0]) out.push("n");
+  if (t.x === C.w - 1 && t.roads[1]) out.push("e");
+  if (t.y === C.h - 1 && t.roads[2]) out.push("s");
+  if (t.x === 0 && t.roads[3]) out.push("w");
+  return out;
+}
+function cityZoneName(i) { const t = G.city.tiles[i]; return String.fromCharCode(65 + t.x) + (t.y + 1); }
+function cityNeighbours(i) { return tileNeighbours(G.city.tiles, G.city.w, G.city.h, i); }
+function drawCityToken() {
+  const C = G.city;
+  if (!C.pile.length) { C.pile = shuffle(C.discard); C.discard = []; }
+  return C.pile.pop() || null;
+}
+// A zone gets a rolled host from the bag (a hypervisor from the supply on a
+// pink zone); a host at 2 brings a recon token with it.
+function cityFill(t) {
+  let d = null;
+  if (t.pink && G.supply.mother > 0) { G.supply.mother--; d = makePinkDie("mother", rollValue()); }
+  else { d = drawDieFromBag(); if (d) d.value = rollValue(); }
+  if (!d) return false;
+  t.die = d;
+  if (d.value === 2 && !t.token) t.token = drawCityToken();
+  return true;
+}
+function cityRefill() {
+  const C = G.city, rows = [], cols = [];
+  for (let y = 0; y < C.h; y++) if (C.tiles.filter(t => t.y === y).every(t => !t.die)) rows.push(y);
+  for (let x = 0; x < C.w; x++) if (C.tiles.filter(t => t.x === x).every(t => !t.die)) cols.push(x);
+  if (!rows.length && !cols.length) return 0;
+  let n = 0;
+  for (const t of C.tiles) if ((rows.includes(t.y) || cols.includes(t.x)) && !t.die && cityFill(t)) n++;
+  const what = [rows.length ? `${plural(rows.length, "row")} ${rows.map(y => y + 1).join(", ")}` : "", cols.length ? `${plural(cols.length, "column")} ${cols.map(x => String.fromCharCode(65 + x)).join(", ")}` : ""].filter(Boolean).join(" and ");
+  log(`Network map: ${what} emptied and refilled with ${n} ${plural(n, "host")}.`, "warn");
+  return n;
+}
+// Zones other SOCs hold this shift: their jump host's ingress and a remote-access start.
+function cityClaimed(p) {
+  const s = new Set();
+  for (const q of G.players) { if (q.id === p.id) continue; if (q.van !== null) s.add(q.van); if (q.cityStart !== null) s.add(q.cityStart); }
+  return s;
+}
+// Where the jump host may go: any free ingress in shift 1; after that, stay or
+// up to 2 free ingress points either way round the edge (held ones are
+// skipped, not counted); the remote-access holder may start on any free zone.
+function cityMoveOptions(p) {
+  const C = G.city, taken = cityClaimed(p), ents = C.entrances, out = [];
+  if (p.van === null) { for (const t of ents) if (!taken.has(t)) out.push({ tile: t, heli: false, steps: 0 }); }
+  else {
+    out.push({ tile: p.van, heli: false, steps: 0 });
+    const i = ents.indexOf(p.van);
+    for (const dir of [1, -1]) {
+      let k = i, n = 0, guard = 0;
+      while (n < CITY.moveRange && guard++ < ents.length) {
+        k = (k + dir + ents.length) % ents.length;
+        const t = ents[k];
+        if (t === p.van) break;
+        if (taken.has(t)) continue;
+        n++;
+        if (!out.some(o => o.tile === t)) out.push({ tile: t, heli: false, steps: n * dir });
+      }
+    }
+  }
+  if (C.heli === p.id && p.van !== null) for (let t = 0; t < C.tiles.length; t++) if (!taken.has(t) && !out.some(o => o.tile === t)) out.push({ tile: t, heli: true, steps: 0 });
+  return out;
+}
+function applyCityMove(p, opt) {
+  const was = p.van;
+  if (opt.heli) { p.heliUsed = true; p.cityStart = opt.tile; }
+  else { p.van = opt.tile; p.cityStart = opt.tile; }
+  p.cityAt = null; p.cityTrail = []; p.cityGot = []; p.cityTokensRound = []; p.cityDone = false; p.keepPending = false;
+  const z = cityZoneName(opt.tile);
+  if (opt.heli) log(`${p.name} ${p.isBot ? "drops" : "drop"} in by remote access at ${z}.`, p.isBot ? "sys" : "good");
+  else if (was === null) log(`${p.name} ${p.isBot ? "sets" : "set"} up a jump host at ingress ${z}.`, p.isBot ? "sys" : "good");
+  else if (was === opt.tile) log(`${p.name} ${p.isBot ? "keeps" : "keep"} the jump host at ${z}.`, "sys");
+  else log(`${p.name} ${p.isBot ? "moves" : "move"} the jump host to ingress ${z}.`, p.isBot ? "sys" : "good");
+}
+// One hypervisor per shift, and none past the cap: such a host is passed as if the zone were empty.
+function cityCanTake(p, die, got = p.cityGot) {
+  if (!die) return false;
+  if (isMother(die)) { if (got.some(isMother)) return false; if (mothersOf(p).length + p.pendingDice.filter(isMother).length >= MAT.maxMothers) return false; }
+  return true;
+}
+function cityMoves(p) { return p.cityAt === null ? [] : cityNeighbours(p.cityAt).map(j => ({ tile: j, take: cityCanTake(p, G.city.tiles[j].die) })); }
+function cityReachableDice(p) {
+  const seen = new Set([p.cityAt]), q = [p.cityAt];
+  while (q.length) for (const j of cityNeighbours(q.shift())) { if (seen.has(j)) continue; seen.add(j); if (cityCanTake(p, G.city.tiles[j].die)) return true; q.push(j); }
+  return false;
+}
+// The responder walks onto a zone; a host there (and its token) comes along.
+function cityEnter(p, idx) {
+  const t = G.city.tiles[idx];
+  p.cityAt = idx; p.cityTrail.push(idx);
+  if (!cityCanTake(p, t.die)) return false;
+  const d = t.die; t.die = null; p.cityGot.push(d);
+  let tok = "";
+  if (t.token) { p.cityTokensRound.push(t.token); tok = ` and a ${CITY_TOKENS[t.token].name} token`; t.token = null; }
+  log(`${p.name} ${p.isBot ? "collects" : "collect"} a ${isMother(d) ? "hypervisor" : d.colour + " host"} at ${d.value} from ${cityZoneName(idx)}${tok}.`, p.isBot ? "sys" : "good");
+  return true;
+}
+function cityFinish(p) {
+  p.cityDone = true;
+  p.intakeTotal = sum(p.cityGot.map(d => d.value));
+  p.pendingDice.push(...p.cityGot); p.cityGot = [];
+  if (p.cityTokensRound.length > 1) { if (p.isBot) applyKeepToken(p, botKeepToken(p)); else p.keepPending = true; }
+  else if (p.cityTokensRound.length === 1) applyKeepToken(p, p.cityTokensRound[0]);
+  log(`${p.name}: intake total ${p.intakeTotal}.`, "sys");
+  return cityRefill();
+}
+// Of the recon tokens picked up this shift, one is kept; the rest are discarded.
+function applyKeepToken(p, type) {
+  const i = p.cityTokensRound.indexOf(type);
+  if (i < 0) return;
+  p.cityTokensRound.splice(i, 1);
+  p.tokens.push(type);
+  for (const t of p.cityTokensRound) G.city.discard.push(t);
+  if (p.cityTokensRound.length) log(`${p.name} ${p.isBot ? "keeps" : "keep"} the ${CITY_TOKENS[type].name} token and ${p.isBot ? "discards" : "discard"} ${p.cityTokensRound.length}.`, "sys");
+  else log(`${p.name} ${p.isBot ? "keeps" : "keep"} the ${CITY_TOKENS[type].name} token.`, "sys");
+  p.cityTokensRound = []; p.keepPending = false;
+}
+function cityAdjTotal(p) { return p.intakeTotal - 2 * p.laneUsed; }
+// Rank among the totals: lower first; a tie goes to whoever placed their marker later.
+function cityRank(p, adj) {
+  const order = playersInTurnOrder(), i = order.indexOf(p);
+  let r = 0;
+  order.forEach((q, j) => { if (q === p) return; const t = cityAdjTotal(q); if (t < adj || (t === adj && j > i)) r++; });
+  return r;
+}
+function useLane(p) {
+  const i = p.tokens.indexOf("lane"); if (i < 0) return false;
+  p.tokens.splice(i, 1); G.city.discard.push("lane"); p.laneUsed++;
+  log(`${p.name} ${p.isBot ? "spends" : "spend"} a Priority Lane token: intake total ${cityAdjTotal(p)}.`, p.isBot ? "sys" : "good");
+  return true;
+}
+function botLaneWorth(p) { const adj = cityAdjTotal(p); return cityRank(p, adj - 2) < cityRank(p, adj); }
+function applyCityOrder() {
+  const order = playersInTurnOrder();
+  const ranked = order.map((p, i) => ({ p, i })).sort((a, b) => cityAdjTotal(a.p) - cityAdjTotal(b.p) || b.i - a.i).map(x => x.p);
+  G.turnOrder = ranked.map(p => p.id);
+  ranked.forEach((p, i) => { p.order = i + 1; });
+  const lowest = ranked[0];
+  lowest.bloodBags++;
+  G.firstPlayer = lowest.id; G.city.heli = lowest.id;
+  log(`Response order: ${ranked.map(p => `${p.name} (${cityAdjTotal(p)})`).join(", ")}. ${lowest.name} ${lowest.id === 0 ? "take" : "takes"} the Incident Commander role, remote access and +1 intel.`, "warn");
+  for (const p of G.players) { p.laneUsed = 0; p.laneDone = false; }
+}
+// Dwell time on the map: every host left out there drops a step (hypervisors
+// stop at 1), a drop to 2 brings a recon token, and the breaches go round
+// the table from the last in the response order.
+function cityNeglect() {
+  const C = G.city, ev = currentEvent();
+  const dmg = ev && ev.neglectMod !== undefined ? Math.min(1, ev.neglectMod) : 1;
+  let dead = 0, hit = 0;
+  if (dmg > 0) for (const t of C.tiles) {
+    const d = t.die; if (!d) continue;
+    if (isPink(d)) { d.value = Math.max(1, d.value - 1); continue; }
+    d.value -= 1; hit++;
+    if (d.value <= 0) { t.die = null; if (t.token) { C.discard.push(t.token); t.token = null; } returnToBag(d); dead++; }
+    else if (d.value === 2 && !t.token) t.token = drawCityToken();
+  }
+  if (dead) {
+    const rev = playersInTurnOrder().slice().reverse(), hits = {};
+    for (let k = 0; k < dead; k++) { const p = rev[k % rev.length]; p.fatalities++; p.breachesThisRound++; hits[p.name] = (hits[p.name] || 0) + 1; }
+    log(`Network map: ${dead} ${plural(dead, "host")} lost out there. ${plural(dead, "Breach", "Breaches")} logged from the back of the response order: ${Object.entries(hits).map(([n, k]) => `${n} ${k}`).join(", ")}.`, "bad");
+  } else if (hit) log("Network map: every host left out there degraded.", "warn");
+  return { dead, hit };
+}
+// Recon tokens in activation: a heal (it counts as worked) or a one-shift analyst.
+function useCityHeal(p, type, die) {
+  const i = p.tokens.indexOf(type); if (i < 0) return null;
+  p.tokens.splice(i, 1); G.city.discard.push(type);
+  const ctx = newCtx();
+  heal(p, die, CITY_TOKENS[type].heal, ctx);
+  return ctx;
+}
+function useContractor(p) {
+  const i = p.tokens.indexOf("contractor"); if (i < 0) return false;
+  p.tokens.splice(i, 1); G.city.discard.push("contractor");
+  p.meeples.push({ uid: G.nextUid++, kind: "nurse", specUid: null, colour: "white", used: false, deptUid: null, off: false, temp: true });
+  return true;
 }
 // ---- placement (Virtualization) ----
 // The host you are placing now: hypervisors first, so their segment is settled
@@ -2402,6 +2815,13 @@ function assertInvariants() {
       p.wards.forEach((w, wi) => { if (wardDice(p, wi).filter(isMother).length > 1) throw new Error("Two hypervisors in one segment"); });
       for (const n of p.nurseries) for (const d of n.dice) if (!d.infant || !findDie(p, d.family)) throw new Error("Orphaned guest");
     }
+  }
+  if (G.city) {
+    for (const t of G.city.tiles) if (t.die && (t.die.value < 1 || t.die.value > 6)) throw new Error("Zone host value out of range " + t.die.value);
+    const vans = G.players.filter(p => p.van !== null).map(p => p.van);
+    if (new Set(vans).size !== vans.length) throw new Error("Two jump hosts on one ingress point");
+    const toks = G.city.pile.length + G.city.discard.length + G.city.tiles.filter(t => t.token).length + sum(G.players.map(p => p.tokens.length + p.cityTokensRound.length));
+    if (toks !== sum(Object.values(CITY.tokens))) throw new Error("Recon token conservation broken: " + toks);
   }
   const seen = new Set();
   for (const p of G.players) for (const d of boardDice(p)) {
@@ -2593,6 +3013,16 @@ function onDieClick(uid) {
       afterAction();
       return;
     }
+    case "tokenHeal": {
+      if (!UI.legalTargets.has(uid)) return;
+      pushUndo();
+      const type = s.token, ctx = useCityHeal(p, type, die);
+      log(describeHealCtx(p, CITY_TOKENS[type].name + " token", "the host", ctx), "good");
+      sfx(ctx.discharged.length ? "discharge" : "heal");
+      s.state = "idle"; s.token = null;
+      afterAction();
+      return;
+    }
     case "intelRecolour":
       s.pending = uid; s.state = "intelColour";
       break;
@@ -2734,12 +3164,44 @@ function onIntelRecolour() {
   else return;
   computeLegal(); updateAll();
 }
+// Recon tokens (Network): a heal token arms a click on a host; the Contractor joins at once.
+function onTokenHeal(type) {
+  if (!inPhase("activate", "human") || !human().tokens.includes(type) || !CITY_TOKENS[type].heal) return;
+  const s = UI.sel;
+  if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state)) return;
+  if (s.state === "tokenHeal" && s.token === type) { s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); s.token = null; }
+  else { s.state = "tokenHeal"; s.token = type; }
+  computeLegal(); updateAll();
+}
+function onContractor() {
+  if (!inPhase("activate", "human") || !human().tokens.includes("contractor")) return;
+  if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
+  pushUndo(); useContractor(human());
+  log("Contractor token: a one-shift analyst joins the staff.", "good"); sfx("place");
+  afterAction();
+}
+function onCityTile(idx) {
+  if (!G || UI.animating || G.actor !== 0) return;
+  const p = human();
+  if (inPhase("intake", "cityMove") && p.cityStart === null) {
+    const o = cityMoveOptions(p).find(x => x.tile === idx); if (!o) return;
+    applyCityMove(p, o); sfx("place"); advance(); return;
+  }
+  if (inPhase("intake", "cityCollect") && p.cityAt !== null && !p.cityDone) {
+    const mv = cityMoves(p).find(x => x.tile === idx); if (!mv) return;
+    sfx(cityEnter(p, idx) ? "place" : "deal"); advance();
+  }
+}
+function onCityStay() { const p = human(); if (!inPhase("intake", "cityMove") || p.van === null || p.cityStart !== null) return; applyCityMove(p, { tile: p.van, heli: false, steps: 0 }); advance(); }
+function onKeepToken(type) { const p = human(); if (!inPhase("intake", "cityCollect") || !p.keepPending) return; applyKeepToken(p, type); sfx("place"); advance(); }
+function onLaneUse() { const p = human(); if (!inPhase("intake", "cityOrder") || p.laneDone) return; if (useLane(p)) sfx("intel"); advance(); }
+function onLaneKeep() { const p = human(); if (!inPhase("intake", "cityOrder") || p.laneDone) return; p.laneDone = true; advance(); }
 function cancelSel() {
   const s = UI.sel;
   if (!inPhase("activate", "human")) return;
   switch (s.state) {
     case "targeting": s.state = "meepleSel"; s.deptUid = null; s.dice = []; break;
-    case "intelHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); break;
+    case "intelHeal": case "tokenHeal": s.state = s.deptUid ? "targeting" : (s.meepleUid ? "meepleSel" : "idle"); s.token = null; break;
     case "intelRecolour": case "intelColour": s.state = "targeting"; s.pending = null; break;
     case "colour": if (s.colourFor === "spec") { s.state = "spec"; } else { s.state = "targeting"; } s.colourQueue = null; break;
     case "meepleSel": case "returning": resetSel(); break;
@@ -2782,6 +3244,9 @@ function computeLegal() {
       if (o.ordered) { if (set[s.dice.length]) UI.legalTargets.add(set[s.dice.length].uid); for (const u of s.dice) UI.legalTargets.add(u); }
       else for (const d of set) UI.legalTargets.add(d.uid);
     }
+  } else if (s.state === "tokenHeal") {
+    const c = CITY_TOKENS[s.token] && CITY_TOKENS[s.token].colour;
+    for (const d of boardDice(p)) if (!d.ready && (!c || effColour(d) === c)) UI.legalTargets.add(d.uid);
   } else if (["intelHeal", "intelRecolour", "admReturn"].includes(s.state)) {
     // Pink hosts are never retagged or handed off, and a ready one is set aside.
     for (const d of boardDice(p)) if (!d.ready && (s.state === "intelHeal" || !isPink(d))) UI.legalTargets.add(d.uid);
@@ -2836,6 +3301,7 @@ function dispatchAct(el) {
     case "spec": onSpecCardClick(uid); break;
     case "queue": onQueueClick(idx); break;
     case "place": onPlaceWard(parseInt(el.dataset.ward, 10)); break;
+    case "cityTile": onCityTile(idx); break;
     case "dispDept": onDisplayClick("dept", idx); break;
     case "dispSpec": onDisplayClick("spec", idx); break;
     case "admin": onAdminPick(el.dataset.id); break;
@@ -3002,8 +3468,76 @@ function simulateAction(p, m, dept, dice) {
   UI.simulating = false;
   return v;
 }
+// Network: the bot's read of the map. A plan walks the links a few zones
+// deep, taking every host it steps on as the rule says, and scores the hosts
+// it would bring home, the best token among them and how low the total runs.
+function botCityScore(p, got, toks) {
+  const free = emptyBeds(p).length;
+  let v = 0;
+  for (const d of got) v += V_PIP[d.value] + 1 + (isMother(d) ? (motherWardOptions(p).free.length ? 4 : 1) : 0);
+  v -= V_FATALITY * Math.max(0, got.length - free);
+  v -= 0.35 * sum(got.map(d => d.value));
+  v += Math.max(0, ...toks.map(t => CITY_TOKENS[t].botValue));
+  // Collecting is not optional: a plan that comes home short is scored below
+  // any that finishes, even one that overflows the quarantine.
+  if (got.length < G.cityPer) v -= 14 * (G.cityPer - got.length);
+  return v;
+}
+function botCityPlan(p, at, got, toks, taken, depth) {
+  if (got.length >= G.cityPer || depth === 0) return botCityScore(p, got, toks);
+  let best = null;
+  for (const j of cityNeighbours(at)) {
+    const t = G.city.tiles[j];
+    const die = taken.has(j) ? null : t.die;
+    const take = die && cityCanTake(p, die, got);
+    if (!take && taken.has("e" + j)) continue; // an empty zone walked twice gets nowhere
+    const nt = new Set(taken); nt.add(take ? j : "e" + j);
+    const sc = botCityPlan(p, j, take ? got.concat(die) : got, take && t.token ? toks.concat(t.token) : toks, nt, depth - 1);
+    if (best === null || sc > best) best = sc;
+  }
+  return best === null ? botCityScore(p, got, toks) - 5 : best;
+}
+function botCityEval(p, start, got0, toks0, from) {
+  const t = G.city.tiles[start];
+  const take = cityCanTake(p, t.die, got0);
+  const got = take ? got0.concat(t.die) : got0, toks = take && t.token ? toks0.concat(t.token) : toks0;
+  const taken = new Set([take ? start : "e" + start]);
+  if (from !== undefined) taken.add("e" + from); // the zone it stands on is walked already
+  return botCityPlan(p, start, got, toks, taken, 6);
+}
+function botCityMove(p, opts) {
+  const scored = opts.map(o => ({ o, score: botCityEval(p, o.tile, [], []) + (o.heli ? -0.5 : 0) + (o.steps === 0 && !o.heli ? 0.2 : 0) + rnd() * 0.01 }));
+  return botPick(scored, p.skill).o;
+}
+function botCityStep(p) {
+  const scored = cityMoves(p).map(m => ({ tile: m.tile, score: botCityEval(p, m.tile, p.cityGot, p.cityTokensRound, p.cityAt) + rnd() * 0.01 }));
+  return botPick(scored, p.skill).tile;
+}
+function botKeepToken(p) {
+  const top = topColour(boardDice(p).concat(p.pendingDice).filter(d => !isPink(d)));
+  const scored = p.cityTokensRound.map(t => ({ t, score: CITY_TOKENS[t].botValue + (CITY_TOKENS[t].colour === top ? 1 : 0) }));
+  return botPick(scored, 2).t;
+}
+function botCityTokens(p) {
+  if (!G.cfg.city) return;
+  let guard = 0;
+  while (p.tokens.some(t => CITY_TOKENS[t].heal) && guard++ < 10) {
+    let used = false;
+    for (const t of [...new Set(p.tokens)].filter(t => CITY_TOKENS[t].heal)) {
+      const k = CITY_TOKENS[t];
+      const cands = boardDice(p).filter(d => !d.ready && (!k.colour || effColour(d) === k.colour));
+      let pick = cands.find(d => d.value + k.heal >= DISCHARGE_THRESHOLD && !isPink(d));
+      if (!pick && G.round >= ROUNDS) pick = cands.sort((a, b) => b.value - a.value)[0];
+      if (!pick && p.skill >= 1) pick = cands.find(d => d.value === 1 && !d.treated);
+      if (pick) { useCityHeal(p, t, pick); used = true; break; }
+    }
+    if (!used) break;
+  }
+}
 function botActivate(p) {
   const parts = [];
+  // A Contractor is worth a shift whenever there are more tools ready than hands.
+  if (G.cfg.city && p.tokens.includes("contractor") && allDepts(p).filter(d => canActivate(d, p)).length > p.meeples.filter(m => !m.used && !m.off).length) useContractor(p);
   let guard = 0;
   while (guard++ < 14) {
     const before = boardValue(p);
@@ -3030,6 +3564,7 @@ function botActivate(p) {
     parts.push(DEPT_DEFS[best.dept.type].name + (ctx.discharged.length ? " ✓" : ""));
   }
   botBloodBag(p);
+  botCityTokens(p);
   const n = p.dischargedThisRound.length;
   p.botSummary = parts.length ? `${parts.join(", ")} — ${n} restored` : "Nothing to work on";
   if (!UI.headless) log(`${p.name}: ${p.botSummary}.`, "sys");
@@ -3067,6 +3602,9 @@ function botAnswerWait() {
   else if (st === "extraReveal") applyExtraChoice(botExtraChoice(p));
   else if (ph === "intake" && st === "keep") applyKeep(p, botKeep(p));
   else if (ph === "intake" && st === "pick") applyPickAmbulance(p, botPickAmbulance(p));
+  else if (ph === "intake" && st === "cityMove") applyCityMove(p, botCityMove(p, cityMoveOptions(p)));
+  else if (ph === "intake" && st === "cityCollect") { if (p.keepPending) applyKeepToken(p, botKeepToken(p)); else cityEnter(p, botCityStep(p)); }
+  else if (ph === "intake" && st === "cityOrder") { while (p.tokens.includes("lane") && botLaneWorth(p)) useLane(p); p.laneDone = true; }
   else if (ph === "intake" && st === "place") { if (G.overflow) { G.overflow.marked = botChooseFatalities(p, G.overflow.shortage); applyOverflow(); } else if (p.twinsPending) applyTwins(p, 2); else botPlaceDice(p); }
   else if (ph === "improve" && st === "take") { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; }
   else if (ph === "improve" && st === "return") { const r = botReturnDecision(p); applyReturn(p, r ? r.kind : null, r ? r.uid : null); }
@@ -3358,6 +3896,7 @@ function rebuildLog() {
 function updateAll() {
   if (UI.headless || !G) return;
   document.getElementById("app").classList.toggle("p4", G.players.length >= 4);
+  document.getElementById("app").classList.toggle("city", !!G.cfg.city);
   UI.wideTable = window.matchMedia(WIDE_TABLE_MQ).matches;
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
@@ -3376,6 +3915,7 @@ function attentionTarget() {
   const p = human(), s = UI.sel, ph = G.phase, st = G.step;
   if (ph === "setup") return "table";
   if (st === "extraReveal") return "strip";
+  if (ph === "intake" && st.startsWith("city")) return st === "cityOrder" || human().keepPending ? "strip" : "table";
   if (ph === "intake") return st === "place" && human().twinsPending ? "strip" : st === "place" && (G.overflow || G.cfg.maternity) ? "wards" : "table";
   if (ph === "improve") return st === "take" ? "table" : "strip";
   if (ph === "activate" && st === "consultant") return "staff";
@@ -3386,7 +3926,7 @@ function attentionTarget() {
         return canAct ? "staff" : "strip";
       }
       case "meepleSel": return "tools";
-      case "targeting": case "spec": case "intelHeal": case "intelRecolour": case "admReturn": return "wards";
+      case "targeting": case "spec": case "intelHeal": case "tokenHeal": case "intelRecolour": case "admReturn": return "wards";
       case "choice": case "colour": case "intelColour": return "strip";
       default: return null;
     }
@@ -3438,7 +3978,7 @@ function dieState(uid) {
   const s = UI.sel;
   let cls = "", act = false;
   if (G.phase === "activate" && G.step === "human") {
-    if (["targeting", "spec", "intelHeal", "intelRecolour", "admReturn"].includes(s.state)) {
+    if (["targeting", "spec", "intelHeal", "tokenHeal", "intelRecolour", "admReturn"].includes(s.state)) {
       if (UI.legalTargets.has(uid)) { cls += " target-ok clickable"; act = true; } else cls += " dim";
       if (s.dice.includes(uid)) cls += " sel";
       if (s.dice.includes(uid) && s.specOpts && s.specOpts.ordered) cls += " sel";
@@ -3515,7 +4055,7 @@ function renderMeeple(p, m, key) {
   if (returning && spec) cls.push("returnable");
   if (consult && spec && spec.type !== "consultant") cls.push("clickable");
   if (consult && spec && p.consultantCopy === spec.type && spec.type !== "consultant") cls.push("sel");
-  let ability = "Any one unused tool.";
+  let ability = m.temp ? "A one-shift analyst: any one unused tool." : "Any one unused tool.";
   if (def) {
     ability = specDesc(def);
     if (def.special === "copy" && p.consultantCopy) ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`;
@@ -3606,6 +4146,7 @@ function renderBoard() {
   const n = p.dischargedThisRound.length;
   html += '<div class="board-row"><span class="lbl">Shift</span><div id="tray">';
   if (p.admin) html += `<span class="badge" title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>`;
+  if (G.cfg.city) for (const t of p.tokens) html += `<span class="token recon" title="${esc(CITY_TOKENS[t].desc)}">${esc(CITY_TOKENS[t].name)}</span>`;
   html += `<span class="ladder" title="Reputation for hosts restored in one shift. Restore more at once for more per host."><span class="stack-info">restore</span>`;
   for (let i = 1; i <= 8; i++) html += `<span class="lcell ${i === n ? "cur" : i === n + 1 ? "next" : ""}">${i}<b>:${dischargePoints(i)}</b></span>`;
   html += '</span>';
@@ -3645,6 +4186,8 @@ function renderCenter() {
       html += '</div>';
     }
     html += '</div>';
+  } else if (ph === "intake" && st.startsWith("city")) {
+    html += `<div class="center-title">Network map${G.city.heli !== null ? ` <span class="h3-note">${esc(G.players[G.city.heli].name)}: remote access</span>` : ""}</div>` + renderCity(true);
   } else if (ph === "intake" && st === "keep") {
     const total = sum(s.dice.map(u => { const d = p.pendingDice.find(x => x.uid === u); return d ? d.value : 0; }));
     html += '<div class="center-title">Rolled hosts — keep 3</div><div class="keep-row">';
@@ -3678,7 +4221,7 @@ function renderCenter() {
   // Between those moments the table still holds the face-up improvement
   // display, as it does on a real table, so the area never collapses.
   const idle = !html;
-  if (idle && G.deptDisplay) html = '<div class="center-title">Improvement display</div>' + renderDisplay(false, "refreshed at shift change");
+  if (idle && G.deptDisplay) html = (G.cfg.city ? '<div class="center-title">Network map</div>' + renderCity(false) : "") + '<div class="center-title">Improvement display</div>' + renderDisplay(false, "refreshed at shift change");
   return `<div id="table" class="${idle ? "idle" : ""}" aria-label="Shared table">${html}</div>`;
 }
 // The empty slot a taken card leaves, at the height that card had, so the
@@ -3686,6 +4229,46 @@ function renderCenter() {
 function gapSlot(cls, key) {
   const h = UI.cardH.get(key);
   return `<div class="disp-gap ${cls}" aria-hidden="true"${h ? ` style="min-height:${Math.round(h)}px"` : ""}></div>`;
+}
+// The network map: zones with their links, the hosts and recon tokens on
+// them, each SOC's jump host at its ingress, and the responder on the move.
+function renderCity(interactive) {
+  const C = G.city, p = human(), st = G.step;
+  const mine = interactive && G.actor === 0 && !UI.animating && G.phase === "intake";
+  const moveOpts = mine && st === "cityMove" && p.cityStart === null ? cityMoveOptions(p) : [];
+  const stepOpts = mine && st === "cityCollect" && p.cityAt !== null && !p.cityDone ? cityMoves(p) : [];
+  const vans = new Map(), starts = new Map();
+  for (const q of G.players) { if (q.van !== null) vans.set(q.van, (vans.get(q.van) || []).concat(q)); if (q.heliUsed && q.cityStart !== null) starts.set(q.cityStart, q); }
+  const mover = G.phase === "intake" && st === "cityCollect" ? playersInTurnOrder().find(q => q.cityAt !== null && !q.cityDone) : null;
+  let html = `<div class="netmap" style="grid-template-columns: repeat(${C.w}, var(--tile))" aria-label="Network map">`;
+  C.tiles.forEach((t, i) => {
+    const cls = ["ctile"], ext = cityExteriorOf(C, i);
+    for (const side of ext) cls.push("ent-" + side);
+    if (t.pink) cls.push("pink");
+    const mo = moveOpts.find(o => o.tile === i), so = stepOpts.find(o => o.tile === i);
+    if (mo || so) cls.push("can");
+    if (mover && mover.cityAt === i) cls.push("here"); else if (mover && mover.cityTrail.includes(i)) cls.push("trail");
+    let title = `${cityZoneName(i)}: ${t.die ? (isMother(t.die) ? "hypervisor" : t.die.colour + " host") + " at " + t.die.value : "empty"}${t.token ? ", " + CITY_TOKENS[t.token].name + " token" : ""}${t.pink ? " (hypervisor zone)" : ""}`;
+    if (mo) title += mo.heli ? " — drop in here by remote access" : mo.tile === p.van ? " — stay put" : p.van === null ? " — set up the jump host here" : " — move the jump host here";
+    if (so) title += so.take ? " — walk here and take the host" : " — walk here";
+    html += `<div class="${cls.join(" ")}"${mo || so ? ` data-act="cityTile" data-idx="${i}" role="button" tabindex="0"` : ""} title="${esc(title)}">`;
+    ["n", "e", "s", "w"].forEach((side, k) => { if (t.roads[k]) html += `<span class="rd ${side}"></span>`; });
+    html += '<span class="hub"></span>';
+    if (t.die) html += renderDie(t.die, { small: true });
+    if (t.token) html += `<span class="ctok t-${t.token}" title="${esc(CITY_TOKENS[t.token].name)}">${CITY_TOKENS[t.token].abbr}</span>`;
+    for (const q of vans.get(i) || []) html += `<span class="van ${q.id === 0 ? "you" : ""} side-${ext[0] || "n"}" title="${esc(q.name)}: jump host">${PLAYER_CHIPS[q.id]}</span>`;
+    const hq = starts.get(i);
+    if (hq) html += `<span class="van heli ${hq.id === 0 ? "you" : ""}" title="${esc(hq.name)}: remote access">${PLAYER_CHIPS[hq.id]}</span>`;
+    if (mover && mover.cityAt === i) html += `<span class="pm" title="${esc(mover.name)}: responder"></span>`;
+    html += '</div>';
+  });
+  html += '</div><div class="city-order">';
+  html += playersInTurnOrder().map(q => {
+    const info = G.phase === "intake" && st !== "place" ? (q.cityDone ? "Σ" + cityAdjTotal(q) : q.cityAt !== null ? "…" : "") : (q.order ? "#" + q.order : "");
+    return `<span class="${q.id === 0 ? "you" : ""}">${esc(q.id === 0 ? "You" : q.name.replace("Rival ", ""))}${info ? " " + info : ""}</span>`;
+  }).join(" · ");
+  html += `</div>`;
+  return html;
 }
 function renderDisplay(pickable, note) {
   let html = `<div id="display" class="${UI.quickPicks ? "quick" : ""}">`;
@@ -3760,6 +4343,11 @@ function renderStrip() {
     }
     if (UI.specNote && !["spec", "choice", "admReturn", "colour"].includes(s.state)) html += `<div class="strip-rule note">${esc(UI.specNote)}</div>`;
   }
+  // Network intake: what the recon tokens in play do, so the map reads without the help.
+  if (G.cfg.city && G.phase === "intake" && G.step.startsWith("city") && G.actor === 0) {
+    const kinds = p.keepPending ? [...new Set(p.cityTokensRound)] : [...new Set(G.city.tiles.filter(t => t.token).map(t => t.token))];
+    if (kinds.length) html += `<div class="strip-rule"><b>Recon ${plural(kinds.length, "token")}${p.keepPending ? " picked up" : " on the map"}</b> — ${kinds.map(t => `<span class="ctok t-${t}">${CITY_TOKENS[t].abbr}</span> ${esc(CITY_TOKENS[t].name)}: ${esc(CITY_TOKENS[t].short)}`).join(" · ")}</div>`;
+  }
   html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
   if (live) {
     const canIntel = p.bloodBags > 0 && !["spec", "choice", "colour", "intelColour", "admReturn"].includes(s.state);
@@ -3769,6 +4357,11 @@ function renderStrip() {
     html += `<button class="action-btn sm ${s.state === "intelHeal" ? "primary" : ""}" onclick="onIntelHeal()" ${canIntel ? "" : "disabled"} title="Spend an intel token (the blood bag) to heal any host 1 step">Intel: heal +1 <span class="k">B</span></button>`;
     html += `<button class="action-btn sm ${s.state === "intelRecolour" ? "primary" : ""}" onclick="onIntelRecolour()" ${p.bloodBags > 0 && s.state === "targeting" ? "" : "disabled"} title="Spend an intel token to change a host's colour before this tool resolves">Intel: retag</button>`;
     html += `<button class="action-btn sm" onclick="undo()" ${canUndo() ? "" : "disabled"} title="${canUndo() ? "Undo the last placement" : (UI.undo.length ? "Can't undo past a re-roll" : "Nothing to undo")}">Undo <span class="k">U</span></button>`;
+    if (G.cfg.city) for (const t of [...new Set(p.tokens)].filter(t => t !== "lane")) {
+      const k = CITY_TOKENS[t], n = p.tokens.filter(x => x === t).length;
+      if (k.heal) html += `<button class="action-btn sm ${s.state === "tokenHeal" && s.token === t ? "primary" : ""}" onclick="onTokenHeal('${t}')" title="${esc(k.desc)}">${esc(k.name)} ${n > 1 ? "×" + n : ""}</button>`;
+      else html += `<button class="action-btn sm" onclick="onContractor()" title="${esc(k.desc)}">${esc(k.name)} ${n > 1 ? "×" + n : ""}</button>`;
+    }
     if (canReturnNow(p)) html += `<button class="action-btn sm ${s.state === "returning" ? "primary" : ""}" onclick="onReturnToggle()" title="Return one tool or specialist to the bottom of its stack for an intel token. Only before your first placement this shift.">Return one for intel</button>`;
     html += `<span class="hint">${idle} ${plural(idle, "analyst")} free · ${usable} ${plural(usable, "tool")} ready · ${p.bloodBags} intel</span></div>`;
   }
@@ -3790,6 +4383,7 @@ function renderRivals() {
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
     html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, [d.treated ? "treated" : "", d.infant ? "infant" : "", d.ready ? "ready" : ""].join(" "))).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
+    if (G.cfg.city) html += `<div class="rl"><span>${p.order ? "#" + p.order + " in order" : "order unset"}</span>${G.city.heli === p.id ? "<span>remote access</span>" : ""}${p.tokens.map(t => `<span class="token recon" title="${esc(CITY_TOKENS[t].desc)}">${esc(CITY_TOKENS[t].name)}</span>`).join("")}</div>`;
     if (p.botSummary) html += `<div class="rs">${esc(p.botSummary)}</div>`;
     html += '</div>';
   }
@@ -3808,6 +4402,7 @@ function updateHUD() {
     ["Restored", p.dischargedTotal],
     ["Bag", bag, "", "", `${G.bag.red}/${G.bag.yellow}/${G.bag.green}`],
   ];
+  if (G.cfg.city) stats.push(["Order", p.order ? "#" + p.order : "—"]);
   if (G.cfg.maternity) stats.push(["Pool", `<span class="bagdots"><span class="mini-dot dot c-pink"></span>${G.supply.mother} · ${G.supply.infant}</span>`, "", "", `${G.supply.mother}/${G.supply.infant}`]);
   const el = document.getElementById("hud-stats");
   el.innerHTML = stats.map(([l, v, c, extra, key]) => { const k = key || v; return `<div class="stat ${UI.prevHUD[l] !== undefined && UI.prevHUD[l] !== k ? "flash" : ""}" title="${l === "Intel" ? "Intel tokens (the blood bags): +1 each at the end" : l === "Breaches" ? "Breach records (fatality tokens): −2 each at the end" : l === "Bag" ? `Dice left in the bag by colour. Stacks: ${G.deptStack.length} tools, ${G.specStack.length} specialists` : l === "Pool" ? "Hypervisors and guests still in the supply" : ""}"><span class="lbl">${l}</span><span class="val ${c || ""}">${v}</span>${extra || ""}</div>`; }).join("");
@@ -3825,6 +4420,16 @@ function promptFor() {
   if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
   if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
   if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
+  if (ph === "intake" && st === "cityMove") {
+    if (p.van === null) return { text: "Set up your jump host: click a highlighted ingress point on the network map. Your responder collects hosts from there." };
+    const heli = G.city.heli === p.id;
+    return { text: `Move your jump host up to ${CITY.moveRange} free ingress points either way round the map, or stay${heli ? "; or drop in by remote access on any free zone" : ""}.`, buttons: [B("Stay put", "onCityStay()", { primary: true })] };
+  }
+  if (ph === "intake" && st === "cityCollect") {
+    if (p.keepPending) return { text: "Keep one recon token; the rest are discarded.", buttons: p.cityTokensRound.map(t => B(CITY_TOKENS[t].name, `onKeepToken('${t}')`)) };
+    return { text: `Responder at ${p.cityAt === null ? "the jump host" : cityZoneName(p.cityAt)}: click a linked zone. A host there must be taken. ${p.cityGot.length} of ${G.cityPer} collected.` };
+  }
+  if (ph === "intake" && st === "cityOrder") return { text: `Intake total ${cityAdjTotal(p)}: spend a Priority Lane token for −2 before the response order is set?`, buttons: [B("Spend one (−2)", "onLaneUse()"), B("Keep it", "onLaneKeep()", { primary: true })] };
   if (ph === "intake" && st === "pick") return { text: `Click an escalation queue to take it. The lowest number taken earns an intel token and the Incident Commander role${p.id === G.firstPlayer ? "; as Commander you may not take #1" : ""}.` };
   if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
   if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off${G.cfg.maternity ? " (pink hosts are never written off)" : ""}.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
@@ -3849,6 +4454,7 @@ function promptFor() {
       case "choice": return { text: "Choose the follow-up above, or skip.", buttons: [B("Skip", "skipSpec()")] };
       case "admReturn": return { text: "Click a host to hand it back to the bag (no breach).", buttons: [B("Skip", "skipSpec()")] };
       case "intelHeal": return { text: "Click any host to heal it 1 step for one intel token.", buttons: [B("Cancel", "cancelSel()")] };
+      case "tokenHeal": return { text: `${CITY_TOKENS[s.token].name}: click ${CITY_TOKENS[s.token].colour ? "a " + CITY_TOKENS[s.token].colour : "any"} host to heal it ${CITY_TOKENS[s.token].heal} ${plural(CITY_TOKENS[s.token].heal, "step")}.`, buttons: [B("Cancel", "cancelSel()")] };
       case "intelRecolour": return { text: "Click the host to retag.", buttons: [B("Cancel", "cancelSel()")] };
       case "intelColour": case "colour": return { text: "Pick the colour above.", buttons: [B("Cancel", "cancelSel()")] };
     }
@@ -4069,6 +4675,17 @@ function showHowToPlay(tab) {
         <li><b>Directives.</b> Provisioning Policy: choose one guest or twins. Tenant Bonus: +3 for two hypervisors and two guests restored in one shift.</li>
       </ul>
       <p>The provisioning die shows twins on 2 faces of 6. The piles hold two of each tool and specialist.</p>
+      <h4>Network</h4>
+      <p>Switch it on under Expansions in the setup menu (rival games only). Intake is replaced: instead of escalation queues, the compromised hosts sit on a <b>network map</b> of zones joined by links, one host per zone at the start, and every SOC sends a responder out to collect 3 of them each shift.</p>
+      <ul>
+        <li><b>Jump hosts.</b> Zones on the edge of the map with a link to the outside are ingress points. In shift 1 each SOC sets up its jump host at a free one, in Commander order. From shift 2 each SOC, in response order, may move its jump host up to 2 free ingress points either way round the map (held ones are skipped, not counted), or stay. The Incident Commander holds <b>remote access</b> and may drop in on any free zone instead, even one in the middle.</li>
+        <li><b>Collecting.</b> The responder starts on the jump host's zone and takes the host there if it holds one. It then walks to zones joined by a link, and every host it steps on comes along, until it has 3. Empty zones can be crossed. A host at 2 carries a <b>recon token</b>; it comes along too. Of the tokens picked up in one shift only one is kept. Once a row or column of the map is empty it is refilled at once.</li>
+        <li><b>Response order.</b> The lowest intake total goes first for the rest of the shift and takes the Incident Commander role, remote access and an intel token; ties go to whoever collected later. A Priority Lane token spent before the order is read counts −2.</li>
+        <li><b>Recon tokens.</b> Hotfix: heal any host 1 step. Red, Yellow or Green Hotfix: heal a host of that colour 2 steps. Contractor: an extra analyst for one shift. All spent in activation, as many as you like; the healed host counts as worked. Priority Lane is spent at intake. Unspent tokens score nothing.</li>
+        <li><b>Dwell time.</b> Every host still on the map degrades 1 step too. A drop to 2 brings a recon token onto its zone. Hosts lost out there are breaches, dealt one at a time from the back of the response order.</li>
+        <li><b>With Virtualization.</b> A few zones spawn hypervisors instead of coloured hosts. A responder collects at most one hypervisor per shift and passes over any others as if the zone were empty. Hypervisors on the map never drop below 1.</li>
+      </ul>
+      <p>Not printed in the rulebook, so approximated: the links on the 20 zone tiles (4 crossroads, 8 T-junctions, 4 straights, 4 corners here), the split of the 30 recon tokens (5 of each kind) and the number of hypervisor zones by table size (2, 3, 4).</p>
     </div>
     <div ${panel("keys")}>
       <ul>

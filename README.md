@@ -30,7 +30,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 
 - **Faithful base-game rules** — 12 quarantine slots with queued/worked positions, the six starting tools, 12 improvement tools and 12 specialists (two of each), 8 CISO Directives, escalation-queue drafting with the Incident Commander restriction, intel tokens, the "must resolve in full" rule, specialist follow-ups that fire once
 - **Two modes** — Vs 1–3 AI SOCs (2–4 player rules, including the 2-player extra reveal) or the rulebook's solo score-chase with Audit Reports (draw 4 keep 3, one-of-each reveal, bottom-row filing)
-- **Expansion modes** — Virtualization: pink hypervisor dice arrive with guest hosts in a guest segment of their own, only degrade in company, never breach, and restore together as a family; a 4th analyst, 8 tools, 8 specialists, 2 directives, and restoration up to 20 hosts a shift
+- **Expansion modes** — Virtualization: pink hypervisor dice arrive with guest hosts in a guest segment of their own, only degrade in company, never breach, and restore together as a family; a 4th analyst, 8 tools, 8 specialists, 2 directives, and restoration up to 20 hosts a shift; Network: no queues, a responder walks the links of a network map to collect 3 hosts, recon tokens ride along with hosts at 2, and the lowest intake total goes first
 - **Add-ons in the house-rules panel** — Everything not in the base game is opt-in: Kickstarter promo specialists, the Experimental Medicine mini-expansion ("Beta Tooling"), Opening Crisis, Nationwide Epidemic, Resistant Superbug, Final Round Collections, solo double penalties, and Incident Event cards
 - **3 presets, sized like the operation you run** — MSSP (one easy rival), SOC (the full base game vs two rivals), CIRT (three expert rivals plus the harder add-ons), and a Solo toggle
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
@@ -102,9 +102,24 @@ Switch it on under *Expansions* in the setup menu (rival games only). Pink **hyp
 
 Specialists (all trigger on healing a hypervisor or guest): Snapshot Engineer (that host +2 more), Cluster Admin (another pink +1, then any host of that value +1), Orchestration Lead (two other pink +1 each), Migration Engineer (another host of the pre-heal value +2), Platform Engineer (two others of the pre-heal value +1 each), Hypervisor Specialist (a different pink +2), Cloud Architect (any other host +1), Tenancy Auditor (+2 intel when it restores a pink host). Directives: Provisioning Policy (choose one guest or twins), Tenant Bonus (+3 for 2 hypervisors and 2 guests restored in a shift).
 
+## Network
+
+Switch it on under *Expansions* in the setup menu (rival games only). Intake is replaced by a **network map**: a grid of zones joined by links, one rolled host per zone at the start (2 rivals: 4×3, 3 rivals: 4×4, 4 SOCs: 5×4). Edge zones with a link to the outside are **ingress points**. In shift 1 each SOC sets up its **jump host** at a free ingress point; from shift 2 it may move up to 2 free ingress points either way round the map, or stay, and the Incident Commander holds **remote access** and may drop in on any free zone instead.
+
+Each SOC then sends its **responder** out from the jump host: it takes the host on its zone if there is one, walks along links, and takes every host it steps on until it holds 3 (empty zones can be crossed). A host at 2 carries a **recon token** that comes along; of the tokens picked up in one shift only one is kept. An emptied row or column is refilled at once. The lowest intake total sets the **response order**, takes the Incident Commander role, remote access and an intel token (a Priority Lane token spent first counts −2). Every host left on the map degrades 1 step at dwell time, a drop to 2 brings a recon token, and hosts lost out there are breaches dealt from the back of the response order.
+
+| Recon token | Effect |
+|---|---|
+| Priority Lane | Intake: −2 to your intake total when the order is set |
+| Hotfix | Activation: heal any host 1 step (it counts as worked) |
+| Red / Yellow / Green Hotfix | Activation: heal a host of that colour 2 steps |
+| Contractor | Activation: an extra analyst for one shift |
+
+With Virtualization on as well, a few zones spawn hypervisors instead of coloured hosts; a responder collects at most one per shift and passes over the rest. Bots plan their walk a few zones deep.
+
 ## What's approximated
 
-Virtualization's provisioning die shows twins on 2 faces of 6, its piles hold two of each tool and specialist, and restorations 13–20 in a shift score 40, 46, 52, 68, 75, 82, 90, 98.
+Virtualization's provisioning die shows twins on 2 faces of 6, its piles hold two of each tool and specialist, and restorations 13–20 in a shift score 40, 46, 52, 68, 75, 82, 90, 98. Network's zone tiles carry links the rulebook doesn't print (4 crossroads, 8 T-junctions, 4 straights and 4 corners, laid out by the rulebook's rotation rule and re-drawn until every zone is reachable), its 30 recon tokens split 5 of each kind, and 2, 3 or 4 zones spawn hypervisors with Virtualization.
 
 The rulebook doesn't print the 15 Event cards or the 15 Medical Report cards, and its component list says each starting board "depicts 9 hospital departments" while only six starting types exist; the starting SOC uses one of each (`START_DEPTS` at the top of `index.html`) on the reading that the count includes the station, discharge and mortuary areas. Audit Reports and Incident Events are PumaTriage originals in the same spirit. Final Round Collections slots are generated randomly. Adjust the tables at the top of `index.html` if your copy differs.
 
