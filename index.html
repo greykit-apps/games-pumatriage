@@ -925,7 +925,7 @@ const SLIDER_DEFS = {
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Each SOC is dealt two and keeps one; a scoring or shielding rule for the whole game" },
   tutorial:    { label: "Tutorial",          min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], desc: "Guided introduction at the start of the game" },
   // Expansions (whole modes; the Dice Hospital expansion modules)
-  maternity:   { label: "Virtualization",     min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "The Maternity expansion: pink hypervisors arrive with guest hosts in a segment of their own, only degrade when they share a segment, and are restored together. A 4th analyst, 8 new tools, 8 specialists and 2 directives." },
+  maternity:   { label: "Virtualization",     min: 0, max: 1, default: 0, expansion: true, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Pink hypervisors arrive with guest hosts in a segment of their own, only degrade when they share a segment, and are restored together. A 4th analyst, 8 new tools, 8 specialists and 2 directives." },
   // Add-ons
   promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
   experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Four experimental tools and six more specialists join the stacks" },
@@ -4022,10 +4022,10 @@ function showHowToPlay(tab) {
       <table class="help-table">${eventRows}</table>
     </div>
     <div ${panel("expansions")}>
-      <h4>Virtualization (the Maternity expansion)</h4>
+      <h4>Virtualization</h4>
       <p>Switch it on under Expansions in the setup menu (rival games only). Pink dice join the table: <b>hypervisors</b> (full size) and their <b>guests</b> (small). Pink is a colour of its own: colour-specific tools and specialists ignore it, value-based and "any colour" effects work on it, and nothing can retag or re-roll a pink host.</p>
       <ul>
-        <li><b>Setup.</b> Every SOC starts with a 4th analyst, a hypervisor at 4 alone in a segment, and one guest at 4 in the guest segment below it. Two maternity tools and two maternity specialists (one each with a single rival) join the display from their own piles.</li>
+        <li><b>Setup.</b> Every SOC starts with a 4th analyst, a hypervisor at 4 alone in a segment, and one guest at 4 in the guest segment below it. Two virtualization tools and two virtualization specialists (one each with a single rival) join the display from their own piles.</li>
         <li><b>Intake.</b> Fewer coloured hosts are rolled and hypervisors are added: 2 with one or two rivals, 3 with three. At most one hypervisor per queue: a second moves to the next queue and a coloured host swaps back. No SOC holds more than 4 hypervisors; at the cap a queue carrying one is off limits unless every open queue does, and then the hypervisor is swapped for a coloured host of the same value.</li>
         <li><b>Placement.</b> You choose the segment for each incoming host. A hypervisor goes in a segment with no other hypervisor (a full one is allowed: one host there moves to a free bed elsewhere). It opens the guest segment below it and brings one guest or twins at value 4, rolled on the provisioning die. Hosts never move between segments otherwise.</li>
         <li><b>Guest segments.</b> While it holds guests, each guest segment is a placement: one staff member there heals one pink host (hypervisor or guest) 1 step, once per shift. A specialist's follow-up applies as usual.</li>
@@ -4033,7 +4033,7 @@ function showHowToPlay(tab) {
         <li><b>Restoration.</b> A pink host healed past 6 is set aside, ready, until the hypervisor and all its guests are ready; then they restore together and score with everything else. Anything still waiting at the end of the shift drops back to 6. Up to 20 hosts can restore in a shift: 13–20 score 40, 46, 52, 68, 75, 82, 90, 98. The clear-segments bonus needs the guest segments empty too.</li>
         <li><b>Directives.</b> Provisioning Policy: choose one guest or twins. Tenant Bonus: +3 for two hypervisors and two guests restored in one shift.</li>
       </ul>
-      <p>Not printed in the rulebook: the provisioning die's faces (twins on 2 of 6 here) and which specialists are the third copies (two of each here). The printed 16th scoring value, 68, is kept though it reads like a misprint for 58.</p>
+      <p>The provisioning die shows twins on 2 faces of 6. The piles hold two of each tool and specialist.</p>
     </div>
     <div ${panel("keys")}>
       <ul>
