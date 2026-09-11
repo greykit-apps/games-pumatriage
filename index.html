@@ -75,7 +75,17 @@ body::after {
 }
 #hud-top { grid-area: hud; }
 #board   { grid-area: board; overflow: auto; }
-#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; }
+/* The shared table keeps one fixed height across phases so the board below
+   never shifts; anything taller scrolls inside it. */
+#table   { border: 1px solid var(--amber-dim); background: rgba(255,176,0,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; }
+#table.idle { border-color: var(--border); background: transparent; }
+#table.idle .center-title { color: var(--text-dim); }
+#table.idle #display { opacity: 0.55; }
+/* Staff and tool rows are reserved at their grown size too: the first
+   specialist hire (a three-line card) and the second row of tools would
+   otherwise push the quarantine segments down mid-game. */
+#staff { min-height: 92px; align-content: start; }
+#depts { min-height: 144px; align-content: start; }
 #side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
 
 .panel {
@@ -162,11 +172,44 @@ body::after {
    DICE
    ============================================================ */
 .die {
-  display: inline-grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
-  width: var(--die); height: var(--die); padding: 4px; gap: 1px;
+  display: inline-block; width: var(--die); height: var(--die); padding: 4px;
   background: #050805; border: 2px solid; border-radius: 6px; cursor: default;
   position: relative; vertical-align: middle; flex: none;
   transition: transform .3s var(--ease-out-quart), box-shadow .2s, opacity .3s;
+}
+/* The face is its own element so the odometer roll (on the face) and the
+   FLIP slide (on the die) never fight over one transform. */
+.die .face { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 1px; width: 100%; height: 100%; }
+.die .face.roll-up { animation: face-roll-up .26s ease-in-out; }
+.die .face.roll-down { animation: face-roll-down .26s ease-in-out; }
+@keyframes face-roll-up {
+  0% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+  49.9% { transform: perspective(160px) rotateX(90deg) translateY(-35%); opacity: .3; }
+  50% { transform: perspective(160px) rotateX(-90deg) translateY(35%); opacity: .3; }
+  100% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+}
+@keyframes face-roll-down {
+  0% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+  49.9% { transform: perspective(160px) rotateX(-90deg) translateY(35%); opacity: .3; }
+  50% { transform: perspective(160px) rotateX(90deg) translateY(-35%); opacity: .3; }
+  100% { transform: perspective(160px) rotateX(0) translateY(0); opacity: 1; }
+}
+/* Specialist follow-up landing on a host: a burst ring and a floating +N. */
+.die.bonus::before { content: ""; position: absolute; inset: -3px; border-radius: 8px; pointer-events: none; animation: die-bonus .8s ease-out forwards; }
+@keyframes die-bonus {
+  0% { box-shadow: 0 0 0 0 rgba(0,204,204,0.95), 0 0 16px 4px rgba(255,255,255,0.9); }
+  100% { box-shadow: 0 0 0 16px rgba(0,204,204,0), 0 0 30px 14px rgba(255,255,255,0); }
+}
+.die-pop {
+  position: absolute; left: 50%; top: -4px; z-index: 3; pointer-events: none;
+  font: bold 14px var(--font-mono); color: var(--cyan); text-shadow: 0 0 6px currentColor, 0 0 2px #000;
+  animation: die-pop .9s ease-out forwards;
+}
+.die-pop.down { color: var(--red); }
+@keyframes die-pop {
+  0% { opacity: 0; transform: translate(-50%, 6px) scale(0.6); }
+  25% { opacity: 1; transform: translate(-50%, -10px) scale(1.3); }
+  100% { opacity: 0; transform: translate(-50%, -30px) scale(1); }
 }
 .die .pip { border-radius: 50%; opacity: 0; background: currentColor; }
 .die.v-1 .pip:nth-child(5),
@@ -179,6 +222,17 @@ body::after {
 .die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
 .die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
 .die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(0,255,65,0.45); }
+/* A restored host pulses on its 6 before it leaves for the ladder. The ring
+   is its own class so a follow-up burst (also on ::before) can stand in for it. */
+.die.healed { animation: die-glow .7s ease-out; }
+.die.healed-ring::before { content: ""; position: absolute; inset: -3px; border-radius: 8px; pointer-events: none; animation: die-healed .7s ease-out forwards; }
+@keyframes die-glow { 0%, 30% { filter: brightness(2) saturate(1.4); } 100% { filter: brightness(1); } }
+@keyframes die-healed { 0% { box-shadow: 0 0 0 0 currentColor; opacity: 0.9; } 100% { box-shadow: 0 0 0 14px transparent; opacity: 0; } }
+.die.ghost { transition: none; }
+.die.ghost.leave-up { animation: ghost-up .7s ease-in forwards; }
+.die.ghost.leave-down { animation: ghost-down .7s ease-in forwards; }
+@keyframes ghost-up { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-44px) scale(0.55); } }
+@keyframes ghost-down { 0% { opacity: 1; transform: translateY(0) rotate(0) scale(1); } 100% { opacity: 0; transform: translateY(44px) rotate(14deg) scale(0.55); } }
 .die.tmp { border-style: dashed; }
 .die.tmp::after {
   content: ""; position: absolute; right: -4px; top: -4px; width: 9px; height: 9px; border-radius: 50%;
@@ -307,7 +361,7 @@ body::after {
 #queues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .queue {
   border: 1px solid var(--border); background: var(--panel-2); padding: 6px; min-width: 66px;
-  display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s;
+  display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s, opacity .3s;
 }
 .queue .qn { color: var(--amber); font-size: 14px; letter-spacing: 1px; }
 .queue .qsum { font-size: 9px; color: var(--text-dim); }
@@ -328,6 +382,19 @@ body::after {
 .dept-tile.pickable:hover { box-shadow: 0 0 10px color-mix(in srgb, var(--tag) 45%, transparent); }
 .spec-card.pickable { cursor: pointer; border-color: var(--green-dark); }
 .spec-card.pickable:hover { box-shadow: 0 0 10px rgba(0,255,65,0.45); border-color: var(--green); }
+/* Dealing and taking. Cards deal in from the stacks; a taken card goes to
+   its new owner: yours onto your board (a FLIP move), a rival's off toward
+   the rivals panel with the rival's name on it. */
+.dept-tile.dealt, .spec-card.dealt { animation: deal-in .32s var(--ease-out-quart) both; }
+@keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
+.dept-tile.leaving, .spec-card.leaving { animation: card-away .55s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
+@keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
+.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--amber); letter-spacing: 1px; }
+.dept-tile.pickable:active, .spec-card.pickable:active, .queue.pickable:active { transform: translateY(1px); }
+.rival-card.took { animation: took-flash .8s ease-out; }
+@keyframes took-flash { 0% { border-color: var(--amber); box-shadow: 0 0 12px rgba(255,176,0,0.6); } 100% { border-color: var(--border); box-shadow: none; } }
+.queue.just .qby { animation: stamp-in .35s var(--ease-out-quart); }
+@keyframes stamp-in { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
 .stack-info { font-size: 10px; color: var(--text-dim); }
 
 .keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
@@ -404,6 +471,7 @@ body::after {
 .strip-rule b { color: var(--white); font-weight: normal; }
 .strip-rule .strip-count { color: var(--amber); margin-left: 6px; }
 .strip-rule.amber { color: var(--amber); }
+.strip-rule.note { color: var(--cyan); }
 #phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
 #action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
@@ -494,6 +562,9 @@ details.addons summary::-webkit-details-marker { display: none; }
     grid-template-areas: "hud" "board" "side";
   }
   #board { overflow: visible; }
+  #table { height: auto; overflow: visible; }
+  #table.idle { display: none; }
+  #staff, #depts { min-height: 0; }
   #strip { bottom: 0; }
   .h3-note { display: none; }
   #hud-top { grid-template-columns: 1fr auto; grid-template-areas: "title buttons" "strip strip" "stats stats"; }
@@ -817,7 +888,8 @@ function resetSel() { for (const k of Object.keys(UI.sel)) delete UI.sel[k]; Obj
 function resetRuntime() {
   resetSel();
   UI.legalTargets = new Set(); UI.legalByDept = {};
-  UI.undo = []; UI.undoBarrier = 0;
+  UI.undo = []; UI.undoBarrier = 0; UI.specNote = null; UI.pendingBonus = null; UI.departed = null; UI.takeFrom = null; UI.leaving = null;
+  if (UI.ghosts) { for (const gh of UI.ghosts) gh.el.remove(); UI.ghosts.clear(); }
   UI.eventQueue = []; UI.animating = false;
   if (UI.queueTimer) { clearTimeout(UI.queueTimer); UI.queueTimer = null; }
   UI.flipRects = new Map(); UI.prevHUD = {}; UI.prevPhase = null;
@@ -940,8 +1012,10 @@ function refillDisplay(initial) {
   const sz = displaySizes();
   G.deptDisplay = G.deptDisplay.filter(Boolean);
   G.specDisplay = G.specDisplay.filter(Boolean);
+  const before = G.deptDisplay.length + G.specDisplay.length;
   while (G.deptDisplay.length < sz.dept && G.deptStack.length) G.deptDisplay.push(G.deptStack.pop());
   while (G.specDisplay.length < sz.spec && G.specStack.length) G.specDisplay.push(G.specStack.pop());
+  if (G.deptDisplay.length + G.specDisplay.length > before) G.dealt = false; // the improve phase deals them in
 }
 function recycleDisplay() {
   // Unclaimed tiles/cards go to the bottom of their stacks in random order.
@@ -1080,7 +1154,7 @@ function narrowTargets(sel, dice, selectedUids) {
 }
 function selComplete(sel, selectedDice) { return matchesSel(sel, selectedDice); }
 
-function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [] }; }
+function newCtx() { return { healed: [], discharged: [], fatalities: 0, specFired: false, random: false, notes: [], bonus: [] }; }
 function markTreated(p, die) {
   const x = findBed(p, die.uid);
   if (x && x.b.u === die) { x.b.t = die; x.b.u = null; }
@@ -1096,22 +1170,32 @@ function heal(p, die, n, ctx) {
   }
 }
 function deteriorate(p, die, n, ctx) {
+  const pre = die.value;
   die.value -= n;
   markTreated(p, die);
-  if (die.value <= 0) fatality(p, die, ctx);
+  if (die.value <= 0) fatality(p, die, ctx, pre);
 }
 function discharge(p, die, ctx) {
   removeDie(p, die.uid);
   p.dischargedThisRound.push({ uid: die.uid, colour: die.colour, value: die.value });
   p.dischargedTotal++;
   if (ctx) ctx.discharged.push(die.uid);
+  noteDeparture(die.uid, "restored");
 }
-function fatality(p, die, ctx) {
+// steps: how many faces the die fell through to reach 0 (1 for a write-off).
+function fatality(p, die, ctx, steps = 1) {
   removeDie(p, die.uid);
   returnToBag(die);
   p.fatalities++;
   p.breachesThisRound++;
   if (ctx) ctx.fatalities++;
+  noteDeparture(die.uid, "breach", steps);
+}
+// The board animates a die that left (restored or breached) on its next render.
+function noteDeparture(uid, kind, steps) {
+  if (UI.headless || UI.simulating) return;
+  if (!UI.departed) UI.departed = new Map();
+  UI.departed.set(String(uid), { kind, steps: steps || 1 });
 }
 
 // Department effect. opt.colours = { uid: colour } for recolour ops.
@@ -1207,13 +1291,52 @@ function applySpec(p, def, ctx, dice, opt = {}) {
   if (t.op === "recolour") { const d = dice[0]; d.tmpColour = opt.colour || d.colour; markTreated(p, d); ctx.notes.push(`${def.name}: host retagged ${COLOUR_NAME[d.tmpColour]}`); return; }
   if (t.and) {
     const [h, x] = dice;
+    const start = ctx.healed.length;
     heal(p, h, t.heal, ctx);
+    const xPre = x.value, xColour = effColour(x);
     deteriorate(p, x, -t.and.heal, ctx);
-    ctx.notes.push(`${def.name}: +1 and −1`);
+    ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}, ${xColour} ${xPre}→${x.value <= 0 ? "breached" : x.value}`);
+    recordBonus(ctx, start); ctx.bonus.push({ uid: x.uid, delta: -1 });
     return;
   }
+  const start = ctx.healed.length;
   for (const d of dice) heal(p, d, t.heal, ctx);
-  ctx.notes.push(`${def.name}: +${t.heal} to ${dice.length} ${plural(dice.length, "host")}`);
+  ctx.notes.push(`${def.name}: ${describeHeals(ctx.healed.slice(start))}`);
+  recordBonus(ctx, start);
+}
+// Steps a specialist follow-up added per host, so the board can flag them.
+function recordBonus(ctx, start) {
+  const by = {};
+  for (const h of ctx.healed.slice(start)) by[h.uid] = (by[h.uid] || 0) + 1;
+  for (const uid in by) ctx.bonus.push({ uid: +uid, delta: by[uid] });
+}
+// "red 4→5, green 6→restored" from a run of ctx.healed entries.
+function describeHeals(entries) {
+  const byUid = {};
+  for (const h of entries) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
+  return Object.values(byUid).map(h => `${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`).join(", ");
+}
+// Why a specialist's follow-up did nothing this activation, in the player's words.
+function specMissReason(def, ctx, p) {
+  const w = def.when, t = def.then;
+  if (!specEligible(def, ctx)) {
+    if (w.healedColour) return `no ${w.healedColour} host was healed`;
+    if (w.dischargedAny) return "no host was restored";
+    return "no host was healed";
+  }
+  if (t.choice === "pathologist") return "no breach record to close";
+  const [kind, c] = (t.from || "any").split(":");
+  const vals = t.values ? ` at ${t.values.join("/")}` : "";
+  if (kind === "healedOf") return `every healed ${c} host was restored`;
+  if (kind === "otherOf") return `no other ${c} host`;
+  if (kind === "otherValueEqPre") {
+    const pres = new Set();
+    for (const h of ctx.healed) if (h.colour === c) pres.add(h.pre);
+    return `no other host at ${[...pres].sort().join("/")}`;
+  }
+  const n = specPool(t, ctx, p).length;
+  if (t.and || t.n === 2) return `needs two other hosts${vals}, ${n === 1 ? "only one" : "none"} available`;
+  return kind === "other" ? `no other host${vals}` : `no host${vals}`;
 }
 
 // ---- end-of-round rules ----
@@ -1234,7 +1357,7 @@ function runNeglect(p) {
     if (die.uid === shieldUid) { results.push({ uid: die.uid, colour: die.colour, shielded: true }); continue; }
     const pre = die.value;
     die.value -= dmg;
-    if (die.value <= 0) { fatality(p, die, null); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
+    if (die.value <= 0) { fatality(p, die, null, pre); results.push({ uid: die.uid, colour: die.colour, pre, dead: true }); }
     else results.push({ uid: die.uid, colour: die.colour, pre, post: die.value });
   }
   return results;
@@ -1407,7 +1530,12 @@ const STEP = {
       while (G.cursor < n) {
         const p = G.players[(G.firstPlayer + G.cursor) % n];
         if (p.ambulance !== null) { G.cursor++; continue; }
-        if (p.isBot) { applyPickAmbulance(p, botPickAmbulance(p)); continue; }
+        if (p.isBot) {
+          applyPickAmbulance(p, botPickAmbulance(p));
+          // One rival at a time, so each claim stamp lands on its own.
+          if (!UI.headless && !UI.reducedMotion) return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 450 }]);
+          continue;
+        }
         G.actor = p.id; return WAIT;
       }
       // Everyone has a queue. Leftover dice go back in the bag; lowest queue = intel token + Incident Commander.
@@ -1445,12 +1573,19 @@ const STEP = {
   },
   improve: {
     take() {
+      // Freshly drawn cards deal onto the table before anyone picks.
+      if (!G.dealt) {
+        G.dealt = true;
+        const n = G.deptDisplay.filter(Boolean).length + G.specDisplay.filter(Boolean).length;
+        if (n) return animate([{ type: "render" }, { type: "sfx", name: "deal" }, { type: "fx", sel: "#display .disp-row > *", cls: "dealt", stagger: 70 }, { type: "wait", delay: 70 * n + 320 }]);
+      }
       if (G.cfg.solo) {
         const p = human();
         if (p.took) { go("improve", "return"); return NEXT; }
         if (!G.deptDisplay.length && !G.specDisplay.length) {
           if (G.deptStack.length) G.deptDisplay = [G.deptStack.pop()];
           if (G.specStack.length) G.specDisplay = [G.specStack.pop()];
+          if (G.deptDisplay.length || G.specDisplay.length) { G.dealt = false; return NEXT; }
         }
         if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; go("improve", "return"); return NEXT; }
         G.actor = 0; return WAIT;
@@ -1458,7 +1593,15 @@ const STEP = {
       for (const p of playersInTurnOrder()) {
         if (p.took) continue;
         if (!G.deptDisplay.filter(Boolean).length && !G.specDisplay.filter(Boolean).length) { p.took = true; continue; }
-        if (p.isBot) { const c = botPickImprovement(p); if (c) applyTake(p, c.kind, c.idx); else p.took = true; continue; }
+        if (p.isBot) {
+          const c = botPickImprovement(p);
+          if (!c) { p.took = true; continue; }
+          const item = c.kind === "dept" ? G.deptDisplay[c.idx] : G.specDisplay[c.idx];
+          applyTake(p, c.kind, c.idx);
+          // One rival at a time: the card it took slides off toward its panel card.
+          if (!UI.headless && !UI.reducedMotion) { UI.leaving = { kind: c.kind, idx: c.idx, item, pid: p.id, name: p.name }; return animate([{ type: "render" }, { type: "sfx", name: "place" }, { type: "wait", delay: 750 }]); }
+          continue;
+        }
         G.actor = p.id; return WAIT;
       }
       go("improve", "return"); return NEXT;
@@ -1690,7 +1833,7 @@ function canPickAmbulance(p, num) {
 function applyPickAmbulance(p, num) {
   const a = G.ambulances.find(x => x.num === num);
   a.takenBy = p.id; p.ambulance = num;
-  G.cursor++;
+  G.cursor++; G.lastPick = num;
   log(`${p.name} ${p.isBot ? "takes" : "take"} queue #${num} (${a.dice.map(d => d.value).join(", ")}).`, p.isBot ? "sys" : "good");
 }
 function applyOverflow() {
@@ -1768,6 +1911,7 @@ function applyPass(p) { G.collections.passed[p.id] = true; G.collections.cursor+
 
 // ---- activation (shared by human FSM and bots) ----
 function pushUndo() {
+  UI.specNote = null;
   UI.undo.push(JSON.stringify(G));
   if (UI.undo.length > 40) { UI.undo.shift(); if (UI.undoBarrier > 0) UI.undoBarrier--; }
 }
@@ -1775,16 +1919,13 @@ function canUndo() { return G && G.phase === "activate" && G.step === "human" &&
 function undo() {
   if (!canUndo()) return;
   G = JSON.parse(UI.undo.pop());
-  resetSel();
+  resetSel(); UI.specNote = null;
   log("Undo.", "sys");
   commit();
 }
 function describeHealCtx(p, who, deptName, ctx) {
-  const parts = [];
-  const byUid = {};
-  for (const h of ctx.healed) { byUid[h.uid] = byUid[h.uid] || { pre: h.pre, post: h.post, colour: h.colour }; byUid[h.uid].post = h.post; }
-  for (const uid in byUid) { const h = byUid[uid]; parts.push(`${h.colour} ${h.pre}→${h.post >= DISCHARGE_THRESHOLD ? "restored" : h.post}`); }
-  return `${who} on ${deptName}: ${parts.length ? parts.join(", ") : "no change"}${ctx.notes.length ? "; " + ctx.notes.join("; ") : ""}.`;
+  const parts = describeHeals(ctx.healed);
+  return `${who} on ${deptName}: ${parts || "no change"}${ctx.notes.length ? "; " + ctx.notes.join("; ") : ""}.`;
 }
 function useIntelHeal(p, die) {
   if (p.bloodBags <= 0) return null;
@@ -1851,7 +1992,14 @@ function onOverflowToggle(uid) {
   updateAll();
 }
 function onOverflowConfirm() { const O = G.overflow; if (!inPhase("intake", "place") || !O || O.marked.length !== O.shortage) return; applyOverflow(); advance(); }
-function onDisplayClick(kind, idx) { if (!inPhase("improve", "take")) return; if (!applyTake(human(), kind, idx)) return; sfx("place"); advance(); }
+function onDisplayClick(kind, idx) {
+  if (!inPhase("improve", "take")) return;
+  const el = document.querySelector(`[data-act="${kind === "dept" ? "dispDept" : "dispSpec"}"][data-idx="${idx}"]`);
+  const uidFrom = G.nextUid;
+  if (!applyTake(human(), kind, idx)) return;
+  if (el) UI.takeFrom = { rect: el.getBoundingClientRect(), uidFrom };
+  sfx("place"); advance();
+}
 function onReturnClick(kind, uid) { if (!inPhase("improve", "return")) return; applyReturn(human(), kind, uid); advance(); }
 function onReturnSkip() { if (!inPhase("improve", "return")) return; applyReturn(human(), null, null); advance(); }
 function onConsultantPick(uid) { if (!inPhase("activate", "consultant")) return; applyConsultant(human(), uid); advance(); }
@@ -2032,43 +2180,65 @@ function runActivation(opt) {
   if (def && !def.special) {
     const o = specOptions(def, ctx, p);
     if (o) {
-      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(); }
-      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); finishSpecLog(); }
+      if (o.kind === "auto") { applySpec(p, def, ctx, []); finishSpecLog(true); }
+      else if (o.kind === "sets" && o.sets.length === 1 && !o.needColour && !def.then.and && !def.then.op) { applySpec(p, def, ctx, o.sets[0], {}); sfx(ctx.discharged.length ? "discharge" : "heal"); queueBonusFx(ctx); finishSpecLog(true); }
       else {
         s.state = o.kind === "sets" ? "spec" : "choice"; s.spec = def; s.specOpts = o; s.dice = [];
         o.ordered = !!def.then.and;
         if (o.kind === "sets" && o.sets.length === 1) s.dice = o.sets[0].map(d => d.uid);
         computeLegal(); updateAll(); return;
       }
+    } else {
+      setSpecNote(`${def.name} follow-up skipped: ${specMissReason(def, ctx, p)}.`);
     }
   }
   afterAction();
 }
-function finishSpecLog() {
+// The strip line that says what the last specialist follow-up did. Cleared by
+// the next placement (pushUndo), an undo, or the end of activation.
+function setSpecNote(text) { UI.specNote = text; log(text, "sys"); }
+function finishSpecLog(auto) {
   const s = UI.sel;
-  if (s.ctx && s.ctx.notes.length) { log(s.ctx.notes.join("; ") + ".", "good"); s.ctx.notes = []; }
+  if (s.ctx && s.ctx.notes.length) {
+    const text = s.ctx.notes.join("; ");
+    log(text + ".", "good"); s.ctx.notes = [];
+    UI.specNote = `Follow-up${auto ? " fired automatically" : ""}: ${text}.`;
+  }
   if (s.ctx && s.ctx.random) UI.undoBarrier = UI.undo.length;
 }
+// Hosts a follow-up just changed get a burst and a "+1" on the next render.
+function queueBonusFx(ctx) { if (ctx.bonus.length) UI.pendingBonus = new Map(ctx.bonus.map(b => [String(b.uid), b.delta])); }
 function finishSpec(opt) {
   const p = human(), s = UI.sel;
   applySpec(p, s.spec, s.ctx, selectedDice(), opt);
   sfx(s.ctx.discharged.length ? "discharge" : "heal");
+  queueBonusFx(s.ctx);
   finishSpecLog();
   afterAction();
 }
 function onSpecChoice(mode) {
   if (!inPhase("activate", "human") || UI.sel.state !== "choice") return;
   const p = human(), s = UI.sel, o = s.specOpts;
-  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); afterAction(); return; }
+  if (o.choice === "pathologist") { applySpec(p, s.spec, s.ctx, [], { yes: mode === "yes" }); finishSpecLog(); if (mode !== "yes") setSpecNote(`${s.spec.name} follow-up declined.`); afterAction(); return; }
   if (o.choice === "admissions") {
     if (mode === "return") { if (!boardDice(p).length) return; s.state = "admReturn"; computeLegal(); updateAll(); return; }
     if (mode === "admit") { if (!emptyBeds(p).length) return; applySpec(p, s.spec, s.ctx, [], { mode: "admit" }); }
     o.count--;
     if (mode !== "skip" && o.count > 0) { updateAll(); return; }
-    finishSpecLog(); afterAction();
+    const hadNotes = s.ctx.notes.length;
+    finishSpecLog();
+    if (!hadNotes) setSpecNote(`${s.spec.name} follow-up skipped.`);
+    afterAction();
   }
 }
-function skipSpec() { if (!inPhase("activate", "human")) return; if (!["spec", "choice", "admReturn"].includes(UI.sel.state)) return; finishSpecLog(); afterAction(); }
+function skipSpec() {
+  if (!inPhase("activate", "human")) return;
+  if (!["spec", "choice", "admReturn"].includes(UI.sel.state)) return;
+  const s = UI.sel, name = s.spec.name, hadNotes = s.ctx && s.ctx.notes.length;
+  finishSpecLog();
+  if (!hadNotes) setSpecNote(`${name} follow-up skipped.`);
+  afterAction();
+}
 function afterAction() { resetSel(); saveGame(); computeLegal(); updateAll(); }
 function onIntelHeal() {
   if (!inPhase("activate", "human") || human().bloodBags <= 0) return;
@@ -2114,7 +2284,7 @@ function endActivation() {
   }
   UI.endConfirm = false; UI.endRisk = 0;
   applyEndActivation(p);
-  resetSel(); UI.undo = []; UI.undoBarrier = 0;
+  resetSel(); UI.undo = []; UI.undoBarrier = 0; UI.specNote = null;
   log("Activation complete. Waiting on dwell time.", "sys");
   advance();
 }
@@ -2442,26 +2612,124 @@ function showPhaseToast(text) {
   UI.phaseToastTimer = setTimeout(() => el.classList.remove("on"), 1400);
 }
 // FLIP: remember where every die was, rebuild the DOM, then slide each survivor from its old spot.
+function dieFace(el) { const m = /\bv-(\d)\b/.exec(el.className); return m ? +m[1] : null; }
 function snapshotRects() {
   UI.flipRects = new Map();
   if (UI.reducedMotion) return;
-  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, el.getBoundingClientRect()); });
+  const slots = [...document.querySelectorAll("#wards .slot")];
+  document.querySelectorAll("#app .die[data-uid]").forEach(el => { UI.flipRects.set(el.dataset.uid, { rect: el.getBoundingClientRect(), value: dieFace(el), cls: el.className, slot: slots.indexOf(el.closest(".slot")) }); });
 }
+// A die whose value changed rolls face by face; one that also moved holds
+// its old spot until the roll ends, then slides. A die that left the board
+// as a restore or a breach plays out as a ghost where it last stood.
 function playFlip() {
+  const bonus = UI.pendingBonus; UI.pendingBonus = null;
+  const departed = UI.departed; UI.departed = null;
   if (UI.reducedMotion || !UI.flipRects.size) return;
+  if (departed) {
+    const still = new Set([...document.querySelectorAll("#app .die[data-uid]")].map(el => el.dataset.uid));
+    for (const [uid, old] of UI.flipRects) if (!still.has(uid) && departed.has(uid)) ghostDie(old, departed.get(uid), (bonus && bonus.get(uid)) || 0);
+  }
   document.querySelectorAll("#app .die[data-uid]").forEach(el => {
     const old = UI.flipRects.get(el.dataset.uid);
     if (!old) { el.classList.add("bump"); return; }
     const now = el.getBoundingClientRect();
-    const dx = old.left - now.left, dy = old.top - now.top;
-    if (Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
-    el.style.transition = "none";
-    el.style.transform = `translate(${dx}px, ${dy}px)`;
-    void el.offsetWidth;
-    el.style.transition = "";
-    el.style.transform = "";
+    const dx = old.rect.left - now.left, dy = old.rect.top - now.top;
+    const moved = Math.abs(dx) >= 1 || Math.abs(dy) >= 1;
+    const value = dieFace(el);
+    const rolls = old.value !== null && value !== null && old.value !== value;
+    if (!moved && !rolls) return;
+    const slide = () => { if (!el.isConnected) return; void el.offsetWidth; el.style.transition = ""; el.style.transform = ""; };
+    if (moved) { el.style.transition = "none"; el.style.transform = `translate(${dx}px, ${dy}px)`; }
+    const b = (bonus && bonus.get(el.dataset.uid)) || 0;
+    const dep = departed && departed.get(el.dataset.uid);
+    if (dep && dep.kind === "restored") {
+      // Restored: reach 6, pulse on it, linger, then slide to the ladder. The
+      // step past 6 is never drawn, so a follow-up's burst that would have
+      // landed there plays with the pulse instead.
+      const shown = Math.max(0, b - 1);
+      const finish = () => { healedPulse(el, !(b && !shown)); if (b && !shown) bonusFx(el, b); setTimeout(slide, GHOST_HOLD_MS); };
+      if (rolls) rollDie(el, old.value, value, shown, finish, false, b); else finish();
+      return;
+    }
+    if (rolls) rollDie(el, old.value, value, b, moved ? slide : null);
+    else slide();
   });
   UI.flipRects = new Map();
+}
+const ROLL_STEP_MS = 260, ROLL_GAP_MS = 170, GHOST_HOLD_MS = 450;
+// Odometer roll: each step turns the face one pip up or down, pausing between
+// steps so a +3 reads as three distinct turns. The last |bonus| steps carry
+// the specialist's follow-up and get the burst. done() runs after the last
+// step. single: one turn straight from `from` to `to`. label: the number the
+// burst shows when it differs from the steps drawn.
+function rollDie(el, from, to, bonus, done, single, label) {
+  const face = el.querySelector(".face");
+  if (!face) { if (done) done(); return; }
+  const dir = to > from ? 1 : -1, steps = single ? 1 : Math.abs(to - from), bonusAt = steps - Math.abs(bonus);
+  el.classList.remove("v-" + to); el.classList.add("v-" + from);
+  let v = from, i = 0;
+  const step = () => {
+    if (!el.isConnected) return;
+    if (bonus && i === bonusAt) bonusFx(el, label || bonus);
+    const cls = dir > 0 ? "roll-up" : "roll-down";
+    face.classList.remove(cls); void face.offsetWidth; face.classList.add(cls);
+    setTimeout(() => { if (!el.isConnected) return; el.classList.remove("v-" + v); v = single ? to : v + dir; el.classList.add("v-" + v); }, ROLL_STEP_MS / 2);
+    setTimeout(() => {
+      if (!el.isConnected) return;
+      face.classList.remove(cls);
+      if (++i < steps) setTimeout(step, ROLL_GAP_MS); else if (done) done();
+    }, ROLL_STEP_MS);
+  };
+  step();
+}
+// A host that left the board with no element to show for it plays out on a
+// fixed-position copy where it last stood. A breach counts down to 1 if it
+// has faces to fall through, lingers, then sinks; a write-off just sinks.
+function ghostDie(old, dep, bonus) {
+  if (old.value === null) return;
+  const r = old.rect;
+  const g = document.createElement("div");
+  g.className = old.cls.replace(/\b(clickable|target-ok|sel|dim|bump|shake|rolling|bonus)\b/g, "").replace(/\s+/g, " ").trim() + " ghost";
+  g.innerHTML = pips();
+  // Fixed on the body so board rebuilds cannot destroy it; re-anchored to its
+  // slot after every render (repositionGhosts) so it rides layout shifts.
+  g.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;margin:0;z-index:60;pointer-events:none;`;
+  document.body.appendChild(g);
+  const ghost = { el: g, slot: old.slot, w: r.width, h: r.height };
+  if (!UI.ghosts) UI.ghosts = new Set();
+  UI.ghosts.add(ghost);
+  const restored = dep.kind === "restored";
+  const leave = () => setTimeout(() => {
+    g.classList.add(restored ? "leave-up" : "leave-down");
+    setTimeout(() => { g.remove(); UI.ghosts.delete(ghost); }, 800);
+  }, GHOST_HOLD_MS);
+  if (restored) { healedPulse(g, !bonus); if (bonus) bonusFx(g, bonus); leave(); return; }
+  const countdown = dep.steps >= old.value && old.value > 1;
+  if (countdown) rollDie(g, old.value, 1, 0, leave); else leave();
+}
+function healedPulse(el, ring) {
+  el.classList.remove("healed", "healed-ring"); void el.offsetWidth;
+  el.classList.add("healed"); if (ring) el.classList.add("healed-ring");
+}
+function repositionGhosts() {
+  if (!UI.ghosts || !UI.ghosts.size) return;
+  const slots = document.querySelectorAll("#wards .slot");
+  for (const gh of UI.ghosts) {
+    const slot = gh.slot >= 0 ? slots[gh.slot] : null;
+    if (!slot) continue;
+    const r = slot.getBoundingClientRect();
+    gh.el.style.left = (r.left + (r.width - gh.w) / 2) + "px";
+    gh.el.style.top = (r.top + (r.height - gh.h) / 2) + "px";
+  }
+}
+function bonusFx(el, delta) {
+  el.classList.remove("bonus"); void el.offsetWidth; el.classList.add("bonus");
+  const pop = document.createElement("span");
+  pop.className = "die-pop" + (delta < 0 ? " down" : "");
+  pop.textContent = (delta < 0 ? "−" : "+") + Math.abs(delta);
+  el.appendChild(pop);
+  setTimeout(() => pop.remove(), 1000);
 }
 
 /* ============================================================
@@ -2493,6 +2761,7 @@ function playTone(freq, type, duration, gain, delay) {
 const SFX = {
   roll:      () => { for (let i = 0; i < 5; i++) playTone(180 + Math.random() * 220, "square", 0.05, 0.05, i * 0.06); },
   place:     () => playTone(520, "triangle", 0.08, 0.08),
+  deal:      () => { playTone(900, "triangle", 0.03, 0.04); playTone(1400, "triangle", 0.03, 0.03, 0.04); },
   heal:      () => { playTone(440, "sine", 0.1, 0.1); playTone(660, "sine", 0.12, 0.08, 0.08); },
   discharge: () => { playTone(523, "square", 0.1, 0.08); playTone(659, "square", 0.1, 0.08, 0.1); playTone(880, "square", 0.2, 0.1, 0.2); },
   breach:    () => { playTone(140, "sawtooth", 0.3, 0.12); playTone(90, "sawtooth", 0.4, 0.1, 0.15); },
@@ -2565,8 +2834,26 @@ function updateAll() {
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
   playFlip();
+  playTake();
+  repositionGhosts();
+  UI.leaving = null;
 }
-function pips() { return '<span class="pip"></span>'.repeat(9); }
+// The card you took travels from the display to its place on your board.
+function playTake() {
+  const t = UI.takeFrom; UI.takeFrom = null;
+  if (!t || UI.reducedMotion) return;
+  const el = [...document.querySelectorAll("#depts .dept-tile[data-uid], #staff .meeple[data-uid]")].find(e => +e.dataset.uid >= t.uidFrom);
+  if (!el) return;
+  el.classList.remove("new");
+  const r = el.getBoundingClientRect();
+  const dx = t.rect.left - r.left, dy = t.rect.top - r.top, sx = t.rect.width / r.width, sy = t.rect.height / r.height;
+  el.style.transition = "none"; el.style.transformOrigin = "top left";
+  el.style.transform = `translate(${dx}px, ${dy}px) scale(${sx}, ${sy})`;
+  void el.offsetWidth;
+  el.style.transition = "transform .38s var(--ease-out-quart)"; el.style.transform = "";
+  setTimeout(() => { if (el.isConnected) { el.style.transition = ""; el.style.transformOrigin = ""; } }, 420);
+}
+function pips() { return '<span class="face">' + '<span class="pip"></span>'.repeat(9) + '</span>'; }
 function renderDie(die, opts = {}) {
   const c = effColour(die);
   const cls = ["die", "c-" + c, "v-" + die.value];
@@ -2744,7 +3031,7 @@ function renderCenter() {
     for (const a of G.ambulances.slice().sort((x, y) => x.num - y.num)) {
       const taken = a.takenBy !== null;
       const blocked = myTurn && !canPickAmbulance(p, a.num);
-      const cls = taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "";
+      const cls = (taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "") + (taken && a.num === G.lastPick ? " just" : "");
       const attrs = myTurn && !blocked ? `data-act="queue" data-idx="${a.num}" role="button" tabindex="0"` : "";
       html += `<div class="queue ${cls}" ${attrs} aria-label="Queue ${a.num}${taken ? ", taken by " + G.players[a.takenBy].name : ""}">${a.num === 1 && G.players[G.firstPlayer] ? '' : ''}<div class="qn">#${a.num}</div>`;
       for (const d of a.dice) html += renderDie(d, { small: true });
@@ -2754,8 +3041,6 @@ function renderCenter() {
       html += '</div>';
     }
     html += '</div>';
-    if (st === "pick" && G.actor === 0 && p.id === G.firstPlayer) html += '<div class="hint">As Incident Commander you may not take queue #1.</div>';
-    html += '<div class="hint">The lowest-numbered queue taken hands its owner an intel token and the Incident Commander role.</div>';
   } else if (ph === "intake" && st === "keep") {
     const total = sum(s.dice.map(u => { const d = p.pendingDice.find(x => x.uid === u); return d ? d.value : 0; }));
     html += '<div class="center-title">Rolled hosts — keep 3</div><div class="keep-row">';
@@ -2781,14 +3066,25 @@ function renderCenter() {
     });
     html += '</div><div class="hint">Hand a host whose colour and value match an open slot: +1 each. Every host left at the end costs 1.</div>';
   }
-  return html ? `<div id="table" aria-label="Shared table">${html}</div>` : "";
+  // Between those moments the table still holds the face-up improvement
+  // display, as it does on a real table, so the area never collapses.
+  const idle = !html;
+  if (idle && G.deptDisplay) html = '<div class="center-title">Improvement display · refreshed at shift change</div>' + renderDisplay(false);
+  return `<div id="table" class="${idle ? "idle" : ""}" aria-label="Shared table">${html}</div>`;
 }
 function renderDisplay(pickable) {
   let html = '<div id="display">';
   const dd = G.deptDisplay, sd = G.specDisplay;
   html += '<div class="disp-row">';
-  dd.forEach((t, i) => { if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""); });
-  sd.forEach((t, i) => { if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""); });
+  const lv = UI.leaving; // a rival's pick, drawn once more on its way out
+  dd.forEach((t, i) => {
+    if (t) html += renderDeptTile(t, pickable ? "pickable" : "", pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : "");
+    else if (lv && lv.kind === "dept" && lv.idx === i) html += renderDeptTile(lv.item, "leaving", `data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+  });
+  sd.forEach((t, i) => {
+    if (t) html += renderSpecCard(t, pickable ? "pickable" : "", pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : "");
+    else if (lv && lv.kind === "spec" && lv.idx === i) html += renderSpecCard(lv.item, "leaving", `data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
+  });
   html += '</div>';
   if (!dd.filter(Boolean).length && !sd.filter(Boolean).length) html += '<div class="hint">Nothing left on display.</div>';
   html += `<div class="stack-info">Tool stack ${G.deptStack.length} · Specialist deck ${G.specStack.length}</div></div>`;
@@ -2844,6 +3140,7 @@ function renderStrip() {
       for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
       html += '</div></div>';
     }
+    if (UI.specNote && !["spec", "choice", "admReturn", "colour"].includes(s.state)) html += `<div class="strip-rule note">${esc(UI.specNote)}</div>`;
   }
   html += '<div id="phase-instructions"></div><div id="action-buttons"></div>';
   if (live) {
@@ -2871,7 +3168,7 @@ function renderRivals() {
   let html = "";
   for (const p of G.players.slice(1)) {
     const dice = boardDice(p);
-    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : ""].join(" ");
+    const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
     html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, d.treated ? "treated" : "")).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
@@ -2909,7 +3206,7 @@ function promptFor() {
   if (ph === "setup" && st === "admin") return { text: "Keep one of the two directives; it scores or shields all game." };
   if (ph === "setup" && st === "startDice") return { text: "Click two hosts to swap their values, or double-click any host to confirm.", buttons: [B("Confirm", "onStartConfirm()", { primary: true })] };
   if (st === "extraReveal") return { text: "Two-SOC table: reveal one extra tool or specialist for this shift.", buttons: [B("Extra tool", "onExtraChoice('dept')", { primary: true }), B("Extra specialist", "onExtraChoice('spec')")] };
-  if (ph === "intake" && st === "pick") return { text: "Click an escalation queue to take it." };
+  if (ph === "intake" && st === "pick") return { text: `Click an escalation queue to take it. The lowest number taken earns an intel token and the Incident Commander role${p.id === G.firstPlayer ? "; as Commander you may not take #1" : ""}.` };
   if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
   if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
   if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
@@ -3083,7 +3380,7 @@ function showHowToPlay(tab) {
       <ol>
         <li><b>Intake.</b> Three hosts are rolled per escalation queue (1s and 6s re-rolled), lowest values into queue #1. Starting with the Incident Commander, each SOC takes one queue. The Commander may not take #1. Whoever takes the lowest-numbered queue gets an intel token and becomes Commander. If your segments cannot fit the new hosts, existing hosts are written off as breaches.</li>
         <li><b>Improvement.</b> In queue-number order, each SOC takes one item from the display: a tool or a specialist. Then each SOC may return one improvement to the bottom of its stack for an intel token; you get that offer at the top of activation, until your first placement.</li>
-        <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool.</li>
+        <li><b>Activation.</b> Place staff on tools one at a time, resolving each. The first time a host is healed in a shift it moves to its Worked slot. Healing to 7 restores the host immediately. A specialist's follow-up fires once, after its tool, and like a tool it needs its full set of targets or it does nothing; when only one choice is legal it fires by itself. The strip reports what each follow-up did.</li>
         <li><b>Dwell time.</b> Every host still Queued loses 1 integrity. A 1 that drops becomes a breach.</li>
         <li><b>Restoration.</b> Score this shift's restored hosts. Directives apply here.</li>
         <li><b>Shift change.</b> Staff return, Worked hosts move back to Queued, the display is recycled and refilled. Skipped after shift 8.</li>
