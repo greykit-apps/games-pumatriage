@@ -3884,6 +3884,12 @@ function setRule(key, val) {
 // mode, and the mode pills set only that.
 function setPreset(id) { houseRules = { ...DIFFICULTY_PRESETS[id].sliders, mode: houseRules.mode }; showMainMenu(true); }
 function setMode(m) { houseRules = { ...houseRules, mode: m }; showMainMenu(true); }
+// The Custom pill lights whenever the rules match no preset; clicking it
+// opens the house rules, where the difference will be.
+function openHouseRules() {
+  UI.addonsOpen = true; showMainMenu(true);
+  const d = document.querySelector("details.addons"); if (d) { d.open = true; d.scrollIntoView({ block: "nearest", behavior: "smooth" }); }
+}
 function currentPreset() {
   for (const id in DIFFICULTY_PRESETS) {
     if (id === "solo") continue; // a mode, not a difficulty: the Solo toggle owns it
@@ -3906,6 +3912,7 @@ function showMainMenu(keepScroll) {
     ${saved ? `<div class="modal-actions" style="margin-top:0;margin-bottom:12px;"><button class="action-btn primary" onclick="resumeGame()">Resume shift ${Math.min(saved.round, ROUNDS)} (${saved.mode === "solo" ? "solo" : (saved.players.length - 1) + " rivals"})</button></div>` : ""}
     <div class="presets">
       ${Object.keys(DIFFICULTY_PRESETS).filter(id => id !== "solo").map(id => `<button class="action-btn preset-btn ${preset === id ? "on" : ""}" onclick="setPreset('${id}')" title="${esc(DIFFICULTY_PRESETS[id].title || "")}">${DIFFICULTY_PRESETS[id].label}</button>`).join("")}
+      <button class="action-btn preset-btn ${preset === null ? "on" : ""}" onclick="openHouseRules()" title="Any mix of rules that matches no preset. Click to see the house rules.">Custom</button>
       <span class="preset-sep" aria-hidden="true"></span>
       <button class="action-btn preset-btn ${houseRules.mode === 0 ? "on" : ""}" aria-pressed="${houseRules.mode === 0}" onclick="setMode(houseRules.mode === 0 ? 1 : 0)" title="${esc(SLIDER_DEFS.mode.desc)}">Solo</button>
     </div>
