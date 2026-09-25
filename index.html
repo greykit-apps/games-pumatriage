@@ -1099,7 +1099,7 @@ const REPORT_DEFS = [
 // Event cards → Incident Events (add-on). PumaTriage originals; the
 // rulebook only says the deck exists. Revealed at the start of shifts 2+.
 const EVENT_DEFS = {
-  budgetFreeze: { name: "Budget Freeze",      desc: "No improvements this shift. The display stays as it is." , skipImprove: true },
+  budgetFreeze: { name: "Budget Freeze",      desc: "No improvements this shift: nothing from the display, no procurement desk, no return for intel. The display stays as it is.", skipImprove: true },
   vendorAdvisory:{ name: "Vendor Advisory",   desc: "Every SOC gains 1 intel token.", intelAll: true },
   alertStorm:   { name: "Alert Storm",        desc: "Each escalation queue carries 4 hosts this shift (solo: draw 5, keep 3).", extraDie: true },
   quietNight:   { name: "Quiet Night",        desc: "No dwell-time degradation this shift.", neglectMod: 0 },
@@ -1880,21 +1880,27 @@ function specMissReason(def, ctx, p) {
 
 // ---- end-of-round rules ----
 function currentEvent() { return G.events && G.events.current ? EVENT_DEFS[G.events.current] : null; }
-function runNeglect(p) {
+// Dwell-time damage this shift: 1, 2 under Persistent Threat, or what the event says.
+function neglectDamage() {
   const ev = currentEvent();
-  let dmg = G.cfg.superbug ? 2 : 1;
-  if (ev && ev.neglectMod !== undefined) dmg = ev.neglectMod;
+  if (ev && ev.neglectMod !== undefined) return ev.neglectMod;
+  return G.cfg.superbug ? 2 : 1;
+}
+// The queued host a Containment directive spares this shift: the lowest of its colour.
+function neglectShieldUid(p) {
+  if (!p.admin || ADMIN_DEFS[p.admin].kind !== "shield") return null;
+  const c = ADMIN_DEFS[p.admin].colour;
+  const cands = untreatedDice(p).filter(d => d.colour === c).sort((a, b) => a.value - b.value);
+  return cands.length ? cands[0].uid : null;
+}
+function runNeglect(p) {
+  const dmg = neglectDamage();
   const results = [];
-  let shieldUid = null;
-  if (p.admin && ADMIN_DEFS[p.admin].kind === "shield") {
-    const c = ADMIN_DEFS[p.admin].colour;
-    const cands = untreatedDice(p).filter(d => d.colour === c).sort((a, b) => a.value - b.value);
-    if (cands.length) shieldUid = cands[0].uid;
-  }
+  if (dmg === 0) return results;
+  const shieldUid = neglectShieldUid(p);
   for (const { b, wi } of beds(p)) {
     const die = b.u;
     if (!die) continue;
-    if (dmg === 0) break;
     if (die.uid === shieldUid) { results.push({ uid: die.uid, colour: die.colour, shielded: true }); continue; }
     if (isPink(die)) {
       // A hypervisor only degrades when other hosts share its segment, and never below 1.
@@ -2349,6 +2355,7 @@ const STEP = {
   neglect: {
     run() {
       const fx = [];
+      const ev = currentEvent(), quiet = neglectDamage() === 0;
       for (const p of G.players) {
         const res = runNeglect(p);
         p.neglectResults = res;
@@ -2356,6 +2363,7 @@ const STEP = {
         if (!p.isBot) {
           if (dead) log(`Dwell time: ${dead} ${plural(dead, "host")} lost. ${plural(dead, "Breach", "Breaches")} logged.`, "bad");
           else if (hit) log(`Dwell time: ${hit} queued ${plural(hit, "host")} degraded.`, "warn");
+          else if (quiet && ev) log(`Dwell time: ${ev.name}, nothing degrades this shift.`, "good");
           else if (res.some(r => r.shielded)) log("Dwell time: containment held.", "good");
           else log("Dwell time: nothing left in the queue to degrade.", "good");
           if (dead) fx.push({ type: "sfx", name: "breach" });
@@ -2363,7 +2371,6 @@ const STEP = {
         } else if (dead) log(`${p.name}: ${dead} ${plural(dead, "breach", "breaches")} from dwell time.`, "sys");
       }
       if (G.cfg.city) { const r = cityNeglect(); if (r.dead) fx.push({ type: "sfx", name: "breach" }); }
-      const ev = currentEvent();
       if (ev && ev.breachExtra) for (const p of G.players) if (p.breachesThisRound) p.score -= ev.breachExtra * p.breachesThisRound;
       go("discharge", G.cfg.solo ? "reports" : "score");
       return animate([{ type: "render" }, { type: "fx", sel: "#wards .slot.u .die", cls: "shake" }, ...fx, { type: "wait", delay: 700 }]);
@@ -2419,6 +2426,7 @@ const STEP = {
       if (G.investBoard) { G.investBoard = { red: [], yellow: [], green: [] }; G.invest = null; }
       if (G.events && G.events.current) { G.events.current = null; }
       G.eventApplied = false;
+      G.extraChoice = null; // a 2-SOC table: the Incident Commander chooses the extra reveal afresh each shift
       recycleDisplay();
       G.round++;
       log(`Shift ${G.round} begins.`, "sys");
@@ -3035,8 +3043,10 @@ function applyReturn(p, kind, uid) {
   if (kind === "dept") {
     const i = p.departments.findIndex(d => d.uid === uid && d.improvement);
     if (i < 0) return;
-    (isMatDept(p.departments[i].type) ? G.matDeptStack : G.deptStack).unshift(p.departments[i].type);
-    log(`${p.name} ${p.isBot ? "returns" : "return"} ${DEPT_DEFS[p.departments[i].type].name} for an intel token.`, "sys");
+    const d = p.departments[i];
+    (isMatDept(d.type) ? G.matDeptStack : G.deptStack).unshift(d.type);
+    log(`${p.name} ${p.isBot ? "returns" : "return"} ${DEPT_DEFS[d.type].name} for an intel token.`, "sys");
+    returnUpgrades(p, d);
     p.departments.splice(i, 1);
   } else {
     const i = p.specialists.findIndex(s => s.uid === uid);
@@ -3045,9 +3055,19 @@ function applyReturn(p, kind, uid) {
     (isMatSpec(s.type) ? G.matSpecStack : G.specStack).unshift(s.type);
     p.meeples = p.meeples.filter(m => m.uid !== s.meepleUid);
     log(`${p.name} ${p.isBot ? "returns" : "return"} the ${SPEC_DEFS[s.type].name} for an intel token.`, "sys");
+    returnUpgrades(p, s);
     p.specialists.splice(i, 1);
   }
   p.bloodBags++;
+}
+// Upgrades fitted to a returned tool or Apprentice go back under their piles
+// rather than leaving the game with it.
+function returnUpgrades(p, holder) {
+  const toks = holder.tokens || [];
+  if (!toks.length || !G.investPiles) return;
+  for (const t of toks) G.investPiles[t.colour].unshift(t.kind);
+  log(`${p.name}: ${toks.map(t => `${t.colour} ${INVEST_KINDS[t.kind].name}`).join(", ")} ${toks.length === 1 ? "goes" : "go"} back under ${toks.length === 1 ? "its" : "their"} ${plural(toks.length, "pile")}.`, "sys");
+  holder.tokens = [];
 }
 function applyConsultant(p, specUid) {
   const s = specUid ? specOf(p, specUid) : null;
@@ -3095,6 +3115,7 @@ function undo() {
   if (!canUndo()) return;
   G = JSON.parse(UI.undo.pop());
   resetSel(); UI.specNote = null;
+  rebuildLog(); // the undone lines leave the feed with the state
   log("Undo.", "sys");
   commit();
 }
@@ -3268,7 +3289,7 @@ function onMeepleClick(uid) {
   else { resetSel(); s.state = "meepleSel"; UI.sel.meepleUid = uid; }
   computeLegal(); updateAll();
 }
-function canReturnNow(p) { return p.returnOpen && !p.meeples.some(m => m.used) && (p.departments.some(d => d.improvement) || p.specialists.length > 0); }
+function canReturnNow(p) { return p.returnOpen && !p.meeples.some(m => m.used && !m.invest) && (p.departments.some(d => d.improvement) || p.specialists.length > 0); } // a shift at the procurement desk is not a placement
 function onReturnToggle() {
   if (!inPhase("activate", "human")) return;
   const p = human(), s = UI.sel;
@@ -3456,7 +3477,9 @@ function runRotation(specMeepleUid) {
   pushUndo();
   const ctx = activateDept(p, m, dept, [], { rotate: specMeepleUid });
   log(describeHealCtx(p, meepleLabel(p, m), DEPT_DEFS[dept.type].name, ctx), "good"); sfx("place");
-  afterAction();
+  ctx.notes = []; // logged above; the follow-up line should not repeat it
+  s.ctx = ctx; s.chain = followUpDefs(p, m, dept); // upgrades fitted to the rotation fire here too, as they do for rivals
+  nextFollowUp();
 }
 // The strip line that says what the last specialist follow-up did. Cleared by
 // the next placement (pushUndo), an undo, or the end of activation.
@@ -3572,9 +3595,9 @@ function endActivation() {
   const p = human();
   if (["spec", "choice", "colour", "intelColour", "admReturn"].includes(UI.sel.state)) return;
   const idle = p.meeples.filter(m => !m.used && !m.off).length && allDepts(p).some(d => canActivate(d, p));
-  const ev = currentEvent();
-  const dmg = ev && ev.neglectMod !== undefined ? ev.neglectMod : (G.cfg.superbug ? 2 : 1);
-  const risk = untreatedDice(p).filter(d => d.value <= dmg).length;
+  // Hosts dwell time would take: queued, at or under the damage, not a hypervisor (they never breach), not the one Containment spares.
+  const dmg = neglectDamage(), shield = neglectShieldUid(p);
+  const risk = untreatedDice(p).filter(d => !isPink(d) && d.value <= dmg && d.uid !== shield).length;
   if ((idle || risk) && !UI.endConfirm) {
     UI.endConfirm = true; UI.endRisk = risk;
     setTimeout(() => { UI.endConfirm = false; if (G) updatePhaseUI(); }, 3000);
@@ -4226,6 +4249,13 @@ const FLAVOR = {
   lose: ["The breach notification template got a workout.", "Insurance called. They have questions.", "Time to update the résumé. Lead with the wins."],
   solo: ["Score recorded. The auditors have been notified.", "Another shift survived. The queue never ends.", "Log it, learn from it, roll again."],
 };
+// The feed's colour for a line that names no level: by what it says.
+function logLevel(msg) {
+  if (/breach|lost|written off|compromis/i.test(msg)) return "bad";
+  if (/restored|\+\d|filed|intel token/i.test(msg)) return "good";
+  if (/degrad|event|full|no improvements/i.test(msg)) return "warn";
+  return "";
+}
 function log(msg, level) {
   if (!G) return;
   G.log.push(msg);
@@ -4235,12 +4265,7 @@ function log(msg, level) {
   if (!list) return;
   const li = document.createElement("li");
   li.textContent = msg;
-  let cls = level || "";
-  if (!cls) {
-    if (/breach|lost|written off|compromis/i.test(msg)) cls = "bad";
-    else if (/restored|\+\d|filed|intel token/i.test(msg)) cls = "good";
-    else if (/degrad|event|full|no improvements/i.test(msg)) cls = "warn";
-  }
+  const cls = level || logLevel(msg);
   if (cls) li.className = cls;
   const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = `S${G.round}`;
   li.prepend(ts);
@@ -4253,8 +4278,7 @@ function rebuildLog() {
   const list = document.getElementById("log-list");
   if (!list) return;
   list.innerHTML = "";
-  const round = G.round;
-  G.log.slice(-60).forEach(msg => { const li = document.createElement("li"); li.className = "sys"; li.textContent = msg; list.prepend(li); });
+  G.log.slice(-60).forEach(msg => { const li = document.createElement("li"); li.className = logLevel(msg) || "sys"; li.textContent = msg; list.prepend(li); });
 }
 /* ============================================================
    RENDERING
@@ -5061,6 +5085,7 @@ function showHowToPlay(tab) {
         <li>Each improvement phase reveals one tool and one specialist. Take one; the other goes to the bottom.</li>
         <li>Six <b>Audit Reports</b> are dealt in two rows of three. During Restoration you may file bottom-row reports using this shift's restored hosts (each host counts for one report). The card above slides down and can be filed immediately.</li>
         <li>Restorations score as normal. At the end, filed reports add their value; every report still on display subtracts its value.</li>
+        <li>The scorecard grades the total on a solo scale of its own, since a solo shift is a report chase and not a race: ${esc(gradeScale())}.</li>
       </ul>
     </div>
     <div ${panel("addons")}>
@@ -5140,16 +5165,23 @@ function showHowToPlay(tab) {
     <div class="modal-actions"><button class="action-btn" onclick="${closeAction}">${G ? "Close" : "Back"}</button></div>`;
   openModal(true);
 }
-function gradeFor(total) { return total >= 60 ? "S" : total >= 45 ? "A" : total >= 30 ? "B" : total >= 15 ? "C" : "F"; }
+// Solo has no rival to beat, so the scorecard grades the total instead, on a
+// scale of its own: solo is a shift-by-shift chase with Audit Reports pulling
+// the total down, not a race, so rival-mode totals are no yardstick. Bands from
+// bot play: a greedy top-skill bot lands at 6 on the median shift and 25 at
+// its 90th percentile; a planned report chain reaches the 30s.
+const SOLO_GRADES = [[35, "S"], [25, "A"], [15, "B"], [5, "C"]];
+function gradeFor(total) { for (const [min, g] of SOLO_GRADES) if (total >= min) return g; return "F"; }
+function gradeScale() { return SOLO_GRADES.map(([min, g]) => `${g} ${min}+`).join(", ") + ", F below"; }
 function showGameOver() {
   if (!G || !G.final) return;
   const mc = document.getElementById("modal-content");
   const won = G.final.winners.includes(0);
   let html;
   if (G.cfg.solo) {
-    const p = human(), b = p.breakdown;
-    sfx(b.total >= 30 ? "win" : "lose");
-    html = `<h2 class="${b.total >= 45 ? "win" : ""}">${G.overtime ? `Overtime ${G.overtime} closed` : "Shift 8 closed"}</h2><div class="grade ${b.total >= 45 ? "win" : ""}">${gradeFor(b.total)}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
+    const p = human(), b = p.breakdown, grade = gradeFor(b.total), good = "SA".includes(grade);
+    sfx("SAB".includes(grade) ? "win" : "lose");
+    html = `<h2 class="${good ? "win" : ""}">${G.overtime ? `Overtime ${G.overtime} closed` : "Shift 8 closed"}</h2><div class="grade ${good ? "win" : ""}" title="${esc("Solo grade: " + gradeScale())}">${grade}</div><div class="menu-tagline">${esc(pick(FLAVOR.solo))}</div>
       <table class="score-table">
         <tr><td>Restorations and filed reports</td><td>${b.base}</td></tr>
         <tr><td>Breaches (${p.fatalities})</td><td>${b.fatalities}</td></tr>
@@ -5157,7 +5189,8 @@ function showGameOver() {
         <tr><td>Unfiled reports (${b.incompleteReports})</td><td>${b.reports}</td></tr>
         <tr><td class="tot">Final reputation</td><td class="tot">${b.total}</td></tr>
       </table>
-      <p style="text-align:center">${p.dischargedTotal} hosts restored over ${ROUNDS * (1 + (G.overtime || 0))} shifts.</p>`;
+      <p style="text-align:center">${p.dischargedTotal} hosts restored over ${ROUNDS * (1 + (G.overtime || 0))} shifts.</p>
+      <p class="hint" style="text-align:center">Solo grade: ${esc(gradeScale())}.</p>`;
   } else {
     sfx(won ? "win" : "lose");
     html = `<h2 class="${won ? "win" : ""}">${won ? (G.final.winners.length > 1 ? "Shared win" : "Your SOC wins") : "Out-triaged"}</h2><div class="menu-tagline">${esc(pick(won ? FLAVOR.win : FLAVOR.lose))}</div>
