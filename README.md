@@ -86,7 +86,7 @@ Red / Yellow / Green Priority (+1 for restoring two of that colour in a shift), 
 
 ## Solo mode
 
-No queues: roll 4 hosts and keep 3 each intake (a kept total under 9 earns an intel token). Each improvement phase reveals one tool and one specialist; take one. Six Audit Reports sit in two rows of three; during Restoration, file bottom-row reports with this shift's restored hosts, and the card above slides down. Filed reports add their value, reports still on display subtract it.
+No queues: roll 4 hosts and keep 3 each intake (a kept total under 9 earns an intel token). Each improvement phase reveals one tool and one specialist; take one. Six Audit Reports sit in two rows of three; during Restoration, file bottom-row reports with this shift's restored hosts, and the card above slides down. Filed reports add their value, reports still on display subtract it. The scorecard grades the total on a scale of its own (S 35+, A 25+, B 15+, C 5+), since a solo shift is a report chase rather than a race against rivals.
 
 ## Virtualization
 
