@@ -36,6 +36,7 @@ Each of the eight shifts runs six phases: **Intake** (three hosts are rolled per
 - **Undo** during activation (blocked past a re-roll), autosave and resume, a speed control for rival turns
 - **Overtime** — at the shift 8 scorecard, play on from the same board for another eight shifts; only the shift counter resets, and the next scorecard counts everything since the start
 - **The board is the table** — dice scale with the window, and one strip under the quarantine segments carries the current rule, the prompt and the buttons; a phase strip and the restoration ladder keep the round structure and scoring brackets in view; on laptop-height screens the staff row packs into chips and the strip loses its header so the quarantine segments stay on screen
+- **A SOC around the game** — the board floats in the middle of the window over a line-drawn operations room; the SIEM feed shows what happened since your last turn, with everything earlier under a fold, and ends level with the bottom of the action strip
 - **Tactical look** — the cyan-on-navy palette PumaRally and PumaTycoon share, monospace terminal type; FLIP-animated dice
 - **Sound effects** — Web Audio API procedurally generated retro sounds (mutable)
 - **Tutorial** — 7-step introduction on first play
