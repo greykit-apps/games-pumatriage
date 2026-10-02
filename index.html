@@ -771,6 +771,9 @@ details.addons summary::-webkit-details-marker { display: none; }
 .help-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .help-table th { color: var(--accent); font-weight: normal; }
+.help-table td.hp { white-space: nowrap; vertical-align: middle; padding-top: 5px; padding-bottom: 5px; } /* a card's pictogram, kept on one line */
+.help-table td.hp .pg { flex-wrap: nowrap; }
+@media (max-width: 600px) { .help-table td.hp { white-space: normal; } .help-table td.hp .pg { flex-wrap: wrap; } } /* a phone has no room for a one-line card column */
 .score-table { font-size: 12px; border-collapse: collapse; margin: 8px auto; }
 .score-table td { padding: 3px 10px; border-bottom: 1px solid var(--line); }
 .score-table .tot { color: var(--accent); font-size: 14px; }
@@ -5354,11 +5357,38 @@ function newGameClick() {
 function showHowToPlay(tab) {
   tab = tab || "overview";
   const mc = document.getElementById("modal-content");
-  const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["expansions", "Expansions"], ["keys", "Keys"], ["about", "About"]];
+  const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["cards", "Reading Cards"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["expansions", "Expansions"], ["keys", "Keys"], ["about", "About"]];
   const panel = id => `class="help-panel ${tab === id ? "on" : ""}"`;
   const closeAction = G ? "closeModal()" : "showMainMenu()";
-  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
-  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
+  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td class="hp">${deptPicto(d)}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
+  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}</td><td class="hp">${specPicto(d)}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
+  // The key to the pictograms, drawn by the same code as the cards.
+  const pgRow = (sym, means) => `<tr><td class="hp"><span class="pg">${sym}</span></td><td>${means}</td></tr>`;
+  const legendHosts = [
+    pgRow(pgDie("red") + pgDie("yellow") + pgDie("green"), "A host of that colour."),
+    pgRow(pgDie("any"), "A host of any colour."),
+    pgRow(pgDie(PINK), "A hypervisor or guest (Virtualization)."),
+    pgRow(pgDie("any", 1) + pgSep("/") + pgDie("any", 2), "A host showing either face: here, 1 or 2."),
+    pgRow(pgDie("any", "1-3"), "A host showing any value in the range: here, 1, 2 or 3. One die per host."),
+    pgRow(pgDie("red", "=").repeat(3), "Hosts all showing the same value, whatever it is."),
+    pgRow(pgDie("red", "-1") + pgDie("red") + pgDie("red", "+1"), "Hosts in a run of consecutive values, such as 2, 3, 4."),
+    pgRow(pgSep("3×") + pgDie("any") + " " + pgSep("≤2×") + pgDie("any"), "Exactly three different hosts; up to two."),
+  ].join("");
+  const legendEffects = [
+    pgRow(pgEff("+1") + " " + pgEff("+3"), "Heal each of those hosts that many steps."),
+    pgRow(`<span class="pe c-pink">+3</span>` + pgSep("/") + pgEff("+1"), "The pink host heals the pink amount; the others heal the white one."),
+    pgRow(pgEff(OP_GLYPH.reroll), "Re-roll the host; keep the new face."),
+    pgRow(pgEff(OP_GLYPH.recolour), "Retag the host's colour until the end of the shift."),
+    pgRow(pgEff(OP_GLYPH.flip), "Flip the host to its opposite face (1↔6, 2↔5, 3↔4)."),
+    pgRow(pgEff(OP_GLYPH.park), "Move the host to its Worked slot without healing it: it escapes dwell time."),
+  ].join("");
+  const legendSpecs = [
+    pgRow(pgDie("red", "", "trig") + pgSep(":"), "When this specialist heals a red host, then: its follow-up. The trigger die is badged +, as on the printed card."),
+    pgRow(pgDie("red", "↺"), "One of the hosts it just healed, again."),
+    pgRow(pgDie("any", "="), "A different host, of any colour, whose value equals what the healed host showed before healing."),
+    pgRow(pgDie("any", "✓") + pgSep(":"), "When this specialist restores a host, then: its follow-up."),
+  ].join("");
+  const example = (name, picto, rule) => `<tr><td>${esc(name)}</td><td class="hp">${picto}</td><td>${esc(rule)}</td></tr>`;
   const adminRows = Object.keys(ADMIN_DEFS).map(id => `<tr><td>${esc(ADMIN_DEFS[id].name)}</td><td>${esc(adminDesc(id))}</td></tr>`).join("");
   const eventRows = Object.keys(EVENT_DEFS).map(id => `<tr><td>${esc(EVENT_DEFS[id].name)}</td><td>${esc(EVENT_DEFS[id].desc)}</td></tr>`).join("");
   mc.innerHTML = `
@@ -5388,8 +5418,22 @@ function showHowToPlay(tab) {
         <li><b>Shift change.</b> Staff return, Worked hosts move back to Queued, the display is recycled and refilled. Skipped after shift 8.</li>
       </ol>
     </div>
-    <div ${panel("tools")}><table class="help-table"><tr><th>Tool</th><th>Staff it to…</th></tr>${toolRows}</table><p class="hint">The starting SOC has one of each of the six starting tools. Improvement tools come two of each in the stack.</p></div>
-    <div ${panel("specs")}><table class="help-table"><tr><th>Specialist</th><th>Follow-up</th></tr>${specRows}</table><p class="hint">Any staff member can staff any tool; colours only matter for the follow-up trigger.</p></div>
+    <div ${panel("cards")}>
+      <p>Every tool and specialist says its rule in dice, as the printed cards do: the dice it works on, then what it does to them. Hover any card in play, or read the Tools and Specialists tabs, for the rule in words.</p>
+      <h4>Which hosts</h4>
+      <table class="help-table">${legendHosts}</table>
+      <h4>What it does</h4>
+      <table class="help-table">${legendEffects}</table>
+      <h4>Specialists</h4>
+      <table class="help-table">${legendSpecs}</table>
+      <h4>Two examples</h4>
+      <table class="help-table">
+        ${example(DEPT_DEFS.cardiology.name, deptPicto(DEPT_DEFS.cardiology), deptDesc(DEPT_DEFS.cardiology))}
+        ${example(SPEC_DEFS.cardiologist.name, specPicto(SPEC_DEFS.cardiologist), specDesc(SPEC_DEFS.cardiologist))}
+      </table>
+    </div>
+    <div ${panel("tools")}><table class="help-table"><tr><th>Tool</th><th>Card</th><th>Staff it to…</th></tr>${toolRows}</table><p class="hint">The starting SOC has one of each of the six starting tools. Improvement tools come two of each in the stack.</p></div>
+    <div ${panel("specs")}><table class="help-table"><tr><th>Specialist</th><th>Card</th><th>Follow-up</th></tr>${specRows}</table><p class="hint">Any staff member can staff any tool; colours only matter for the follow-up trigger.</p></div>
     <div ${panel("solo")}>
       <h4>CISO Directives (rivals mode)</h4>
       <p>Each SOC is dealt two and keeps one.</p>
