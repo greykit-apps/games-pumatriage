@@ -448,6 +448,37 @@ a { color: var(--accent); }
 .token.breach { color: var(--red); border-color: var(--red); }
 .badge { display: inline-block; font-size: 9px; padding: 0 4px; border: 1px solid var(--accent); color: var(--accent); letter-spacing: 1px; }
 
+/* Pictograms: a card's rule in dice. */
+.pg { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px; line-height: 1; vertical-align: middle; }
+.pd { box-sizing: border-box; width: 17px; height: 17px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+  border: 1.5px solid currentColor; border-radius: 3px; background: #060912; color: #94a0c4; }
+.pd svg { width: 13px; height: 13px; fill: currentColor; }
+.pd b { font: bold 11px/1 var(--font-mono); }
+.pd.c-red { color: var(--red); } .pd.c-yellow { color: var(--yellow); } .pd.c-green { color: var(--green); }
+.pd.c-pink { color: var(--pink); } .pd.c-white { color: var(--white); } .pd.c-blue { color: var(--blue); }
+.ps { color: var(--text); font-size: 12px; }
+.ps.pl { font-size: 9px; letter-spacing: -1px; } /* the +1 between dice in a run */
+.pe { color: var(--white); font-size: 13px; font-weight: bold; } .pe.c-pink { color: var(--pink); }
+.pt { color: var(--text); font-size: 11px; }
+.dept-tile .dr, .meeple .ab, .spec-card .sd { color: var(--text); }
+/* A card's corner label (USED, PLACED, OUT SICK) never sits on its name. */
+.meeple.used .mh, .meeple.off .mh { padding-right: 52px; }
+.dept-tile.used .dn { padding-right: 34px; }
+
+/* The hover box. Its edge takes the colour of what it describes. */
+#tip {
+  position: fixed; z-index: 9800; left: 0; top: 0; max-width: 300px; pointer-events: none;
+  padding: 7px 10px 8px; background: var(--panel); color: var(--text); font-size: 12px; line-height: 1.4;
+  border: 1px solid var(--lit); border-left: 3px solid var(--tc, var(--accent)); border-radius: 3px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 12px rgba(84,242,255,0.08);
+  opacity: 0; visibility: hidden; transition: opacity .12s, visibility 0s .12s;
+}
+#tip.on { opacity: 1; visibility: visible; transition: opacity .12s; }
+#tip .th { color: var(--white); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+#tip[data-c="red"] { --tc: var(--red); } #tip[data-c="yellow"] { --tc: var(--yellow); } #tip[data-c="green"] { --tc: var(--green); }
+#tip[data-c="pink"] { --tc: var(--pink); } #tip[data-c="any"] { --tc: var(--violet); } #tip[data-c="exp"], #tip[data-c="blue"] { --tc: var(--blue); }
+#tip[data-c="white"] { --tc: var(--white); }
+
 /* ============================================================
    CENTER — queues, display, reports, activation controls
    ============================================================ */
@@ -629,7 +660,7 @@ a { color: var(--accent); }
 /* The feed fills the side column down to the bottom of the action strip and
    never sets its height: size containment keeps a long log from stretching
    the row, so the board column decides how tall the game is. */
-#siem { flex: 1 1 0; min-height: 160px; contain: size; display: flex; flex-direction: column; margin-bottom: 9px; } /* the board panel's padding + border under the strip */
+#siem { flex: 1 1 0; min-height: 120px; contain: size; display: flex; flex-direction: column; margin-bottom: 9px; } /* the board panel's padding + border under the strip */
 #siem .log-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 #siem ul { list-style: none; margin: 0; padding: 0; font-size: 11px; }
 #siem li { padding: 2px 0; border-bottom: 1px solid var(--line); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
@@ -770,14 +801,8 @@ details.addons summary::-webkit-details-marker { display: none; }
   #staff, #depts { min-height: 0; }
   .grp { padding: 3px 8px 5px; margin-bottom: 5px; }
   .grp > .board-row { margin-bottom: 3px; }
-  /* Staff as one-line chips sized to the name: the ability is the tooltip,
-     and the strip spells it out once the analyst is picked. */
-  #staff { display: flex; flex-wrap: wrap; gap: 5px; }
-  .meeple { flex: 0 1 auto; flex-direction: row; align-items: center; gap: 8px; min-height: 0; padding: 4px 8px; }
-  .meeple .mh { gap: 6px; }
-  .meeple .ab { display: none; }
-  .meeple .key { margin-left: 4px; }
-  .meeple.used::after, .meeple.off::after { position: static; }
+  /* Staff stay cards: the pictogram row is one line, the sentence is the hover box. */
+  .meeple { min-height: 0; padding: 4px 8px; gap: 2px; }
   /* Tools: shorter tiles in narrower columns, so one more fits a row. */
   #depts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
   .dept-tile { min-height: 0; padding: 5px 18px 5px 8px; }
@@ -1269,7 +1294,7 @@ const WAIT = "wait", ANIM = "anim", NEXT = "next";
 
 const UI = {
   sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
-  eventQueue: [], queueTimer: null, boardMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
+  eventQueue: [], queueTimer: null, boardMax: 0, tableMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
   flipRects: new Map(), cardH: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
@@ -4368,7 +4393,16 @@ function holdBoard() {
   const board = document.getElementById("board");
   if (!board || !document.getElementById("strip")) return;
   const key = innerWidth + "x" + innerHeight;
-  if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; }
+  if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; UI.tableMax = 0; }
+  // The shared table in the side column is as tall as the most it has held
+  // this game, not a height reserved for the longest card text: with the
+  // rules drawn as dice it holds far less. The network map keeps its own.
+  const table = document.querySelector("#side-table #table");
+  if (table && !G.cfg.city) {
+    table.style.height = "auto";
+    UI.tableMax = Math.max(UI.tableMax, table.offsetHeight);
+    table.style.height = UI.tableMax + "px";
+  }
   board.style.minHeight = "";
   UI.boardMax = Math.max(UI.boardMax, board.offsetHeight);
   board.style.minHeight = UI.boardMax + "px";
@@ -4387,6 +4421,7 @@ function updateAll() {
   repositionGhosts();
   markAttention();
   holdBoard();
+  refreshTip();
   UI.leaving = null;
 }
 // The one section that holds your next move breathes softly: the shared
@@ -4517,13 +4552,149 @@ function specDesc(def) {
   const target = kind === "healedOf" ? `one of those ${c} hosts` : kind === "otherOf" ? `a different ${c} host` : kind === "otherValueEqPre" ? `a different host of any colour whose value equals what the ${c} host was before healing` : `${t.n === 2 ? "two different hosts" : "a different host"}${vals}`;
   return `${trig}: heal ${target} ${t.heal} ${plural(t.heal, "step")}${t.n === 2 ? " each" : ""}.`;
 }
+/* ============================================================
+   PICTOGRAMS — the cards say it in dice, as the board game does;
+   the sentence lives in the hover box. A die is coloured by the
+   host it takes ("any" is steel), and its face says what else:
+   pips for a required value, = for "the same value", ↺ for "that
+   same host again". Dice in a run are joined by +1.
+   ============================================================ */
+const PIPS = { 1: [[6, 6]], 2: [[3.5, 3.5], [8.5, 8.5]], 3: [[3.5, 3.5], [6, 6], [8.5, 8.5]], 4: [[3.5, 3.5], [8.5, 3.5], [3.5, 8.5], [8.5, 8.5]], 5: [[3.5, 3.5], [8.5, 3.5], [6, 6], [3.5, 8.5], [8.5, 8.5]], 6: [[3.5, 3], [8.5, 3], [3.5, 6], [8.5, 6], [3.5, 9], [8.5, 9]] };
+function pgDie(colour, mark) {
+  const inner = typeof mark === "number"
+    ? `<svg viewBox="0 0 12 12" aria-hidden="true">${PIPS[mark].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.35"/>`).join("")}</svg>`
+    : mark ? `<b>${mark}</b>` : "";
+  return `<span class="pd c-${colour || "any"}">${inner}</span>`;
+}
+const pgEff = t => `<span class="pe">${t}</span>`;
+const pgSep = t => `<span class="ps">${t}</span>`;
+// The dice a selection takes: values as faces (1/2), a count when they are alike.
+function pgSel(sel, colourOf) {
+  const n = sel.n, colour = i => (colourOf ? colourOf(i) : sel.colour) || "any";
+  if (sel.values) {
+    const faces = sel.values.map(v => pgDie(colour(0), v)).join(pgSep("/"));
+    return (n > 1 ? pgSep(`${sel.min !== undefined && sel.min !== n ? "≤" : ""}${n}×`) : "") + faces;
+  }
+  if (sel.rel === "sameValue") return Array.from({ length: n }, (_, i) => pgDie(colour(i), "=")).join("");
+  if (sel.rel === "consecutive") return Array.from({ length: n }, (_, i) => pgDie(colour(i))).join(`<span class="ps pl">+1</span>`);
+  if (n > 2 || (sel.min !== undefined && sel.min !== n)) return pgSep(`${sel.min !== undefined && sel.min !== n ? "≤" : ""}${n}×`) + pgDie(colour(0));
+  return Array.from({ length: n }, (_, i) => pgDie(colour(i))).join("");
+}
+const OP_GLYPH = { reroll: "↻", recolour: "◐", flip: "⇅", park: "⤓" };
+// A tool: the dice it takes → what it does. A pink die marks the hypervisor
+// or guest a Virtualization tool needs, and its own, larger heal is pink.
+function deptPicto(def) {
+  const sel = def.sel;
+  if (!sel || !sel.n) return `<span class="pt">${esc(deptRule(def))}</span>`;
+  const pg = h => `<span class="pg">${h}</span>`;
+  const pinkAt = sel.pinkPos ? { lowest: 0, middle: 1, highest: sel.n - 1 }[sel.pinkPos] : sel.pinkMin || sel.needMother ? 0 : -1;
+  const colourOf = i => sel.colour || (sel.starColour && i === 0 ? sel.starColour : null) || (i === pinkAt || (sel.needInfant && i === 1) ? PINK : null) || "any";
+  const pinkEff = n => `<span class="pe c-pink">+${n}</span>`;
+  // One host healed, the rest moved to Worked untouched.
+  if (def.op === "park") return pg(pgDie(colourOf(0)) + (colourOf(0) === PINK ? pinkEff(def.pinkHeal) : pgEff(`+${def.star.heal}`)) + " " + pgSep(`${sel.n - 1}×`) + pgDie("any") + pgEff(OP_GLYPH.park));
+  if (def.op === "rerollOther") return pg(pgDie(PINK) + pinkEff(def.pinkHeal) + " " + pgDie("any") + pgEff(OP_GLYPH.reroll));
+  if (def.pinkOne && def.heal) return pg(pgDie("any", "=") + pgEff(`+${def.heal}`) + " " + pgDie(PINK, "=") + pinkEff(def.pinkHeal));
+  const eff = def.pinkHeal ? `${pinkEff(def.pinkHeal)}${pgSep("/")}${pgEff(`+${def.heal}`)}` : pgEff(def.heal ? `+${def.heal}` : OP_GLYPH[def.op] || "");
+  return pg(`${pgSel(sel, colourOf)}${pgSep("→")}${eff}`);
+}
+// A specialist: what sets it off ⇒ its follow-up.
+const SPEC_SHORT = { copy: "copies a specialist", advisor: "desk: a second vendor line", strategist: "desk: draw 3, keep 1", integration: "+ another tool's upgrade", automation: "+ this tool's upgrade again" };
+function specPicto(def) {
+  if (def.special) return `<span class="pt">${SPEC_SHORT[def.special] || ""}</span>`;
+  const w = def.when, t = def.then;
+  const trig = w.always ? pgSep("any tool") : w.dischargedAny ? pgDie("any", "✓") : w.dischargedPink ? pgDie("pink", "✓")
+    : pgDie(w.healedColour || (w.healedPink ? "pink" : "any"));
+  let then;
+  if (t.choice === "admissions") then = `<span class="pt">hand off or admit</span>`;
+  else if (t.choice === "pathologist") then = `<span class="pt">close a breach → +1 intel</span>`;
+  else if (t.op === "score") then = pgEff(`+${t.n} rep`);
+  else if (t.op === "bloodBag") then = pgEff(`+${t.n || 1} intel`);
+  else if (t.op === "park") then = pgSep(`${t.n}×`) + pgDie("any") + pgSep("→") + pgEff(OP_GLYPH.park);
+  else if (t.op) then = pgDie("any") + pgSep("→") + pgEff(OP_GLYPH[t.op]);
+  else if (t.and) then = pgDie("any") + pgEff("+1") + " " + pgDie("any") + pgEff("−1");
+  else if (t.pair) then = pgDie("pink") + pgEff("+1") + " " + pgDie("any", "=") + pgEff("+1");
+  else {
+    const [kind, c] = (t.from || "other").split(":");
+    const one = kind === "healedOf" ? pgDie(c, "↺") : kind === "otherOf" ? pgDie(c) : kind === "otherValueEqPre" ? pgDie("any", "=") : null;
+    const dice = one ? (t.n > 1 ? one.repeat(t.n) : one) : pgSel({ n: t.n, values: t.values });
+    then = dice + pgSep("→") + pgEff(`+${t.heal}`);
+  }
+  return `<span class="pg">${trig}${pgSep("⇒")}${then}</span>`;
+}
+/* ============================================================
+   HOVER BOX — one themed box for the whole page. Cards carry
+   data-tip (and a heading, and their colour for the edge); any
+   plain title met on the way is taken over the first time it is
+   hovered, so the browser's own tooltip never shows.
+   ============================================================ */
+function tipAttrs(head, body, colour) {
+  return `data-tip="${esc(body)}" data-tip-h="${esc(head)}" data-tip-c="${esc(colour || "")}"`;
+}
+const TIP = { el: null, target: null, x: -1, y: -1, timer: null };
+function tipTarget(node) {
+  const el = node && node.closest ? node.closest("[data-tip], [title]") : null;
+  if (!el || el === document.documentElement) return null;
+  if (el.hasAttribute("title")) {
+    const t = el.getAttribute("title");
+    el.removeAttribute("title");
+    if (!t) return null;
+    el.dataset.tip = t;
+    if (!el.hasAttribute("aria-label")) el.setAttribute("aria-description", t);
+  }
+  return el.dataset.tip ? el : null;
+}
+function showTip(el) {
+  const tip = TIP.el;
+  if (!tip) return;
+  TIP.target = el;
+  tip.dataset.c = el.dataset.tipC || "";
+  tip.innerHTML = (el.dataset.tipH ? `<div class="th">${esc(el.dataset.tipH)}</div>` : "") + `<div class="tb">${esc(el.dataset.tip)}</div>`;
+  tip.classList.add("on");
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight, gap = 8;
+  let top = r.top - h - gap;
+  if (top < gap) top = Math.min(r.bottom + gap, innerHeight - h - gap);
+  const left = Math.max(gap, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - gap));
+  tip.style.left = left + "px"; tip.style.top = Math.max(gap, top) + "px";
+}
+function hideTip() {
+  clearTimeout(TIP.timer);
+  TIP.target = null;
+  if (TIP.el) TIP.el.classList.remove("on");
+}
+function hoverTip(node, now) {
+  const el = tipTarget(node);
+  if (el === TIP.target && el) return;
+  clearTimeout(TIP.timer);
+  if (!el) { hideTip(); return; }
+  if (now || TIP.target) showTip(el);
+  else TIP.timer = setTimeout(() => { if (el.isConnected) showTip(el); }, 140);
+}
+// A render replaces the cards under the pointer: point the box at whatever is there now.
+function refreshTip() {
+  if (!TIP.target || TIP.target.isConnected) { if (TIP.target) showTip(TIP.target); return; }
+  const el = TIP.x >= 0 ? tipTarget(document.elementFromPoint(TIP.x, TIP.y)) : null;
+  if (el) showTip(el); else hideTip();
+}
+function setupTips() {
+  const tip = document.createElement("div");
+  tip.id = "tip"; tip.setAttribute("role", "tooltip"); tip.setAttribute("aria-hidden", "true");
+  document.body.appendChild(tip);
+  TIP.el = tip;
+  document.addEventListener("pointerover", e => { if (e.pointerType === "touch") return; TIP.x = e.clientX; TIP.y = e.clientY; hoverTip(e.target); });
+  document.addEventListener("pointermove", e => { TIP.x = e.clientX; TIP.y = e.clientY; }, { passive: true });
+  document.addEventListener("pointerout", e => { if (!e.relatedTarget) hideTip(); });
+  document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(":focus-visible")) hoverTip(e.target, true); });
+  document.addEventListener("focusout", () => hideTip());
+  document.addEventListener("keydown", e => { if (e.key === "Escape") hideTip(); });
+  window.addEventListener("scroll", hideTip, { passive: true, capture: true });
+}
 function renderDeptTile(type, cls, attrs, inner) {
   const def = DEPT_DEFS[type];
-  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} title="${esc(deptDesc(def))}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div></div>${inner || ""}</div>`;
+  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, deptDesc(def), def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div></div>${inner || ""}</div>`;
 }
 function renderSpecCard(type, cls, attrs) {
   const def = SPEC_DEFS[type];
-  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${esc(specDesc(def))}</div></div>`;
+  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, specDesc(def), def.colour)}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${specPicto(def)}</div></div>`;
 }
 function renderMeeple(p, m, key) {
   const s = UI.sel, cls = ["b-" + m.colour];
@@ -4547,12 +4718,14 @@ function renderMeeple(p, m, key) {
   if (live && s.state === "rotation" && m.kind === "spec" && m.used && !m.off && !m.invest) cls.push("clickable");
   if (m.invest) cls.push("invest");
   let ability = m.temp ? "A one-shift analyst: any one unused tool." : "Any one unused tool.";
+  let picto = `<span class="pt">any one tool</span>`;
   if (def) {
     ability = specDesc(def);
-    if (def.special === "copy" && p.consultantCopy) ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`;
+    picto = specPicto(def);
+    if (def.special === "copy" && p.consultantCopy) { ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`; picto = specPicto(SPEC_DEFS[p.consultantCopy]); }
   }
   const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" title="${esc(ability)}"><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${esc(ability)}</div></div>`;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" ${tipAttrs(meepleLabel(p, m), ability, m.colour)}><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${picto}</div></div>`;
 }
 // The guest segment under a quarantine segment: its guests, and the
 // placement it offers while it holds any.
@@ -4608,7 +4781,7 @@ function renderBoard() {
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
     const clickable = cls.includes("can") || cls.includes("returnable");
-    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" title="${esc(why)}"><div><div class="dn">${esc(def.name)}</div><div class="dr">${esc(deptRule(def))}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" ${tipAttrs(def.name, why, def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
   }
   html += '</div></section>';
   html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
@@ -5374,6 +5547,7 @@ function sceneSVG() {
 function init() {
   const scene = document.getElementById("scene");
   if (scene) scene.innerHTML = sceneSVG();
+  setupTips();
   setupInput();
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
   try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
