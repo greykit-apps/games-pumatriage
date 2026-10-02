@@ -406,10 +406,10 @@ a { color: var(--accent); }
 .dept-tile .meep-on { position: absolute; right: 6px; bottom: 6px; width: 12px; height: 12px; }
 
 .meeple {
-  display: flex; flex-direction: column; gap: 3px; padding: 6px 8px; border: 1px solid var(--border); border-left: 4px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px; padding: 5px 8px 4px; border: 1px solid var(--border); border-left: 4px solid var(--border);
   background: var(--panel-2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
 }
-.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); }
+.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); line-height: 14px; } /* the dot's height: room for the dice below */
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
 .meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
 .meeple .ab { font-size: 11px; color: var(--text); line-height: 1.3; }
@@ -450,14 +450,17 @@ a { color: var(--accent); }
 
 /* Pictograms: a card's rule in dice. */
 .pg { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px; line-height: 1; vertical-align: middle; }
-.pd { box-sizing: border-box; width: 17px; height: 17px; flex: none; display: inline-flex; align-items: center; justify-content: center;
+.pd { box-sizing: border-box; min-width: 21px; height: 21px; padding: 0 2px; flex: none; display: inline-flex; align-items: center; justify-content: center;
   border: 1.5px solid currentColor; border-radius: 3px; background: #060912; color: #94a0c4; }
-.pd svg { width: 13px; height: 13px; fill: currentColor; }
-.pd b { font: bold 11px/1 var(--font-mono); }
+.pd svg { width: 16px; height: 16px; fill: currentColor; }
+.pd b { font: bold 12px/1 var(--font-mono); letter-spacing: -0.5px; }
+/* A specialist's trigger: the die it heals, badged + as on the printed card. */
+.pd.trig { position: relative; margin-right: 3px; }
+.pd.trig::after { content: "+"; position: absolute; top: -3px; right: -6px; width: 9px; height: 9px; border-radius: 50%;
+  border: 1px solid currentColor; background: var(--panel-2); font: bold 9px/8px var(--font-mono); text-align: center; }
 .pd.c-red { color: var(--red); } .pd.c-yellow { color: var(--yellow); } .pd.c-green { color: var(--green); }
 .pd.c-pink { color: var(--pink); } .pd.c-white { color: var(--white); } .pd.c-blue { color: var(--blue); }
 .ps { color: var(--text); font-size: 12px; }
-.ps.pl { font-size: 9px; letter-spacing: -1px; } /* the +1 between dice in a run */
 .pe { color: var(--white); font-size: 13px; font-weight: bold; } .pe.c-pink { color: var(--pink); }
 .pt { color: var(--text); font-size: 11px; }
 .dept-tile .dr, .meeple .ab, .spec-card .sd { color: var(--text); }
@@ -802,12 +805,12 @@ details.addons summary::-webkit-details-marker { display: none; }
   .grp { padding: 3px 8px 5px; margin-bottom: 5px; }
   .grp > .board-row { margin-bottom: 3px; }
   /* Staff stay cards: the pictogram row is one line, the sentence is the hover box. */
-  .meeple { min-height: 0; padding: 4px 8px; gap: 2px; }
+  .meeple { min-height: 0; padding: 2px 8px 2px; gap: 4px; }
   /* Tools: shorter tiles in narrower columns, so one more fits a row. */
   #depts { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; }
-  .dept-tile { min-height: 0; padding: 5px 18px 5px 8px; }
+  .dept-tile { min-height: 0; padding: 4px 18px 4px 8px; }
   .dept-tile .dn { font-size: 12px; }
-  .dept-tile .dr { font-size: 11px; margin-top: 2px; }
+  .dept-tile .dr { font-size: 11px; margin-top: 0; }
   .dept-tile .meep-on { right: 5px; bottom: 5px; }
   .ward { padding: 3px 6px 6px; }
   .slot { width: calc(var(--die) + 6px); height: calc(var(--die) + 6px); }
@@ -4387,8 +4390,8 @@ function rebuildLog() {
 /* The board keeps the tallest it has been this game at this window size:
    the floating game settles at its largest, with the action strip on the
    column's floor and the SIEM feed ending beside it, and a longer prompt or
-   a new row of tools never nudges it back down. Measured last, once the
-   strip's prompt and buttons are in. */
+   a new row of tools never nudges it back down. Measured once the strip's
+   prompt and buttons are in, and before the FLIP animations read positions. */
 function holdBoard() {
   const board = document.getElementById("board");
   if (!board || !document.getElementById("strip")) return;
@@ -4415,12 +4418,15 @@ function updateAll() {
   UI.wideTable = window.matchMedia(WIDE_TABLE_MQ).matches;
   snapshotRects();
   renderBoard(); renderRivals(); updateHUD(); updatePhaseUI();
+  // Heights go back on before anything reads a position: a render drops the
+  // side table's fitted height, and the centred game would sit elsewhere for
+  // the FLIP moves below, which then slid every die in from that phantom spot.
+  holdBoard();
   playFlip();
   playCardFlip();
   playTake();
   repositionGhosts();
   markAttention();
-  holdBoard();
   refreshTip();
   UI.leaving = null;
 }
@@ -4556,32 +4562,44 @@ function specDesc(def) {
    PICTOGRAMS — the cards say it in dice, as the board game does;
    the sentence lives in the hover box. A die is coloured by the
    host it takes ("any" is steel), and its face says what else:
-   pips for a required value, = for "the same value", ↺ for "that
-   same host again". Dice in a run are joined by +1.
+   what it needs, written inside it as the board game does: two
+   allowed values as faces (1/2), a wider range as numbers (1-3),
+   = for "the same value", -1 / blank / +1 across a run, ↺ for
+   "that same host again".
    ============================================================ */
 const PIPS = { 1: [[6, 6]], 2: [[3.5, 3.5], [8.5, 8.5]], 3: [[3.5, 3.5], [6, 6], [8.5, 8.5]], 4: [[3.5, 3.5], [8.5, 3.5], [3.5, 8.5], [8.5, 8.5]], 5: [[3.5, 3.5], [8.5, 3.5], [6, 6], [3.5, 8.5], [8.5, 8.5]], 6: [[3.5, 3], [8.5, 3], [3.5, 6], [8.5, 6], [3.5, 9], [8.5, 9]] };
-function pgDie(colour, mark) {
+function pgDie(colour, mark, cls) {
   const inner = typeof mark === "number"
     ? `<svg viewBox="0 0 12 12" aria-hidden="true">${PIPS[mark].map(([x, y]) => `<circle cx="${x}" cy="${y}" r="1.35"/>`).join("")}</svg>`
     : mark ? `<b>${mark}</b>` : "";
-  return `<span class="pd c-${colour || "any"}">${inner}</span>`;
+  return `<span class="pd c-${colour || "any"}${cls ? " " + cls : ""}">${inner}</span>`;
 }
 const pgEff = t => `<span class="pe">${t}</span>`;
 const pgSep = t => `<span class="ps">${t}</span>`;
-// The dice a selection takes: values as faces (1/2), a count when they are alike.
+// The dice a selection takes. Two allowed values read best as faces (1/2);
+// a wider range goes inside each die (1-3); a run is -1, blank, +1.
 function pgSel(sel, colourOf) {
   const n = sel.n, colour = i => (colourOf ? colourOf(i) : sel.colour) || "any";
-  if (sel.values) {
+  const count = () => pgSep(`${sel.min !== undefined && sel.min !== n ? "≤" : ""}${n}×`);
+  if (sel.values && sel.values.length === 2) {
     const faces = sel.values.map(v => pgDie(colour(0), v)).join(pgSep("/"));
-    return (n > 1 ? pgSep(`${sel.min !== undefined && sel.min !== n ? "≤" : ""}${n}×`) : "") + faces;
+    return (n > 1 ? count() : "") + faces;
+  }
+  if (sel.values) {
+    const v = sel.values, run = v.every((x, i) => !i || x === v[i - 1] + 1);
+    const range = run ? `${v[0]}-${v[v.length - 1]}` : v.join(",");
+    return Array.from({ length: n }, (_, i) => pgDie(colour(i), range)).join("");
   }
   if (sel.rel === "sameValue") return Array.from({ length: n }, (_, i) => pgDie(colour(i), "=")).join("");
-  if (sel.rel === "consecutive") return Array.from({ length: n }, (_, i) => pgDie(colour(i))).join(`<span class="ps pl">+1</span>`);
+  if (sel.rel === "consecutive") {
+    const mid = Math.floor((n - 1) / 2);
+    return Array.from({ length: n }, (_, i) => pgDie(colour(i), i === mid ? "" : (i > mid ? "+" : "-") + Math.abs(i - mid))).join("");
+  }
   if (n > 2 || (sel.min !== undefined && sel.min !== n)) return pgSep(`${sel.min !== undefined && sel.min !== n ? "≤" : ""}${n}×`) + pgDie(colour(0));
   return Array.from({ length: n }, (_, i) => pgDie(colour(i))).join("");
 }
 const OP_GLYPH = { reroll: "↻", recolour: "◐", flip: "⇅", park: "⤓" };
-// A tool: the dice it takes → what it does. A pink die marks the hypervisor
+// A tool: the dice it takes, then what it does to them; no arrow, as on the printed tiles. A pink die marks the hypervisor
 // or guest a Virtualization tool needs, and its own, larger heal is pink.
 function deptPicto(def) {
   const sel = def.sel;
@@ -4595,31 +4613,31 @@ function deptPicto(def) {
   if (def.op === "rerollOther") return pg(pgDie(PINK) + pinkEff(def.pinkHeal) + " " + pgDie("any") + pgEff(OP_GLYPH.reroll));
   if (def.pinkOne && def.heal) return pg(pgDie("any", "=") + pgEff(`+${def.heal}`) + " " + pgDie(PINK, "=") + pinkEff(def.pinkHeal));
   const eff = def.pinkHeal ? `${pinkEff(def.pinkHeal)}${pgSep("/")}${pgEff(`+${def.heal}`)}` : pgEff(def.heal ? `+${def.heal}` : OP_GLYPH[def.op] || "");
-  return pg(`${pgSel(sel, colourOf)}${pgSep("→")}${eff}`);
+  return pg(`${pgSel(sel, colourOf)} ${eff}`);
 }
-// A specialist: what sets it off ⇒ its follow-up.
+// A specialist: the die it heals (badged +) : its follow-up, the printed cards' colon.
 const SPEC_SHORT = { copy: "copies a specialist", advisor: "desk: a second vendor line", strategist: "desk: draw 3, keep 1", integration: "+ another tool's upgrade", automation: "+ this tool's upgrade again" };
 function specPicto(def) {
   if (def.special) return `<span class="pt">${SPEC_SHORT[def.special] || ""}</span>`;
   const w = def.when, t = def.then;
   const trig = w.always ? pgSep("any tool") : w.dischargedAny ? pgDie("any", "✓") : w.dischargedPink ? pgDie("pink", "✓")
-    : pgDie(w.healedColour || (w.healedPink ? "pink" : "any"));
+    : pgDie(w.healedColour || (w.healedPink ? "pink" : "any"), "", "trig");
   let then;
   if (t.choice === "admissions") then = `<span class="pt">hand off or admit</span>`;
   else if (t.choice === "pathologist") then = `<span class="pt">close a breach → +1 intel</span>`;
   else if (t.op === "score") then = pgEff(`+${t.n} rep`);
   else if (t.op === "bloodBag") then = pgEff(`+${t.n || 1} intel`);
-  else if (t.op === "park") then = pgSep(`${t.n}×`) + pgDie("any") + pgSep("→") + pgEff(OP_GLYPH.park);
-  else if (t.op) then = pgDie("any") + pgSep("→") + pgEff(OP_GLYPH[t.op]);
+  else if (t.op === "park") then = pgSep(`${t.n}×`) + pgDie("any") + " " + pgEff(OP_GLYPH.park);
+  else if (t.op) then = pgDie("any") + " " + pgEff(OP_GLYPH[t.op]);
   else if (t.and) then = pgDie("any") + pgEff("+1") + " " + pgDie("any") + pgEff("−1");
   else if (t.pair) then = pgDie("pink") + pgEff("+1") + " " + pgDie("any", "=") + pgEff("+1");
   else {
     const [kind, c] = (t.from || "other").split(":");
     const one = kind === "healedOf" ? pgDie(c, "↺") : kind === "otherOf" ? pgDie(c) : kind === "otherValueEqPre" ? pgDie("any", "=") : null;
     const dice = one ? (t.n > 1 ? one.repeat(t.n) : one) : pgSel({ n: t.n, values: t.values });
-    then = dice + pgSep("→") + pgEff(`+${t.heal}`);
+    then = dice + " " + pgEff(`+${t.heal}`);
   }
-  return `<span class="pg">${trig}${pgSep("⇒")}${then}</span>`;
+  return `<span class="pg">${trig}${pgSep(":")}${then}</span>`;
 }
 /* ============================================================
    HOVER BOX — one themed box for the whole page. Cards carry
