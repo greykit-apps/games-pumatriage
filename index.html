@@ -61,6 +61,8 @@
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
   --die: clamp(36px, 2.7vw, 46px);
+  --term: 1480px;
+  --frame: clamp(8px, min(2vw, (100dvh - 860px) / 2), 28px);
 }
 
 * { box-sizing: border-box; }
@@ -74,11 +76,30 @@
 *::-webkit-scrollbar-thumb:hover { background: var(--lit); }
 *::-webkit-scrollbar-corner { background: var(--bg); }
 html, body {
-  margin: 0; padding: 0; height: 100%;
+  margin: 0; padding: 0;
   background: var(--bg); color: var(--text);
   font-family: var(--font-mono); font-size: 13px; line-height: 1.35;
 }
-body { overflow: hidden; }
+/* The game floats in the middle of the window over a line-drawn SOC (after
+   PumaCity's terminal over its district). margin:auto on #app centres it both
+   ways and, unlike align-items, never pushes its top out of reach when the
+   window is shorter than the game. */
+body { min-height: 100dvh; display: flex; padding: var(--frame); box-sizing: border-box; }
+#scene {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+  background: linear-gradient(#05070f 0%, #070b17 45%, #0a1122 78%, #0d1426 100%);
+}
+#scene svg { display: block; width: 100%; height: 100%; }
+#scene .sf { fill: #0a0f1d; stroke: #2a3960; stroke-width: 2; stroke-linejoin: round; }
+#scene .sl { fill: none; stroke: #1d2948; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+#scene .sfl { fill: none; stroke: #141d33; stroke-width: 1; }
+#scene .su { fill: #0d1424; }
+#scene .sn { fill: #0a0f1d; stroke: #2a3960; stroke-width: 1.5; }
+#scene .la { fill: #54f2ff; opacity: .45; } #scene .lg { fill: #4ade6a; opacity: .4; } #scene .lw { fill: #ffb000; opacity: .5; }
+#scene .na { fill: #54f2ff; opacity: .4; }
+#scene .ring { fill: none; stroke: #ffb000; stroke-width: 1.5; }
+#scene .stx { font: 600 18px var(--font-mono); letter-spacing: .18em; fill: #54f2ff; opacity: .4; }
+#scene .stx.sm { font-size: 11px; letter-spacing: .12em; fill: #8b96b8; opacity: .5; }
 button { font-family: var(--font-mono); }
 a { color: var(--accent); }
 
@@ -86,13 +107,23 @@ a { color: var(--accent); }
    LAYOUT
    ============================================================ */
 #app {
-  height: 100vh; display: grid; gap: 8px; padding: 8px;
+  position: relative; z-index: 1; margin: auto; width: min(var(--term), 100%);
+  display: grid; gap: 8px; padding: 8px;
   grid-template-columns: minmax(640px, 1.8fr) minmax(280px, 0.7fr);
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
   grid-template-areas: "hud hud" "board side";
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(5,7,15,0.6), 0 30px 90px rgba(0,0,0,0.65);
 }
 #hud-top { grid-area: hud; }
-#board   { grid-area: board; overflow: auto; }
+/* The board sets the game's height. The strip sits on the column's floor, so
+   its bottom edge and the bottom of the SIEM feed beside it are one line. */
+#board   { grid-area: board; display: flex; flex-direction: column; }
+#board > #strip { margin-top: auto; }
+#board > :has(+ #strip) { margin-bottom: 12px; }
+/* When the side column is the taller one, the quarantine mat takes up the
+   difference rather than leaving a hole above the strip. */
+#board > .grp-wards { flex-grow: 1; }
 /* The shared table keeps one fixed height across phases so the board below
    never shifts; anything taller scrolls inside it. */
 #table   { border: 1px solid var(--accent-dim); background: rgba(84,242,255,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; }
@@ -595,17 +626,30 @@ a { color: var(--accent); }
 .rival-card.cmd .rn::after { content: "CMD"; font-size: 8px; color: var(--accent); border: 1px solid var(--accent); padding: 0 3px; margin-left: 4px; }
 .rival-card.turn { border-color: var(--accent); }
 
-#siem { flex: 1; min-height: 120px; display: flex; flex-direction: column; }
-#log-list { list-style: none; margin: 0; padding: 0; overflow-y: auto; flex: 1; font-size: 11px; }
-#log-list li { padding: 2px 0; border-bottom: 1px solid var(--line); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
+/* The feed fills the side column down to the bottom of the action strip and
+   never sets its height: size containment keeps a long log from stretching
+   the row, so the board column decides how tall the game is. */
+#siem { flex: 1 1 0; min-height: 160px; contain: size; display: flex; flex-direction: column; margin-bottom: 9px; } /* the board panel's padding + border under the strip */
+#siem .log-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+#siem ul { list-style: none; margin: 0; padding: 0; font-size: 11px; }
+#siem li { padding: 2px 0; border-bottom: 1px solid var(--line); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
 @keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
-#log-list li.warn { color: var(--warn); } #log-list li.bad { color: var(--red); } #log-list li.good { color: var(--green); } #log-list li.sys { color: var(--text-dim); }
-#log-list li .ts { color: #56627f; margin-right: 4px; }
+#siem li.warn { color: var(--warn); } #siem li.bad { color: var(--red); } #siem li.good { color: var(--green); } #siem li.sys { color: var(--text-dim); }
+#siem li .ts { color: #56627f; margin-right: 4px; }
+#log-older summary { cursor: pointer; color: var(--text-dim); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 0 3px; list-style: none; }
+#log-older summary::before { content: "▸ "; } #log-older[open] summary::before { content: "▾ "; }
+#log-older summary::-webkit-details-marker { display: none; }
+#log-older summary:hover { color: var(--white); }
+#log-older ul { opacity: 0.75; }
 
 /* ============================================================
    ACTIONS bar + buttons
    ============================================================ */
+/* From the first prompt the strip is as tall as a working activation turn:
+   three lines of text (analyst, tool, prompt), the confirm/cancel row and the
+   intel/undo row, so the game is already at that size when the turn comes. */
 #strip {
+  min-height: 171px;
   position: sticky; bottom: 0; z-index: 5; margin: 12px 0 0;
   background: var(--panel); border: 1px solid var(--accent-dim); padding: 8px 10px;
   box-shadow: 0 0 14px rgba(84,242,255,0.12), 0 6px 12px rgba(0,0,0,0.6);
@@ -722,7 +766,7 @@ details.addons summary::-webkit-details-marker { display: none; }
 /* Short viewports (laptops): fitting the board beats reserving room for
    growth, so nothing here holds space, and the three rows above the strip
    pack down so the quarantine segments stay on screen without scrolling. */
-@media (max-height: 840px) {
+@media (max-height: 960px) {
   #staff, #depts { min-height: 0; }
   .grp { padding: 3px 8px 5px; margin-bottom: 5px; }
   .grp > .board-row { margin-bottom: 3px; }
@@ -750,7 +794,8 @@ details.addons summary::-webkit-details-marker { display: none; }
   /* The strip drops its head (the HUD already shows the phase and the
      shift) and packs the prompt, the buttons and the intel/undo row into
      two lines. */
-  #strip { margin-top: 6px; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  #board > :has(+ #strip) { margin-bottom: 6px; }
+  #strip { min-height: 130px; margin-top: 6px; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
   .strip-head { display: none; }
   .strip-rule { flex: 1 1 100%; padding: 1px 0; }
   #phase-instructions { flex: 1 1 100%; min-height: 0; margin: 0; }
@@ -758,13 +803,15 @@ details.addons summary::-webkit-details-marker { display: none; }
   .strip-tools { flex: 1 1 auto; margin: 0; padding: 0; border-top: 0; }
 }
 @media (max-width: 960px) {
-  :root { --die: clamp(36px, 9vw, 48px); }
-  body { overflow: auto; }
+  :root { --die: clamp(36px, 9vw, 48px); --frame: 0px; }
+  body { display: block; }
+  #scene { display: none; }
   #app {
-    height: auto; grid-template-columns: 1fr; grid-template-rows: auto;
+    width: auto; border: 0; border-radius: 0; box-shadow: none;
+    grid-template-columns: 1fr; grid-template-rows: auto;
     grid-template-areas: "hud" "board" "side";
   }
-  #board { overflow: visible; }
+  #siem { min-height: 240px; }
   #table { height: auto; overflow: visible; }
   #table.idle { display: none; }
   #staff, #depts { min-height: 0; }
@@ -777,6 +824,7 @@ details.addons summary::-webkit-details-marker { display: none; }
 </style>
 </head>
 <body>
+<div id="scene" aria-hidden="true"></div>
 <div id="app">
   <header id="hud-top">
     <div class="brand">
@@ -796,7 +844,7 @@ details.addons summary::-webkit-details-marker { display: none; }
   <aside id="side">
     <div id="side-table"></div>
     <div id="rivals-panel" class="panel"><h3>Rival SOCs</h3><div id="rivals"></div></div>
-    <div id="siem" class="panel"><h3>SIEM Feed</h3><ul id="log-list" aria-label="Event log"></ul></div>
+    <div id="siem" class="panel"><h3>SIEM Feed<span class="h3-note">since your last turn</span></h3><div class="log-scroll"><ul id="log-list" aria-label="Events since your last turn"></ul><details id="log-older" hidden><summary>Earlier · <span class="n">0</span></summary><ul aria-label="Earlier events"></ul></details></div></div>
   </aside>
 </div>
 <div id="phase-toast" aria-hidden="true"></div>
@@ -1221,7 +1269,7 @@ const WAIT = "wait", ANIM = "anim", NEXT = "next";
 
 const UI = {
   sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
-  eventQueue: [], queueTimer: null, animating: false, headless: false, simulating: false,
+  eventQueue: [], queueTimer: null, boardMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
   flipRects: new Map(), cardH: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
@@ -1335,7 +1383,7 @@ function newGame(seed) {
     ambulances: [], deptStack: [], deptDisplay: [], specStack: [], specDisplay: [], adminDeck: [],
     matDeptStack: [], matSpecStack: [], supply: { mother: cfg.maternity ? MAT.mothers : 0, infant: cfg.maternity ? MAT.infants : 0 },
     extraChoice: null, solo: null, events: null, currentEvent: null,
-    roundStats: {}, log: [], gameOver: false, final: null, overflow: null, collections: null,
+    roundStats: {}, log: [], logSeq: 0, logFold: 0, turnEnd: 0, waiting: false, gameOver: false, final: null, overflow: null, collections: null,
     city: null, cityPer: CITY.collect,
     investPiles: null, investBoard: null, invest: null,
     overtime: 0, // Overtime: extra eight-shift blocks played on from the closing board
@@ -1540,6 +1588,11 @@ function loadGame() {
   resetRuntime();
   G = saved;
   houseRules = { ...G.houseRules };
+  // Saves from before the feed kept records hold bare strings.
+  if (G.logSeq == null) {
+    G.log = G.log.map((m, i) => typeof m === "string" ? { n: i, r: null, m, l: logLevel(m) } : m);
+    Object.assign(G, { logSeq: G.log.length, logFold: 0, turnEnd: 0, waiting: false });
+  }
   return true;
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
@@ -2006,9 +2059,13 @@ function advance() {
       if (++guard > 2000) { console.error("Phase machine runaway at", G.phase, G.step); break; }
       const fn = STEP[G.phase] && STEP[G.phase][G.step];
       if (!fn) { console.error("Unknown step", G.phase, G.step); break; }
+      // Coming back from a wait on you is the end of your turn, whatever
+      // the step does next; if it only waits again, nothing was logged.
+      turnEnds();
       const r = fn();
       if (r === WAIT) {
         if (UI.autoHuman && !G.gameOver) { botAnswerWait(); continue; }
+        turnBegins();
         break;
       }
       if (r === ANIM) { UI.advancing = false; return; }
@@ -3636,7 +3693,7 @@ function setupInput() {
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(() => { if (G && !UI.headless && UI.wideTable !== window.matchMedia(WIDE_TABLE_MQ).matches) updateAll(); }, 150);
+    resizeTimer = setTimeout(() => { if (G && !UI.headless && UI.wideTable !== window.matchMedia(WIDE_TABLE_MQ).matches) updateAll(); else holdBoard(); }, 150);
   });
   document.getElementById("app").addEventListener("click", e => {
     const el = e.target.closest("[data-act]");
@@ -4251,35 +4308,71 @@ function logLevel(msg) {
   if (/degrad|event|full|no improvements/i.test(msg)) return "warn";
   return "";
 }
+// Each entry keeps its number, shift and colour, so the feed can be rebuilt
+// exactly (on resume, and whenever a turn folds the older lines away).
 function log(msg, level) {
   if (!G) return;
-  G.log.push(msg);
+  const e = { n: G.logSeq++, r: G.round, m: msg, l: level || logLevel(msg) };
+  G.log.push(e);
   if (G.log.length > 200) G.log.shift();
   if (UI.headless) return;
   const list = document.getElementById("log-list");
   if (!list) return;
-  const li = document.createElement("li");
-  li.textContent = msg;
-  const cls = level || logLevel(msg);
-  if (cls) li.className = cls;
-  const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = `S${G.round}`;
-  li.prepend(ts);
-  list.prepend(li);
+  list.prepend(logItem(e));
   while (list.children.length > 60) list.removeChild(list.lastChild);
   const ann = document.getElementById("announcements");
   if (ann) ann.textContent = msg;
 }
+function logItem(e) {
+  const li = document.createElement("li");
+  li.textContent = e.m;
+  if (e.l) li.className = e.l;
+  if (e.r != null) { const ts = document.createElement("span"); ts.className = "ts"; ts.textContent = `S${e.r}`; li.prepend(ts); }
+  return li;
+}
+/* The feed shows what happened since your last turn ended: the rivals'
+   moves, dwell and restoration, and whatever you are doing now. Everything
+   older sits under the fold. A turn is a stretch where the game waits on
+   you; two prompts in a row with nothing logged between them are one turn. */
+function turnBegins() {
+  if (G.logSeq > G.turnEnd && G.logFold !== G.turnEnd) { G.logFold = G.turnEnd; rebuildLog(); }
+  G.waiting = true;
+}
+function turnEnds() {
+  if (!G.waiting) return;
+  G.waiting = false;
+  G.turnEnd = G.logSeq;
+}
 function rebuildLog() {
-  const list = document.getElementById("log-list");
-  if (!list) return;
-  list.innerHTML = "";
-  G.log.slice(-60).forEach(msg => { const li = document.createElement("li"); li.className = logLevel(msg) || "sys"; li.textContent = msg; list.prepend(li); });
+  const list = document.getElementById("log-list"), older = document.getElementById("log-older");
+  if (UI.headless || !list || !older) return;
+  const recent = G.log.filter(e => e.n >= G.logFold).slice(-60), past = G.log.filter(e => e.n < G.logFold);
+  // Rebuilt lines were already seen: only new ones slide in.
+  const still = e => { const li = logItem(e); li.style.animation = "none"; return li; };
+  list.replaceChildren(...recent.reverse().map(still));
+  older.querySelector("ul").replaceChildren(...past.reverse().map(still));
+  older.querySelector(".n").textContent = past.length;
+  older.hidden = !past.length;
 }
 /* ============================================================
    RENDERING
    DOM rebuilt by string templating. updateAll() is the one entry
    point; FLIP keeps dice visually continuous across rebuilds.
    ============================================================ */
+/* The board keeps the tallest it has been this game at this window size:
+   the floating game settles at its largest, with the action strip on the
+   column's floor and the SIEM feed ending beside it, and a longer prompt or
+   a new row of tools never nudges it back down. Measured last, once the
+   strip's prompt and buttons are in. */
+function holdBoard() {
+  const board = document.getElementById("board");
+  if (!board || !document.getElementById("strip")) return;
+  const key = innerWidth + "x" + innerHeight;
+  if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; }
+  board.style.minHeight = "";
+  UI.boardMax = Math.max(UI.boardMax, board.offsetHeight);
+  board.style.minHeight = UI.boardMax + "px";
+}
 function updateAll() {
   if (UI.headless || !G) return;
   document.getElementById("app").classList.toggle("p4", G.players.length >= 4);
@@ -4293,6 +4386,7 @@ function updateAll() {
   playTake();
   repositionGhosts();
   markAttention();
+  holdBoard();
   UI.leaving = null;
 }
 // The one section that holds your next move breathes softly: the shared
@@ -5230,7 +5324,56 @@ function endTutorial() {
 /* ============================================================
    INIT & DEBUG HOOKS
    ============================================================ */
+/* The room behind the game: one line-drawn SOC, drawn once. Composed for a
+   1600x900 box drawn "xMidYMax slice", so the racks stand in the side margins
+   (x < 200, x > 1400) and the floor in the bottom band that the floating game
+   leaves showing; the network map above shows wherever the game ends. */
+function sceneSVG() {
+  let seed = 7;
+  const rnd = n => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed % n; };
+  const G = 820;  // floor line
+  let o = '';
+  // The network: nodes joined to their nearest neighbours, one of them burning.
+  const nodes = [];
+  for (let i = 0; i < 34; i++) nodes.push([40 + rnd(1520), 30 + rnd(300)]);
+  const seen = new Set();
+  nodes.forEach((a, i) => {
+    nodes.map((b, j) => [j, (a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2]).filter(([j]) => j !== i)
+      .sort((x, y) => x[1] - y[1]).slice(0, 2).forEach(([j]) => {
+        const k = i < j ? i + "-" + j : j + "-" + i;
+        if (seen.has(k)) return; seen.add(k);
+        o += `<path class="sl" d="M${a[0]} ${a[1]} L${nodes[j][0]} ${nodes[j][1]}"/>`;
+      });
+  });
+  nodes.forEach(([x, y], i) => {
+    o += `<circle class="sn" cx="${x}" cy="${y}" r="4"/>`;
+    if (i % 5 === 0) o += `<circle class="na" cx="${x}" cy="${y}" r="2"/>`;
+  });
+  const [hx, hy] = nodes.reduce((m, n) => (n[0] < 200 || n[0] > 1400) && n[1] < m[1] ? n : m, [0, 999]);
+  if (hy < 999) o += `<circle class="lw" cx="${hx}" cy="${hy}" r="3"/><circle class="ring" cx="${hx}" cy="${hy}" r="12" opacity=".3"/><circle class="ring" cx="${hx}" cy="${hy}" r="24" opacity=".14"/>`;
+  // The raised floor, tiles running to a vanishing point behind the game.
+  for (let y = G; y <= 900; y += 22) o += `<path class="sfl" d="M0 ${y} H1600"/>`;
+  for (let x = -1600; x <= 3200; x += 120) o += `<path class="sfl" d="M800 ${G - 180} L${x} 900" clip-path="url(#floor)"/>`;
+  // Racks: a cabinet, its units, a few lights on, and the tray its cables climb to.
+  const rack = (x, h) => {
+    const top = G - h;
+    let r = `<rect class="sf" x="${x}" y="${top}" width="74" height="${h}" rx="2"/>`;
+    for (let y = top + 12; y < G - 14; y += 15) {
+      r += `<rect class="su" x="${x + 8}" y="${y}" width="58" height="10"/>`;
+      if (rnd(100) < 55) { const c = rnd(100); r += `<rect class="${c < 8 ? "lw" : c < 45 ? "lg" : "la"}" x="${x + 54}" y="${y + 3}" width="6" height="4"/>`; }
+    }
+    return r + `<path class="sl" d="M${x + 20} ${top} V${top - 40} M${x + 54} ${top} V${top - 40}"/>`;
+  };
+  let racks = '';
+  for (let i = 0; i < 3; i++) racks += rack(8 + i * 84, 420 + rnd(90));
+  for (let i = 0; i < 3; i++) racks += rack(1350 + i * 84, 420 + rnd(90));
+  o += `<path class="sl" d="M0 ${G - 560} H330 M1330 ${G - 560} H1600"/>` + racks;
+  o += `<text class="stx" x="1500" y="${G + 44}" text-anchor="end">SOC-01</text><text class="stx sm" x="1500" y="${G + 64}" text-anchor="end">INCIDENT RESPONSE · TIER 2</text>`;
+  return `<svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice"><defs><clipPath id="floor"><rect x="0" y="${G}" width="1600" height="${900 - G}"/></clipPath></defs>${o}</svg>`;
+}
 function init() {
+  const scene = document.getElementById("scene");
+  if (scene) scene.innerHTML = sceneSVG();
   setupInput();
   try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
   try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
