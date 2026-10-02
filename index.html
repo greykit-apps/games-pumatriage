@@ -110,7 +110,10 @@ a { color: var(--accent); }
   position: relative; z-index: 1; margin: auto; width: min(var(--term), 100%);
   display: grid; gap: 8px; padding: 8px;
   grid-template-columns: minmax(640px, 1.8fr) minmax(280px, 0.7fr);
-  grid-template-rows: auto auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  /* Sized to the game while it fits; never taller than the window. Past that
+     the two columns scroll inside it, the strip pinned to the board's foot. */
+  max-height: calc(100dvh - 2 * var(--frame));
   grid-template-areas: "hud hud" "board side";
   background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
   box-shadow: 0 0 0 1px rgba(5,7,15,0.6), 0 30px 90px rgba(0,0,0,0.65);
@@ -118,7 +121,7 @@ a { color: var(--accent); }
 #hud-top { grid-area: hud; }
 /* The board sets the game's height. The strip sits on the column's floor, so
    its bottom edge and the bottom of the SIEM feed beside it are one line. */
-#board   { grid-area: board; display: flex; flex-direction: column; }
+#board   { grid-area: board; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 #board > #strip { margin-top: auto; }
 #board > :has(+ #strip) { margin-bottom: 12px; }
 /* When the side column is the taller one, the quarantine mat takes up the
@@ -136,8 +139,15 @@ a { color: var(--accent); }
    otherwise push the quarantine segments down mid-game. */
 #staff { min-height: 112px; align-content: start; }
 #depts { min-height: 180px; align-content: start; }
-#side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+/* The side column never sets the game's height (size containment): it fits
+   beside the board, so the quarantine mat never stretches to match it. */
+#side    { grid-area: side; display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; overscroll-behavior: contain; contain: size; }
 #side-table:empty { display: none; }
+/* When the side column is short of room, the rivals give it up: their panel
+   shrinks and scrolls, so the table above and the feed below stay whole. */
+#side-table { flex: none; }
+#rivals-panel { flex: 0 1 auto; min-height: 96px; overflow-y: auto; overscroll-behavior: contain; }
+#rivals-panel h3 { position: sticky; top: -8px; z-index: 1; margin: -8px -8px 6px; padding: 8px 8px 0; background: var(--panel); }
 
 .panel {
   background: var(--panel); border: 1px solid var(--border); padding: 8px;
@@ -398,7 +408,9 @@ a { color: var(--accent); }
 .dept-tile.can:hover { background: color-mix(in oklab, var(--tag) 16%, var(--panel-2)); }
 .dept-tile.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 14px rgba(84,242,255,0.6); }
 .dept-tile.used { opacity: 0.45; }
-.dept-tile.used::after { content: "USED"; position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--accent); letter-spacing: 1px; }
+/* A used tool is dimmed and carries its staff member's dot; the hover box
+   says "Used this shift". No corner label: one would push the name onto a
+   second line and every tool in the row would grow mid-turn. */
 .dept-tile.disabled { opacity: 0.28; border-style: dashed; border-left-style: solid; }
 .dept-tile.returnable { border-color: var(--accent); cursor: pointer; }
 .dept-tile.new { animation: tile-in .4s var(--ease-out-quart); }
@@ -413,8 +425,8 @@ a { color: var(--accent); }
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
 .meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
 .meeple .ab { font-size: 11px; color: var(--text); line-height: 1.3; }
-.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--accent); letter-spacing: 1px; }
-.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; top: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
+.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; bottom: 5px; font-size: 8px; color: var(--accent); letter-spacing: 1px; }
+.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; bottom: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
 .meeple.returnable { border-color: var(--accent); cursor: pointer; }
 .meeple.clickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
@@ -464,9 +476,8 @@ a { color: var(--accent); }
 .pe { color: var(--white); font-size: 13px; font-weight: bold; } .pe.c-pink { color: var(--pink); }
 .pt { color: var(--text); font-size: 11px; }
 .dept-tile .dr, .meeple .ab, .spec-card .sd { color: var(--text); }
-/* A card's corner label (USED, PLACED, OUT SICK) never sits on its name. */
-.meeple.used .mh, .meeple.off .mh { padding-right: 52px; }
-.dept-tile.used .dn { padding-right: 34px; }
+/* PLACED / OUT SICK sit at the foot, beside the dice row, never on the name:
+   a card must not change height when its state does. */
 
 /* The hover box. Its edge takes the colour of what it describes. */
 #tip {
@@ -497,7 +508,7 @@ a { color: var(--accent); }
 .queue.pickable:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.55); }
 .queue.taken { opacity: 0.5; }
 .queue.blocked { opacity: 0.4; border-style: dashed; }
-.queue .qby { font-size: 9px; color: var(--accent); letter-spacing: 1px; text-align: center; }
+.queue .qby { font-size: 9px; color: var(--accent); letter-spacing: 1px; text-align: center; max-width: 56px; line-height: 1.2; } /* a taker's name wraps rather than widening its queue into a second row */
 .queue .qcmd { position: absolute; right: -6px; top: -8px; }
 
 #display { display: flex; flex-direction: column; gap: 8px; }
@@ -694,7 +705,7 @@ a { color: var(--accent); }
 .strip-rule { font-size: 12px; color: var(--text); padding: 3px 0; }
 .strip-rule b { color: var(--white); font-weight: normal; }
 .strip-rule .strip-count { color: var(--accent); margin-left: 6px; }
-.strip-rule.amber { color: var(--warn); }
+.strip-rule.follow { color: var(--accent); } /* a specialist's follow-up: what is waiting on you */
 .strip-rule.note { color: var(--violet); }
 #phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
 #action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
@@ -835,11 +846,13 @@ details.addons summary::-webkit-details-marker { display: none; }
   body { display: block; }
   #scene { display: none; }
   #app {
-    width: auto; border: 0; border-radius: 0; box-shadow: none;
+    width: auto; border: 0; border-radius: 0; box-shadow: none; max-height: none;
     grid-template-columns: 1fr; grid-template-rows: auto;
     grid-template-areas: "hud" "board" "side";
   }
   #siem { min-height: 240px; }
+  #board, #side { overflow: visible; }
+  #side { contain: none; }
   #table { height: auto; overflow: visible; }
   #table.idle { display: none; }
   #staff, #depts { min-height: 0; }
@@ -4399,16 +4412,36 @@ function holdBoard() {
   if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; UI.tableMax = 0; }
   // The shared table in the side column is as tall as the most it has held
   // this game, not a height reserved for the longest card text: with the
-  // rules drawn as dice it holds far less. The network map keeps its own.
+  // rules drawn as dice it holds far less.
   const table = document.querySelector("#side-table #table");
-  if (table && !G.cfg.city) {
+  if (table) {
+    // The network map keeps its stylesheet height as a ceiling (it scrolls
+    // inside past that); every other table simply holds what it has held.
+    const ceiling = G.cfg.city ? table.offsetHeight : Infinity;
     table.style.height = "auto";
-    UI.tableMax = Math.max(UI.tableMax, table.offsetHeight);
+    UI.tableMax = Math.max(UI.tableMax, Math.min(table.offsetHeight, ceiling));
     table.style.height = UI.tableMax + "px";
   }
   board.style.minHeight = "";
+  // On a phone the page just scrolls: nothing floats, so there is nothing to
+  // hold, and a held height would strand the table's space after intake.
+  if (!isFinite(parseFloat(getComputedStyle(document.getElementById("app")).maxHeight))) return;
   UI.boardMax = Math.max(UI.boardMax, board.offsetHeight);
-  board.style.minHeight = UI.boardMax + "px";
+  // The side column never sets the height itself, but it does need room for
+  // the table, the rivals at their floor and the feed at its floor; the board
+  // makes that room, up to what the window allows.
+  const side = document.getElementById("side"), app = document.getElementById("app");
+  const sideTable = document.getElementById("side-table"), rivals = document.getElementById("rivals-panel");
+  const css = el => getComputedStyle(el);
+  let need = 0;
+  if (sideTable && sideTable.offsetHeight) need += sideTable.offsetHeight + 8;
+  if (rivals) need += Math.min(rivals.scrollHeight, parseFloat(css(rivals).minHeight) || 0) + 8;
+  const siem = document.getElementById("siem");
+  if (siem) need += (parseFloat(css(siem).minHeight) || 0) + (parseFloat(css(siem).marginBottom) || 0);
+  const cap = parseFloat(css(app).maxHeight);
+  const room = isFinite(cap) ? cap - (app.offsetHeight - board.offsetHeight) : Infinity;
+  const hold = Math.min(Math.max(UI.boardMax, side && css(side).contain.includes("size") ? need : 0), room);
+  board.style.minHeight = Math.max(0, hold) + "px";
 }
 function updateAll() {
   if (UI.headless || !G) return;
@@ -4701,6 +4734,8 @@ function setupTips() {
   document.addEventListener("pointerover", e => { if (e.pointerType === "touch") return; TIP.x = e.clientX; TIP.y = e.clientY; hoverTip(e.target); });
   document.addEventListener("pointermove", e => { TIP.x = e.clientX; TIP.y = e.clientY; }, { passive: true });
   document.addEventListener("pointerout", e => { if (!e.relatedTarget) hideTip(); });
+  // A click is an action, not a question: the box gets out of the way of what it changes.
+  document.addEventListener("pointerdown", hideTip, { capture: true });
   document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(":focus-visible")) hoverTip(e.target, true); });
   document.addEventListener("focusout", () => hideTip());
   document.addEventListener("keydown", e => { if (e.key === "Escape") hideTip(); });
@@ -5036,7 +5071,7 @@ function renderStrip() {
       html += `<div class="strip-rule"><b>${esc(def.name)}</b> — ${esc(deptDesc(def))}${def.op === "rotation" ? "" : `<span class="strip-count">${s.dice.length} of ${def.sel.n}${def.sel.min !== undefined ? " (min " + def.sel.min + ")" : ""} selected</span>`}</div>`;
     }
     if (["spec", "choice", "admReturn"].includes(s.state)) {
-      html += `<div class="strip-rule amber"><b>${esc(s.spec.name)}</b> — ${esc(specDesc(s.spec))}</div>`;
+      html += `<div class="strip-rule follow"><b>${esc(s.spec.name)}</b> — ${esc(specDesc(s.spec))}</div>`;
       if (s.state === "choice") {
         const o = s.specOpts;
         html += '<div class="act-controls">';
@@ -5046,7 +5081,7 @@ function renderStrip() {
       }
     }
     if (s.state === "colour" || s.state === "intelColour") {
-      html += `<div class="strip-rule amber">${s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}: pick the colour.` : "Pick the host's colour for this shift."}<div class="colour-pick">`;
+      html += `<div class="strip-rule follow">${s.state === "colour" ? `Retagging ${s.colourQueue.length} ${plural(s.colourQueue.length, "host")}: pick the colour.` : "Pick the host's colour for this shift."}<div class="colour-pick">`;
       for (const c of COLOURS) html += `<button class="colour-btn ${c}" data-act="colour" data-colour="${c}" aria-label="${c}">${COLOUR_ABBR[c]}</button>`;
       html += '</div></div>';
     }
