@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-  <rect width="64" height="64" rx="12" fill="#0a0a0a"/>
+  <rect width="64" height="64" rx="12" fill="#05070f"/>
   <!-- A single d6 showing a five: this is a dice game before it is anything
        else, and no sibling icon has a die. Pips are solids so no font is
        involved. -->
-  <rect x="12" y="12" width="40" height="40" rx="6" fill="#08120a" stroke="#00ff41" stroke-width="2.5"/>
-  <g fill="#00ff41">
+  <rect x="12" y="12" width="40" height="40" rx="6" fill="#0a0e1a" stroke="#54f2ff" stroke-width="2.5"/>
+  <g fill="#54f2ff">
     <circle cx="22" cy="22" r="3.6"/>
     <circle cx="42" cy="22" r="3.6"/>
     <circle cx="32" cy="32" r="3.6"/>
