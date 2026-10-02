@@ -57,6 +57,12 @@
   --line: #141d33;
   --text: #9aa5c6;
   --text-dim: #7d8aa8;
+  --steel: #94a0c4;     /* labels and headings: quiet, so cyan can mean one thing */
+  /* Type scale: labels and meta, body and names, values. Nothing a player
+     needs to read goes below the first step. */
+  --fs-label: 11px;
+  --fs-body: 12px;
+  --fs-value: 15px;
   --font-mono: "Courier New", "Lucida Console", monospace;
   --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -119,6 +125,9 @@ a { color: var(--accent); }
   box-shadow: 0 0 0 1px rgba(5,7,15,0.6), 0 30px 90px rgba(0,0,0,0.65);
 }
 #hud-top { grid-area: hud; }
+/* The board is not a box of its own: Staff, Tools and Quarantine sit directly
+   in the frame, one border fewer between the eye and the table. */
+#board.panel { background: transparent; border: 0; padding: 0; }
 /* The board sets the game's height. The strip sits on the column's floor, so
    its bottom edge and the bottom of the SIEM feed beside it are one line. */
 #board   { grid-area: board; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
@@ -155,7 +164,7 @@ a { color: var(--accent); }
 }
 .panel h3 {
   margin: 0 0 6px 0; font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-  color: var(--accent); font-weight: normal;
+  color: var(--steel); font-weight: normal;
 }
 
 /* Top HUD */
@@ -170,19 +179,19 @@ a { color: var(--accent); }
 #hud-top #phase-strip { grid-area: strip; margin-left: 0; }
 #hud-top .stats { grid-area: stats; justify-content: flex-end; }
 #hud-top .title {
-  color: var(--accent); font-size: 17px; letter-spacing: 3px; text-shadow: 0 0 8px rgba(84,242,255,0.6);
+  color: var(--accent); font-size: 17px; letter-spacing: 3px;
 }
 #hud-top .stats { display: flex; gap: 14px; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 50px; }
-.stat .ot { color: var(--accent); font-size: 10px; letter-spacing: 1px; }
+.stat .ot { color: var(--warn); font-size: var(--fs-label); letter-spacing: 1px; }
 #phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
-.pstep { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
+.pstep { font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
 .pstep.done { color: var(--accent-dim); border-color: var(--line); }
-.pstep.on { color: var(--accent); border-color: var(--accent); background: rgba(84,242,255,0.12); text-shadow: 0 0 6px rgba(84,242,255,0.5); }
+.pstep.on { color: var(--white); border-color: var(--lit); background: rgba(219,228,251,0.06); } /* the phase is status, not a move */
 .bagdots { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .bagdots .mini-dot { width: 9px; height: 9px; }
-.stat .lbl { font-size: 9px; letter-spacing: 1px; color: var(--text-dim); text-transform: uppercase; }
-.stat .val { font-size: 15px; color: var(--white); transition: color .3s; line-height: 1.1; }
+.stat .lbl { font-size: var(--fs-label); letter-spacing: 0.5px; color: var(--text-dim); text-transform: uppercase; }
+.stat .val { font-size: var(--fs-value); color: var(--white); transition: color .3s; line-height: 1.1; }
 .stat.flash .val { animation: stat-flash .6s ease-out; }
 .stat .val.warn { color: var(--warn); }
 .stat .val.bad  { color: var(--red); }
@@ -205,7 +214,7 @@ a { color: var(--accent); }
   text-align: center; padding: 14px 0; opacity: 0;
   background: linear-gradient(90deg, transparent, rgba(5,9,20,0.92) 20%, rgba(5,9,20,0.92) 80%, transparent);
   color: var(--accent); font-size: 26px; letter-spacing: 6px; text-transform: uppercase;
-  text-shadow: 0 0 14px rgba(84,242,255,0.8), 0 0 30px rgba(84,242,255,0.4);
+  text-shadow: 0 2px 12px rgba(0,0,0,0.8);
 }
 #phase-toast.on { animation: toast-pop 1.3s var(--ease-out-quart); }
 @keyframes toast-pop {
@@ -217,7 +226,7 @@ a { color: var(--accent); }
   position: fixed; left: 0; right: 0; top: 34%; z-index: 8600; pointer-events: none; text-align: center; padding: 18px 0; opacity: 0;
   background: linear-gradient(90deg, transparent, rgba(6,14,28,0.94) 20%, rgba(6,14,28,0.94) 80%, transparent);
   color: var(--green); font-size: 30px; letter-spacing: 5px; text-transform: uppercase;
-  text-shadow: 0 0 16px rgba(74,222,106,0.8), 0 0 40px rgba(74,222,106,0.4);
+  text-shadow: 0 0 10px rgba(74,222,106,0.35), 0 2px 12px rgba(0,0,0,0.8);
 }
 #banner small { display: block; font-size: 12px; letter-spacing: 3px; color: var(--accent); margin-top: 4px; }
 #banner.on { animation: banner-pop 1.8s var(--ease-out-quart); }
@@ -276,13 +285,13 @@ a { color: var(--accent); }
 .die.v-5 .pip:nth-child(1), .die.v-5 .pip:nth-child(3), .die.v-5 .pip:nth-child(5), .die.v-5 .pip:nth-child(7), .die.v-5 .pip:nth-child(9),
 .die.v-6 .pip:nth-child(1), .die.v-6 .pip:nth-child(3), .die.v-6 .pip:nth-child(4), .die.v-6 .pip:nth-child(6), .die.v-6 .pip:nth-child(7), .die.v-6 .pip:nth-child(9)
 { opacity: 1; }
-.die.c-red    { color: var(--red);    border-color: var(--red);    box-shadow: 0 0 6px rgba(255,51,51,0.45); }
-.die.c-yellow { color: var(--yellow); border-color: var(--yellow); box-shadow: 0 0 6px rgba(255,221,51,0.45); }
-.die.c-green  { color: var(--green);  border-color: var(--green);  box-shadow: 0 0 6px rgba(74,222,106,0.45); }
-.die.c-pink   { color: var(--pink);   border-color: var(--pink);   box-shadow: 0 0 6px rgba(255,95,191,0.45); }
+.die.c-red    { color: var(--red);    border-color: var(--red); }
+.die.c-yellow { color: var(--yellow); border-color: var(--yellow); }
+.die.c-green  { color: var(--green);  border-color: var(--green); }
+.die.c-pink   { color: var(--pink);   border-color: var(--pink); }
 /* A pink host healed past 6 waits, ready, for the rest of its family. */
 .die.ready { outline: 2px solid var(--accent); outline-offset: 2px; }
-.die.ready::after { content: "✓"; position: absolute; right: -6px; top: -8px; font-size: 10px; color: var(--accent); }
+.die.ready::after { content: "✓"; position: absolute; right: -6px; top: -8px; font-size: 11px; color: var(--white); }
 /* A restored host pulses on its 6 before it leaves for the ladder. The ring
    is its own class so a follow-up burst (also on ::before) can stand in for it. */
 .die.healed { animation: die-glow .7s ease-out; }
@@ -305,7 +314,7 @@ a { color: var(--accent); }
 .die.clickable:hover { transform: translateY(-2px); }
 .die.target-ok { animation: target-pulse 1s ease-in-out infinite; }
 @keyframes target-pulse {
-  0%, 100% { box-shadow: 0 0 6px 1px rgba(255,255,255,0.35); } 50% { box-shadow: 0 0 14px 4px rgba(255,255,255,0.8); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(219,228,251,0.35); } 50% { box-shadow: 0 0 0 3px rgba(219,228,251,0.75); }
 }
 .die.sel { outline: 3px solid var(--accent); outline-offset: 2px; }
 .die.dim { opacity: 0.3; }
@@ -324,7 +333,7 @@ a { color: var(--accent); }
    ============================================================ */
 #wards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
 .ward { flex: 0 0 auto; border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
-.ward .ward-h { font-size: 10px; color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.ward .ward-h { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
 .ward .beds { display: flex; gap: 6px; justify-content: flex-start; }
 /* Placing incoming hosts (Virtualization): the segments that may take the current one. */
 .ward.place-ok { border-color: var(--accent); box-shadow: 0 0 10px rgba(84,242,255,0.3); }
@@ -334,7 +343,7 @@ a { color: var(--accent); }
    hypervisor arrives above it, then a placement like a tool. */
 .nursery { margin-top: 6px; border: 1px dashed color-mix(in srgb, var(--pink) 35%, transparent); border-radius: 4px; padding: 3px 6px 4px; position: relative; }
 .nursery.closed { opacity: 0.35; border-style: dotted; }
-.nursery .nh { font-size: 9px; color: var(--text-dim); letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; }
+.nursery .nh { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; }
 .nursery.open .nh span:first-child { color: var(--pink); }
 .nursery .nslots { display: flex; gap: 4px; min-height: 34px; align-items: center; }
 .nursery .slot.g { width: 34px; height: 34px; }
@@ -353,7 +362,7 @@ a { color: var(--accent); }
 .slot.u.empty.open { border-color: #2e3f6a; }
 .slot.t.empty::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
 .slot.t { background: rgba(219,228,251,0.03); }
-.h3-note { float: right; color: var(--text-dim); letter-spacing: 0; text-transform: none; font-size: 10px; }
+.h3-note { float: right; color: var(--text-dim); letter-spacing: 0; text-transform: none; font-size: var(--fs-label); }
 .slot.drop-ok { border-color: var(--accent); box-shadow: inset 0 0 8px rgba(84,242,255,0.3); cursor: pointer; }
 .slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
 
@@ -362,7 +371,7 @@ a { color: var(--accent); }
    takes only a breath of it: on navy a heavier mix goes grey. */
 .grp {
   --tint: var(--green);
-  border: 1px solid color-mix(in oklab, var(--tint) 45%, transparent); border-top: 2px solid var(--tint); border-radius: 6px;
+  border: 1px solid color-mix(in oklab, var(--tint) 25%, transparent); border-top: 2px solid color-mix(in oklab, var(--tint) 75%, transparent); border-radius: 6px;
   background: color-mix(in oklab, var(--tint) 5%, var(--bg));
   padding: 6px 10px 8px; margin-bottom: 10px;
 }
@@ -373,23 +382,23 @@ a { color: var(--accent); }
 /* Where your next move is: a slow cyan breath on that one container. */
 .attention { animation: attention-pulse 2.4s ease-in-out infinite; }
 @keyframes attention-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(84,242,255,0), 0 0 0 1px rgba(84,242,255,0); }
-  50% { box-shadow: 0 0 18px 2px rgba(84,242,255,0.28), 0 0 0 1px rgba(84,242,255,0.55); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(84,242,255,0.2); }
+  50% { box-shadow: 0 0 0 1px rgba(84,242,255,0.7); }
 }
 #strip.attention { animation-name: attention-pulse-strip; }
 @keyframes attention-pulse-strip {
-  0%, 100% { box-shadow: 0 0 14px rgba(84,242,255,0.12), 0 6px 12px rgba(0,0,0,0.6); }
-  50% { box-shadow: 0 0 24px 3px rgba(84,242,255,0.4), 0 6px 12px rgba(0,0,0,0.6); }
+  0%, 100% { box-shadow: 0 0 0 1px rgba(84,242,255,0.15), 0 6px 12px rgba(0,0,0,0.6); }
+  50% { box-shadow: 0 0 0 1px rgba(84,242,255,0.6), 0 6px 12px rgba(0,0,0,0.6); }
 }
 .grp > .board-row { margin-bottom: 6px; }
 .grp > #staff, .grp > #depts, .grp > #wards { margin-bottom: 0; }
 .board-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-.board-row .lbl { font-size: 10px; letter-spacing: 2px; color: var(--accent); text-transform: uppercase; min-width: 64px; }
+.board-row .lbl { font-size: var(--fs-label); letter-spacing: 2px; color: var(--steel); text-transform: uppercase; min-width: 64px; }
 
 #staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
 #depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .dept-tile {
-  border: 1px solid var(--border); border-left: 5px solid var(--border); background: var(--panel-2);
+  border: 1px solid var(--border); border-left: 3px solid var(--border); background: var(--panel-2);
   padding: 8px 10px; min-height: 68px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
   display: flex; flex-direction: column; justify-content: space-between;
 }
@@ -403,10 +412,9 @@ a { color: var(--accent); }
 .dept-tile.tag-exp    { --tag: var(--blue); }
 .dept-tile.tag-pink   { --tag: var(--pink); }
 /* An available tile lights up in its own colour; unavailable ones dim. */
-.dept-tile.can { border-color: var(--tag); background: color-mix(in oklab, var(--tag) 9%, var(--panel-2)); box-shadow: 0 0 12px color-mix(in srgb, var(--tag) 60%, transparent); cursor: pointer; }
-.dept-tile.can .dn { text-shadow: 0 0 6px color-mix(in srgb, var(--tag) 50%, transparent); }
+.dept-tile.can { border-color: var(--tag); background: color-mix(in oklab, var(--tag) 9%, var(--panel-2)); box-shadow: 0 0 8px color-mix(in srgb, var(--tag) 35%, transparent); cursor: pointer; }
 .dept-tile.can:hover { background: color-mix(in oklab, var(--tag) 16%, var(--panel-2)); }
-.dept-tile.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 14px rgba(84,242,255,0.6); }
+.dept-tile.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
 .dept-tile.used { opacity: 0.45; }
 /* A used tool is dimmed and carries its staff member's dot; the hover box
    says "Used this shift". No corner label: one would push the name onto a
@@ -418,22 +426,22 @@ a { color: var(--accent); }
 .dept-tile .meep-on { position: absolute; right: 6px; bottom: 6px; width: 12px; height: 12px; }
 
 .meeple {
-  display: flex; flex-direction: column; gap: 3px; padding: 5px 8px 4px; border: 1px solid var(--border); border-left: 4px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px; padding: 5px 8px 4px; border: 1px solid var(--border); border-left: 3px solid var(--border);
   background: var(--panel-2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
 }
 .meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); line-height: 14px; } /* the dot's height: room for the dice below */
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
-.meeple .key { color: var(--text-dim); font-size: 10px; margin-left: auto; }
+.meeple .key { color: var(--text-dim); font-size: var(--fs-label); margin-left: auto; }
 .meeple .ab { font-size: 11px; color: var(--text); line-height: 1.3; }
-.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; bottom: 5px; font-size: 8px; color: var(--accent); letter-spacing: 1px; }
-.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; bottom: 5px; font-size: 8px; color: var(--red); letter-spacing: 1px; }
+.meeple.used::after { content: "PLACED"; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: var(--accent); letter-spacing: 1px; }
+.meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: var(--red); letter-spacing: 1px; }
 .meeple.returnable { border-color: var(--accent); cursor: pointer; }
 .meeple.clickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); }
 .dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
 .dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); } .dot.c-pink { background: var(--pink); }
-.meeple.avail { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
-.meeple.avail:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.55); }
-.meeple.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 14px rgba(84,242,255,0.6); }
+.meeple.avail { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.meeple.avail:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
+.meeple.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
 .meeple.used { opacity: 0.45; }
 .meeple.off { opacity: 0.45; border-style: dashed; }
 /* The colour accent on the left edge outranks every state above (avail,
@@ -452,13 +460,13 @@ a { color: var(--accent); }
 .spec-card.returnable { border-color: var(--accent); cursor: pointer; }
 .spec-card.clickable { cursor: pointer; }
 .spec-card.clickable:hover { border-color: var(--accent); }
-.spec-card.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 14px rgba(84,242,255,0.6); }
+.spec-card.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
 
 #tray { min-height: 44px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-.token { display: inline-block; padding: 1px 6px; border: 1px solid; border-radius: 3px; font-size: 10px; letter-spacing: 1px; }
+.token { display: inline-block; padding: 1px 6px; border: 1px solid; border-radius: 3px; font-size: var(--fs-label); letter-spacing: 1px; }
 .token.intel { color: var(--violet); border-color: var(--violet); }
 .token.breach { color: var(--red); border-color: var(--red); }
-.badge { display: inline-block; font-size: 9px; padding: 0 4px; border: 1px solid var(--accent); color: var(--accent); letter-spacing: 1px; }
+.badge { display: inline-block; font-size: 10px; padding: 0 4px; border: 1px solid var(--lit); color: var(--steel); letter-spacing: 1px; }
 
 /* Pictograms: a card's rule in dice. */
 .pg { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 2px; line-height: 1; vertical-align: middle; }
@@ -491,24 +499,34 @@ a { color: var(--accent); }
 #tip .th { color: var(--white); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
 #tip[data-c="red"] { --tc: var(--red); } #tip[data-c="yellow"] { --tc: var(--yellow); } #tip[data-c="green"] { --tc: var(--green); }
 #tip[data-c="pink"] { --tc: var(--pink); } #tip[data-c="any"] { --tc: var(--violet); } #tip[data-c="exp"], #tip[data-c="blue"] { --tc: var(--blue); }
-#tip[data-c="white"] { --tc: var(--white); }
+#tip[data-c="white"] { --tc: var(--white); } #tip[data-c="warn"] { --tc: var(--warn); }
+/* A refused click: one short shake. */
+.nope { animation: nope .32s ease-in-out; }
+@keyframes nope { 25% { translate: -3px 0; } 75% { translate: 3px 0; } }
 
 /* ============================================================
    CENTER — queues, display, reports, activation controls
    ============================================================ */
-.center-title { color: var(--accent); font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
+/* When the question is yours, the table asks it: cyan title, the rule in one line. */
+.center-title.yours { color: var(--accent); }
+.pick-hint { margin: -4px 0 8px; }
+.center-title { color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
 #queues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .queue {
   border: 1px solid var(--border); background: var(--panel-2); padding: 6px; min-width: 66px;
   display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s, opacity .3s;
 }
-.queue .qn { color: var(--accent); font-size: 14px; letter-spacing: 1px; }
-.queue .qsum { font-size: 9px; color: var(--text-dim); }
-.queue.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
-.queue.pickable:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.55); }
+.queue .qn { color: var(--white); font-size: 14px; letter-spacing: 1px; }
+.queue .qsum { font-size: var(--fs-label); color: var(--text-dim); }
+.queue .qfit { font-size: var(--fs-label); color: var(--green); }
+.queue .qfit.bad { color: var(--red); }
+.queue.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
+.queue.blocked { cursor: not-allowed; }
+.queue.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.queue.pickable:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
 .queue.taken { opacity: 0.5; }
 .queue.blocked { opacity: 0.4; border-style: dashed; }
-.queue .qby { font-size: 9px; color: var(--accent); letter-spacing: 1px; text-align: center; max-width: 56px; line-height: 1.2; } /* a taker's name wraps rather than widening its queue into a second row */
+.queue .qby { font-size: 10px; color: var(--text); letter-spacing: 1px; text-align: center; max-width: 56px; line-height: 1.2; } /* a taker's name wraps rather than widening its queue into a second row */
 .queue .qcmd { position: absolute; right: -6px; top: -8px; }
 
 #display { display: flex; flex-direction: column; gap: 8px; }
@@ -522,9 +540,9 @@ a { color: var(--accent); }
 #display .disp-row .spec-card .sn { font-size: 13px; }
 #display .disp-row .spec-card .sd { font-size: 12px; }
 .dept-tile.pickable { cursor: pointer; border-color: var(--tag); }
-.dept-tile.pickable:hover { box-shadow: 0 0 12px color-mix(in srgb, var(--tag) 60%, transparent); }
-.spec-card.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
-.spec-card.pickable:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.55); }
+.dept-tile.pickable:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--tag) 35%, transparent); }
+.spec-card.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.spec-card.pickable:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
 /* The colour accent on the top edge outranks pickable/sel/returnable, which
    set border-color on all four sides: it comes after them. */
 .spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
@@ -535,39 +553,39 @@ a { color: var(--accent); }
    the rivals panel with the rival's name on it. */
 .dept-tile.dealt, .spec-card.dealt { animation: deal-in .38s var(--ease-out-quart) both; }
 /* A rival weighing the display: its choice lifts under a cyan outline, named. */
-.dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--accent); outline-offset: 1px; box-shadow: 0 0 14px rgba(84,242,255,0.5); animation: chosen-lift .3s var(--ease-out-quart) both; }
+.dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--accent); outline-offset: 1px; animation: chosen-lift .3s var(--ease-out-quart) both; }
 @keyframes chosen-lift { 0% { transform: none; } 100% { transform: translateY(-4px); } }
-.chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--accent); letter-spacing: 1px; }
+.chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--white); letter-spacing: 1px; }
 /* After your own pick the remaining rival picks run quick. */
 #display.quick .leaving { animation-duration: .3s; }
 #display.quick .chosen { animation-duration: .15s; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
 .dept-tile.leaving, .spec-card.leaving { animation: card-away .6s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
 @keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
-.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 9px; color: var(--accent); letter-spacing: 1px; }
+.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--white); letter-spacing: 1px; }
 .dept-tile.pickable:active, .spec-card.pickable:active, .queue.pickable:active { transform: translateY(1px); }
 .rival-card.took { animation: took-flash .8s ease-out; }
 @keyframes took-flash { 0% { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.6); } 100% { border-color: var(--border); box-shadow: none; } }
 .queue.just .qby { animation: stamp-in .35s var(--ease-out-quart); }
 @keyframes stamp-in { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
-.stack-info { font-size: 10px; color: var(--text-dim); }
+.stack-info { font-size: var(--fs-label); color: var(--text-dim); }
 
 .keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
 
-.rule-card { border: 1px solid var(--accent-dim); background: rgba(84,242,255,0.05); padding: 6px 8px; margin-bottom: 8px; font-size: 11px; }
-.rule-card .rn { color: var(--accent); font-size: 12px; }
+.rule-card { border: 1px solid color-mix(in oklab, var(--warn) 45%, transparent); background: rgba(255,176,0,0.05); padding: 6px 8px; margin-bottom: 8px; font-size: 11px; }
+.rule-card .rn { color: var(--warn); font-size: 12px; } /* an incident event is news: amber */
 .act-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
 
 #reports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .report {
-  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; font-size: 10px;
+  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; font-size: var(--fs-label);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.report .rp { color: var(--accent); font-size: 14px; }
+.report .rp { color: var(--white); font-size: 14px; }
 .report .rneed { display: flex; gap: 3px; }
 .report.top { opacity: 0.55; }
-.report.done-able { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
+.report.done-able { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
 .report.empty { border-style: dashed; opacity: 0.3; }
 .report-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 
@@ -579,9 +597,9 @@ a { color: var(--accent); }
 
 .admin-pick { display: flex; gap: 8px; }
 .admin-card { flex: 1; border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--border)); padding: 8px; cursor: pointer; background: var(--panel-2); }
-.admin-card:hover { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.55); }
+.admin-card:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
 .admin-card .an { color: var(--white); font-size: 12px; margin-bottom: 4px; }
-.admin-card .ad { font-size: 10px; color: var(--text-dim); }
+.admin-card .ad { font-size: var(--fs-label); color: var(--text-dim); }
 
 .collection { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .coll-slot { width: 46px; height: 46px; border: 2px dashed; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -594,7 +612,7 @@ a { color: var(--accent); }
 /* Procurement (Investments): upgrade chips on tools and the Apprentice, the
    vendor lines on the table, the drawn upgrades to pick from. */
 .upgs { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
-.upg { display: inline-block; font-size: 8px; letter-spacing: 1px; text-transform: uppercase; padding: 0 3px; border: 1px solid var(--border); line-height: 12px; color: var(--text-dim); }
+.upg { display: inline-block; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 0 3px; border: 1px solid var(--border); line-height: 13px; color: var(--text-dim); }
 .upg.c-red { color: var(--red); border-color: var(--red); } .upg.c-yellow { color: var(--yellow); border-color: var(--yellow); } .upg.c-green { color: var(--green); border-color: var(--green); }
 .meeple .upg { margin-left: 4px; }
 .meeple.used.invest::after { content: "AT DESK"; }
@@ -603,9 +621,9 @@ a { color: var(--accent); }
 .vendor { flex: 1 1 0; max-width: 150px; border: 1px solid var(--border); border-top: 3px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; }
 .vendor.c-red { border-top-color: var(--red); } .vendor.c-yellow { border-top-color: var(--yellow); } .vendor.c-green { border-top-color: var(--green); }
 .vendor .vn { color: var(--white); font-size: 12px; }
-.vendor .vs { font-size: 10px; color: var(--text-dim); }
+.vendor .vs { font-size: var(--fs-label); color: var(--text-dim); }
 .vendor .vo { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
-.vslot { min-width: 28px; height: 16px; border: 1px dashed var(--border); font-size: 8px; line-height: 14px; letter-spacing: 1px; color: var(--accent); }
+.vslot { min-width: 28px; height: 16px; border: 1px dashed var(--border); font-size: 10px; line-height: 14px; letter-spacing: 1px; color: var(--text); }
 .vslot.on { border-style: solid; border-color: var(--accent-dim); }
 .vendor.can { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.35); }
 .vendor.can:hover { background: rgba(84,242,255,0.08); }
@@ -614,7 +632,7 @@ a { color: var(--accent); }
 .itoken { border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2); padding: 5px 8px; max-width: 210px; cursor: pointer; }
 .itoken.c-red { border-left-color: var(--red); } .itoken.c-yellow { border-left-color: var(--yellow); } .itoken.c-green { border-left-color: var(--green); }
 .itoken:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.35); }
-.itoken .in { color: var(--white); font-size: 11px; } .itoken .id { font-size: 10px; color: var(--text); margin-top: 2px; }
+.itoken .in { color: var(--white); font-size: 11px; } .itoken .id { font-size: var(--fs-label); color: var(--text); margin-top: 2px; }
 /* One more tool and specialist on display: the table grows a row. */
 #app.invest #table { height: 250px; } #app.invest.p4 #table { height: 330px; }
 #app.invest #side-table #table { height: 350px; } #app.invest.p4 #side-table #table { height: 470px; }
@@ -637,9 +655,9 @@ a { color: var(--accent); }
 .ctile.can:hover { background: rgba(84,242,255,0.1); }
 .ctile.here { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ctile.trail { background: rgba(84,242,255,0.06); }
-.ctile .ctok, .ctile .van { position: absolute; z-index: 3; font-size: 8px; line-height: 12px; padding: 0 3px; background: var(--bg); border: 1px solid var(--warn); color: var(--warn); letter-spacing: 1px; }
+.ctile .ctok, .ctile .van { position: absolute; z-index: 3; font-size: 9px; line-height: 12px; padding: 0 3px; background: var(--bg); border: 1px solid var(--warn); color: var(--warn); letter-spacing: 1px; }
 .ctile .ctok { right: 1px; top: 1px; }
-.strip-rule .ctok { display: inline-block; font-size: 9px; line-height: 12px; padding: 0 3px; border: 1px solid var(--warn); color: var(--warn); margin-right: 2px; }
+.strip-rule .ctok { display: inline-block; font-size: 10px; line-height: 12px; padding: 0 3px; border: 1px solid var(--warn); color: var(--warn); margin-right: 2px; }
 .strip-rule .ctok.t-red { color: var(--red); border-color: var(--red); } .strip-rule .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .strip-rule .ctok.t-green { color: var(--green); border-color: var(--green); }
 .strip-rule .ctok.t-contractor { color: var(--white); border-color: var(--white); }
 .ctile .ctok.t-red { color: var(--red); border-color: var(--red); } .ctile .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .ctile .ctok.t-green { color: var(--green); border-color: var(--green); }
@@ -650,8 +668,8 @@ a { color: var(--accent); }
 .ctile .van.side-w { left: -1px; top: 50%; transform: translateY(-50%); } .ctile .van.side-e { right: -1px; top: 50%; transform: translateY(-50%); }
 .ctile .van.heli { left: 1px; top: 1px; border-style: dashed; }
 .ctile .pm { position: absolute; left: 3px; bottom: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index: 3; }
-.city-order { font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 6px; }
-.city-order .you { color: var(--accent); }
+.city-order { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 6px; }
+.city-order .you { color: var(--white); font-weight: bold; }
 .token.recon { color: var(--warn); border-color: #cc8800; }
 /* The map shares the table with the display, so the table gets taller. */
 #app.city #table { height: min(300px, 42vh); }
@@ -662,26 +680,27 @@ a { color: var(--accent); }
    SIDE — rivals + SIEM log
    ============================================================ */
 #rivals { display: flex; flex-direction: column; gap: 6px; }
-.rival-card { border: 1px solid var(--border); background: var(--panel-2); padding: 5px 7px; font-size: 10px; }
+.rival-card { border: 1px solid var(--border); background: var(--panel-2); padding: 5px 7px; font-size: var(--fs-label); }
 .rival-card .rn { color: var(--white); font-size: 11px; display: flex; justify-content: space-between; }
-.rival-card .rn .sc { color: var(--accent); }
+.rival-card .rn .sc { color: var(--white); }
 .rival-card .rl { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-dim); margin-top: 2px; }
 .rival-card .rs { color: var(--text-dim); font-style: italic; margin-top: 2px; }
-.rival-card .rdice { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; }
-.rival-card.cmd .rn::after { content: "CMD"; font-size: 8px; color: var(--accent); border: 1px solid var(--accent); padding: 0 3px; margin-left: 4px; }
+.rival-card .rdice { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; align-items: center; }
+.rival-card .rsep { width: 1px; align-self: stretch; margin: 0 3px; background: var(--lit); } /* queued | worked */
+.rival-card.cmd .rn::after { content: "CMD"; font-size: 9px; color: var(--steel); border: 1px solid var(--lit); padding: 0 3px; margin-left: 4px; }
 .rival-card.turn { border-color: var(--accent); }
 
 /* The feed fills the side column down to the bottom of the action strip and
    never sets its height: size containment keeps a long log from stretching
    the row, so the board column decides how tall the game is. */
-#siem { flex: 1 1 0; min-height: 120px; contain: size; display: flex; flex-direction: column; margin-bottom: 9px; } /* the board panel's padding + border under the strip */
+#siem { flex: 1 1 0; min-height: 120px; contain: size; display: flex; flex-direction: column; margin-bottom: 0; } /* level with the strip: the board has no padding of its own now */
 #siem .log-scroll { flex: 1; min-height: 0; overflow-y: auto; }
-#siem ul { list-style: none; margin: 0; padding: 0; font-size: 11px; }
+#siem ul { list-style: none; margin: 0; padding: 0; font-size: var(--fs-label); }
 #siem li { padding: 2px 0; border-bottom: 1px solid var(--line); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
 @keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
 #siem li.warn { color: var(--warn); } #siem li.bad { color: var(--red); } #siem li.good { color: var(--green); } #siem li.sys { color: var(--text-dim); }
 #siem li .ts { color: #56627f; margin-right: 4px; }
-#log-older summary { cursor: pointer; color: var(--text-dim); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; padding: 6px 0 3px; list-style: none; }
+#log-older summary { cursor: pointer; color: var(--text-dim); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; padding: 6px 0 3px; list-style: none; }
 #log-older summary::before { content: "▸ "; } #log-older[open] summary::before { content: "▾ "; }
 #log-older summary::-webkit-details-marker { display: none; }
 #log-older summary:hover { color: var(--white); }
@@ -697,11 +716,11 @@ a { color: var(--accent); }
   min-height: 171px;
   position: sticky; bottom: 0; z-index: 5; margin: 12px 0 0;
   background: var(--panel); border: 1px solid var(--accent-dim); padding: 8px 10px;
-  box-shadow: 0 0 14px rgba(84,242,255,0.12), 0 6px 12px rgba(0,0,0,0.6);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.6);
 }
 .strip-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
-.strip-phase { color: var(--accent); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-.strip-shift { color: var(--text-dim); font-size: 10px; letter-spacing: 1px; text-transform: uppercase; }
+.strip-phase { color: var(--steel); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
+.strip-shift { color: var(--text-dim); font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; }
 .strip-rule { font-size: 12px; color: var(--text); padding: 3px 0; }
 .strip-rule b { color: var(--white); font-weight: normal; }
 .strip-rule .strip-count { color: var(--accent); margin-left: 6px; }
@@ -712,22 +731,22 @@ a { color: var(--accent); }
 .strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
 .strip-tools .hint { margin: 0 0 0 auto; }
 .ladder { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
-.lcell { font-size: 10px; padding: 1px 5px; border: 1px solid var(--border); color: var(--text-dim); }
+.lcell { font-size: var(--fs-label); padding: 1px 5px; border: 1px solid var(--border); color: var(--text-dim); }
 .lcell b { font-weight: normal; color: var(--text); }
-.lcell.cur { color: #000; background: var(--accent); border-color: var(--accent); }
-.lcell.cur b { color: #000; }
-.lcell.next { color: var(--accent); border-color: var(--accent-dim); }
+.lcell.cur { color: var(--bg); background: var(--white); border-color: var(--white); }
+.lcell.cur b { color: var(--bg); }
+.lcell.next { color: var(--white); border-color: var(--lit); }
 .action-btn {
   background: transparent; color: var(--white); border: 1px solid var(--lit); padding: 6px 12px;
   cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s;
 }
-.action-btn:hover:not(:disabled) { background: rgba(219,228,251,0.12); border-color: var(--white); box-shadow: 0 0 8px rgba(219,228,251,0.4); }
+.action-btn:hover:not(:disabled) { background: rgba(219,228,251,0.1); border-color: var(--white); }
 .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .action-btn.primary { border-color: var(--accent); color: var(--accent); }
-.action-btn.primary:hover:not(:disabled) { background: rgba(84,242,255,0.12); box-shadow: 0 0 8px rgba(84,242,255,0.4); }
+.action-btn.primary:hover:not(:disabled) { background: rgba(84,242,255,0.12); }
 .action-btn.danger { border-color: var(--red); color: var(--red); }
-.action-btn.sm { padding: 3px 8px; font-size: 10px; }
-.action-btn .k { color: var(--text-dim); font-size: 9px; margin-left: 4px; }
+.action-btn.sm { padding: 3px 8px; font-size: var(--fs-label); }
+.action-btn .k { color: var(--text-dim); font-size: 10px; margin-left: 4px; }
 
 /* ============================================================
    MODAL + HELP + MENU
@@ -740,11 +759,11 @@ a { color: var(--accent); }
 @keyframes modal-bg-in { from { opacity: 0; } to { opacity: 1; } }
 #modal-content {
   background: var(--panel); border: 1px solid var(--lit); padding: 20px 24px; max-width: 760px; width: 100%;
-  max-height: 92vh; overflow-y: auto; box-shadow: 0 0 30px rgba(84,242,255,0.12); animation: modal-in .25s var(--ease-out-quart);
+  max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 70px rgba(0,0,0,0.7); animation: modal-in .25s var(--ease-out-quart);
 }
 @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
-#modal-content h2 { color: var(--accent); letter-spacing: 3px; font-weight: normal; margin: 0 0 8px; font-size: 20px; text-align: center; }
-#modal-content h4 { color: var(--accent); font-weight: normal; letter-spacing: 1px; margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; }
+#modal-content h2 { color: var(--white); letter-spacing: 3px; font-weight: normal; margin: 0 0 8px; font-size: 20px; text-align: center; }
+#modal-content h4 { color: var(--steel); font-weight: normal; letter-spacing: 1px; margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; }
 #modal-content p, #modal-content li { font-size: 12px; }
 #modal-content ul { padding-left: 18px; margin: 4px 0; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
@@ -754,30 +773,31 @@ a { color: var(--accent); }
 .preset-btn.on { background: rgba(84,242,255,0.15); border-color: var(--accent); color: var(--accent); }
 .rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
 .rule-row .rl { color: var(--white); }
-.rule-row .rd { color: var(--text-dim); font-size: 10px; grid-column: 2; margin-top: -2px; }
+.rule-row .rd { color: var(--text-dim); font-size: var(--fs-label); grid-column: 2; margin-top: -2px; }
 .seg { display: flex; flex-wrap: wrap; }
 .seg-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 10px; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; }
 .seg-btn + .seg-btn { margin-left: -1px; }
 .seg-btn:hover { color: var(--white); border-color: var(--lit); }
 .seg-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(84,242,255,0.12); position: relative; z-index: 1; }
-details.addons summary { cursor: pointer; color: var(--accent); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; list-style: none; }
+details.addons summary { cursor: pointer; color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; list-style: none; }
 details.addons summary::before { content: "▸ "; } details.addons[open] summary::before { content: "▾ "; }
 details.addons summary::-webkit-details-marker { display: none; }
-.rules-head { color: var(--accent); font-size: 10px; letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
+.rules-head { color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
 .help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
 .help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
 .help-tab.on { color: var(--accent); border-color: var(--border); }
 .help-panel { display: none; } .help-panel.on { display: block; }
 .help-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
-.help-table th { color: var(--accent); font-weight: normal; }
+.help-table th { color: var(--steel); font-weight: normal; }
+.help-table .orig { color: var(--text-dim); font-size: var(--fs-label); margin-top: 1px; } /* the Dice Hospital name */
 .help-table td.hp { white-space: nowrap; vertical-align: middle; padding-top: 5px; padding-bottom: 5px; } /* a card's pictogram, kept on one line */
 .help-table td.hp .pg { flex-wrap: nowrap; }
 @media (max-width: 600px) { .help-table td.hp { white-space: normal; } .help-table td.hp .pg { flex-wrap: wrap; } } /* a phone has no room for a one-line card column */
 .score-table { font-size: 12px; border-collapse: collapse; margin: 8px auto; }
 .score-table td { padding: 3px 10px; border-bottom: 1px solid var(--line); }
-.score-table .tot { color: var(--accent); font-size: 14px; }
-.grade { text-align: center; font-size: 40px; color: var(--accent); text-shadow: 0 0 20px rgba(84,242,255,0.6); margin: 6px 0; }
+.score-table .tot { color: var(--white); font-size: 14px; }
+.grade { text-align: center; font-size: 40px; color: var(--accent); text-shadow: 0 0 12px rgba(84,242,255,0.3); margin: 6px 0; }
 .tut-step { min-height: 90px; }
 
 /* ============================================================
@@ -801,8 +821,8 @@ details.addons summary::-webkit-details-marker { display: none; }
   /* Two cards per row whatever the column width; equal widths, so a card
      leaving never resizes the rest. */
   #side-table #display .disp-row > * { flex: 1 1 calc(50% - 4px); max-width: calc(50% - 4px); min-width: 0; }
-  #side-table #display .disp-row .spec-card { font-size: 10px; }
-  #side-table #display .disp-row .spec-card .sd { font-size: 10px; }
+  #side-table #display .disp-row .spec-card { font-size: var(--fs-label); }
+  #side-table #display .disp-row .spec-card .sd { font-size: var(--fs-label); }
   #side-table #queues, #side-table .collection, #side-table .keep-row { justify-content: flex-start; }
   #side-table .admin-pick { flex-direction: column; }
 }
@@ -1313,11 +1333,11 @@ const WAIT = "wait", ANIM = "anim", NEXT = "next";
 
 const UI = {
   sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
-  eventQueue: [], queueTimer: null, boardMax: 0, tableMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
+  eventQueue: [], queueTimer: null, pick: null, clickEl: null, boardMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
   flipRects: new Map(), cardH: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   newGameConfirmTimer: null, phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
-  lastDieClick: null, speed: 1, addonsOpen: true,
+  lastDieClick: null, speed: 1, addonsOpen: false, // house rules stay folded until one is on, or Custom asks for them
 };
 const SPEED_FACTOR = { 1: 1, 2: 0.35, 3: 0 };
 const WIDE_TABLE_MQ = "(min-width: 1200px)"; // from here up the shared table sits in the side column (keep in step with the CSS)
@@ -2267,8 +2287,8 @@ const STEP = {
       G.turnOrder = G.players.slice().sort((a, b) => a.ambulance - b.ambulance).map(p => p.id);
       const lowest = playersInTurnOrder()[0];
       lowest.bloodBags++;
-      if (G.firstPlayer !== lowest.id) log(`${lowest.name} took the lowest queue: +1 intel token and the Incident Commander role.`, "warn");
-      else log(`${lowest.name} took the lowest queue: +1 intel token, stays Incident Commander.`, "warn");
+      if (G.firstPlayer !== lowest.id) log(`${lowest.name} took the lowest queue: +1 intel token and the Incident Commander role.`);
+      else log(`${lowest.name} took the lowest queue: +1 intel token, stays Incident Commander.`);
       G.firstPlayer = lowest.id;
       for (const p of G.players) {
         const a = G.ambulances.find(x => x.num === p.ambulance);
@@ -3296,7 +3316,15 @@ function onKeepToggle(uid) {
   updateAll();
 }
 function onKeepConfirm() { if (!inPhase("intake", "keep") || UI.sel.dice.length !== 3) return; applyKeep(human(), UI.sel.dice.slice()); resetSel(); advance(); }
-function onQueueClick(num) { if (!inPhase("intake", "pick") || !canPickAmbulance(human(), num)) return; sfx("place"); applyPickAmbulance(human(), num); advance(); }
+/* Queue and improvement picks are final and the rivals move straight after,
+   so a pick takes two clicks (or a click and Enter), as a host does. */
+function onQueueClick(num) {
+  if (!inPhase("intake", "pick")) return;
+  const p = human();
+  if (!canPickAmbulance(p, num)) { nudge(p.id === G.firstPlayer && num === 1 ? "As Incident Commander you may not take queue #1." : "You can't take that queue."); return; }
+  if (!(UI.pick && UI.pick.kind === "queue" && UI.pick.idx === num)) { UI.pick = { kind: "queue", idx: num }; sfx("click"); updateAll(); return; }
+  UI.pick = null; sfx("place"); applyPickAmbulance(p, num); advance();
+}
 function onOverflowToggle(uid) {
   const O = G.overflow; if (!O) return;
   const p = human();
@@ -3330,6 +3358,8 @@ function onAutoPlace() {
 function onOverflowConfirm() { const O = G.overflow; if (!inPhase("intake", "place") || !O || O.marked.length !== O.shortage) return; applyOverflow(); advance(); }
 function onDisplayClick(kind, idx) {
   if (!inPhase("improve", "take")) return;
+  if (!(UI.pick && UI.pick.kind === kind && UI.pick.idx === idx)) { UI.pick = { kind, idx }; sfx("click"); updateAll(); return; }
+  UI.pick = null;
   const el = document.querySelector(`[data-act="${kind === "dept" ? "dispDept" : "dispSpec"}"][data-idx="${idx}"]`);
   const uidFrom = G.nextUid;
   if (!applyTake(human(), kind, idx)) return;
@@ -3408,9 +3438,10 @@ function onDeptClick(uid) {
   if (inPhase("activate", "human") && UI.sel.state === "returning") { const d = deptOf(human(), uid); if (d && d.improvement) applyReturnNow("dept", uid); return; }
   if (!inPhase("activate", "human")) return;
   const p = human(), dept = deptOf(p, uid), s = UI.sel;
-  if (!dept || dept.used) return;
-  if (s.state !== "meepleSel" && s.state !== "targeting") return;
-  if (!canActivate(dept, p)) return;
+  if (!dept) return;
+  if (dept.used) { nudge(`${effDef(dept).name} is already used this shift.`); return; }
+  if (s.state !== "meepleSel" && s.state !== "targeting") { if (s.state === "idle") nudge("Pick a staff member first, then a tool."); return; }
+  if (!canActivate(dept, p)) { nudge(`${effDef(dept).name} has no valid targets right now.`); return; }
   if (s.state === "targeting" && s.deptUid === uid) return;
   if (effDef(dept).op === "rotation") { const mm = meepleOf(p, s.meepleUid); if (!mm || mm.kind !== "nurse") return; s.state = "rotation"; s.deptUid = uid; s.dice = []; computeLegal(); updateAll(); return; }
   s.state = "targeting"; s.deptUid = uid; s.dice = [];
@@ -3457,7 +3488,7 @@ function onDieClick(uid) {
   switch (s.state) {
     case "targeting":
     case "spec":
-      if (!UI.legalTargets.has(uid)) return;
+      if (!UI.legalTargets.has(uid)) { nudge(s.state === "targeting" && deptOf(p, s.deptUid) ? `${effDef(deptOf(p, s.deptUid)).name} can't take that host.` : "That host isn't a choice for this follow-up."); return; }
       if (dbl) {
         if (!s.dice.includes(uid)) s.dice.push(uid);
         computeLegal();
@@ -3495,7 +3526,7 @@ function onDieClick(uid) {
       if (o.count > 0) s.state = "choice"; else { finishSpecLog(); nextFollowUp(); return; }
       break;
     }
-    default: return;
+    default: if (s.state === "idle" || s.state === "meepleSel") nudge(s.state === "idle" ? "Pick a staff member, then a tool, then its hosts." : "Pick a tool for this staff member first."); return;
   }
   computeLegal(); updateAll();
 }
@@ -3673,6 +3704,7 @@ function onKeepToken(type) { const p = human(); if (!inPhase("intake", "cityColl
 function onLaneUse() { const p = human(); if (!inPhase("intake", "cityOrder") || p.laneDone) return; if (useLane(p)) sfx("intel"); advance(); }
 function onLaneKeep() { const p = human(); if (!inPhase("intake", "cityOrder") || p.laneDone) return; p.laneDone = true; advance(); }
 function cancelSel() {
+  if (UI.pick) { UI.pick = null; updateAll(); return; }
   const s = UI.sel;
   if (!inPhase("activate", "human")) return;
   switch (s.state) {
@@ -3770,7 +3802,25 @@ function setupInput() {
     }
   });
 }
+/* A click the rules refuse: the target shakes and the hover box says why,
+   so a dead click never reads as a slow game. */
+function nudge(msg) {
+  const el = UI.clickEl;
+  if (el && el.isConnected) { el.classList.remove("nope"); void el.offsetWidth; el.classList.add("nope"); }
+  sfx("error");
+  if (!msg || !TIP.el) return;
+  clearTimeout(TIP.timer); TIP.target = null;
+  const tip = TIP.el, r = el && el.isConnected ? el.getBoundingClientRect() : null;
+  tip.dataset.c = "warn"; tip.innerHTML = `<div class="tb">${esc(msg)}</div>`; tip.classList.add("on");
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  const top = r ? (r.top - h - 8 < 8 ? r.bottom + 8 : r.top - h - 8) : innerHeight / 2;
+  const left = r ? Math.max(8, Math.min(r.left + r.width / 2 - w / 2, innerWidth - w - 8)) : (innerWidth - w) / 2;
+  tip.style.left = left + "px"; tip.style.top = Math.max(8, top) + "px";
+  TIP.timer = setTimeout(hideTip, 1800);
+  const ann = document.getElementById("announcements"); if (ann) ann.textContent = msg;
+}
 function dispatchAct(el) {
+  UI.clickEl = el;
   const a = el.dataset.act, uid = el.dataset.uid ? parseInt(el.dataset.uid, 10) : null, idx = el.dataset.idx !== undefined ? parseInt(el.dataset.idx, 10) : null;
   switch (a) {
     case "die": onDieClick(uid); break;
@@ -4322,6 +4372,8 @@ const SFX = {
   intel:     () => { playTone(784, "sine", 0.08, 0.07); playTone(1046, "sine", 0.12, 0.07, 0.07); },
   win:       () => [523, 659, 784, 1046].forEach((f, i) => playTone(f, "square", 0.25, 0.1, i * 0.15)),
   lose:      () => [392, 330, 262, 196].forEach((f, i) => playTone(f, "sawtooth", 0.3, 0.1, i * 0.2)),
+  click:     () => playTone(760, "triangle", 0.04, 0.05),                 // a pick is held, not yet taken
+  error:     () => { playTone(196, "square", 0.06, 0.05); playTone(165, "square", 0.08, 0.05, 0.07); }, // the rules refused a click
 };
 function sfx(name) { if (UI.muted || !SFX[name]) return; SFX[name](); }
 function cycleSpeed() {
@@ -4412,18 +4464,16 @@ function holdBoard() {
   const board = document.getElementById("board");
   if (!board || !document.getElementById("strip")) return;
   const key = innerWidth + "x" + innerHeight;
-  if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; UI.tableMax = 0; }
-  // The shared table in the side column is as tall as the most it has held
-  // this game, not a height reserved for the longest card text: with the
-  // rules drawn as dice it holds far less.
+  if (UI.boardFor !== G || UI.boardKey !== key) { UI.boardFor = G; UI.boardKey = key; UI.boardMax = 0; }
+  // The shared table in the side column is as tall as what it holds right
+  // now: the side column cannot move the board, so a short display hands its
+  // room to the rivals below it. The network map keeps its stylesheet height
+  // as a ceiling and scrolls inside past that.
   const table = document.querySelector("#side-table #table");
   if (table) {
-    // The network map keeps its stylesheet height as a ceiling (it scrolls
-    // inside past that); every other table simply holds what it has held.
     const ceiling = G.cfg.city ? table.offsetHeight : Infinity;
     table.style.height = "auto";
-    UI.tableMax = Math.max(UI.tableMax, Math.min(table.offsetHeight, ceiling));
-    table.style.height = UI.tableMax + "px";
+    table.style.height = Math.min(table.offsetHeight, ceiling) + "px";
   }
   board.style.minHeight = "";
   // On a phone the page just scrolls: nothing floats, so there is nothing to
@@ -4443,11 +4493,14 @@ function holdBoard() {
   if (siem) need += (parseFloat(css(siem).minHeight) || 0) + (parseFloat(css(siem).marginBottom) || 0);
   const cap = parseFloat(css(app).maxHeight);
   const room = isFinite(cap) ? cap - (app.offsetHeight - board.offsetHeight) : Infinity;
-  const hold = Math.min(Math.max(UI.boardMax, side && css(side).contain.includes("size") ? need : 0), room);
-  board.style.minHeight = Math.max(0, hold) + "px";
+  // Held at the most it has needed, the side column's floor included, so a
+  // phase with a taller table never shrinks the game back afterwards.
+  if (side && css(side).contain.includes("size")) UI.boardMax = Math.max(UI.boardMax, Math.min(need, room));
+  board.style.minHeight = Math.max(0, Math.min(UI.boardMax, room)) + "px";
 }
 function updateAll() {
   if (UI.headless || !G) return;
+  if (UI.pick && !(G.actor === 0 && ((UI.pick.kind === "queue" && inPhase("intake", "pick")) || (UI.pick.kind !== "queue" && inPhase("improve", "take"))))) UI.pick = null;
   document.getElementById("app").classList.toggle("p4", G.players.length >= 4);
   document.getElementById("app").classList.toggle("city", !!G.cfg.city);
   document.getElementById("app").classList.toggle("invest", !!G.cfg.invest);
@@ -4531,7 +4584,8 @@ function renderDie(die, opts = {}) {
   if (opts.cls) cls.push(opts.cls);
   const who = isPink(die) ? (die.infant ? "Pink guest" : "Pink hypervisor") : `${COLOUR_NAME[c]} host`;
   const label = `${who} at ${die.value}${die.tmpColour ? ", retagged from " + COLOUR_NAME[die.colour] : ""}${die.ready ? ", ready to restore with its family" : ""}${die.treated ? ", worked" : ""}${opts.aria || ""}`;
-  const act = opts.act ? ' data-act="die" role="button" tabindex="0"' : ' role="img"';
+  // A host that is not a choice right now still answers a mouse click, with the reason (no tab stop).
+  const act = opts.act ? ' data-act="die" role="button" tabindex="0"' : opts.nudge ? ' data-act="die" role="img"' : ' role="img"';
   return `<div class="${cls.join(" ")}" data-uid="${die.uid}"${act} aria-label="${esc(label)}" title="${esc(label)}">${pips()}</div>`;
 }
 function renderPlainDie(colour, value, extra) { return `<span class="die die-sm c-${colour} v-${value} ${extra || ""}" role="img" aria-label="${colour} ${value}">${pips()}</span>`; }
@@ -4550,7 +4604,7 @@ function dieState(uid) {
   } else if (G.phase === "final" && G.step === "collections" && G.actor === 0 && !G.gameOver) {
     if (collectionMoves(human()).some(m => m.uid === uid)) { cls += " target-ok clickable"; act = true; }
   }
-  return { cls, act };
+  return { cls, act, nudge: !act && G.phase === "activate" && G.step === "human" };
 }
 function deptRule(def) {
   if (def.rule) return def.rule;
@@ -4681,6 +4735,23 @@ function specPicto(def) {
    plain title met on the way is taken over the first time it is
    hovered, so the browser's own tooltip never shows.
    ============================================================ */
+/* The Dice Hospital name of each tool and specialist, for owners reading the
+   reskin against the cardboard. The Virtualization cards are left out: the
+   rule tables record what they do, not what they were called. */
+const ORIGINAL_NAME = {
+  ccu: "Critical Care Unit", oncology: "Oncology", pharmacy: "Pharmacy", intensive: "Intensive Care", imaging: "Imaging", clinic: "Clinic",
+  opTheatre: "Operating Theatre", cardiology: "Cardiology", anaesthesia: "Anaesthesia", crash: "Crash Centre", ent: "Ear, Nose & Throat",
+  immunology: "Immunology", allergy: "Allergy Centre", ortho: "Orthopaedics", urology: "Urology", renal: "Renal Medicine",
+  radiology: "Radiology", triageCtr: "Triage Centre", drugTrial: "Drug Trial Centre", physio: "Physiotherapy",
+  expTherapy: "Experimental Therapy", training: "Training Department", nursery: "Paediatric Ward", rotation: "Swap Room",
+  surgeon: "Surgeon", anaesthetist: "Anaesthetist", cardiologist: "Cardiologist", pharmacist: "Pharmacist", virologist: "Virologist",
+  microbiologist: "Microbiologist", haematologist: "Haematologist", urologist: "Urologist", radiologist: "Radiologist",
+  triageNurse: "Triage Nurse", paramedic: "Paramedic", gp: "General Practitioner", admissions: "Admissions Nurse",
+  procurementLead: "Investment Advisor", vendorMgr: "Hospital Strategist", integrationEng: "Project Consultant",
+  automationEng: "Strategy Consultant", apprentice: "Trainee", pathologist: "Pathologist", expChemist: "Experimental Chemist",
+  registrar: "Registrar", medStudent: "Medical Student", physioTh: "Physiotherapist", haemTech: "Haematology Technician",
+};
+const withOriginal = (name, type) => ORIGINAL_NAME[type] && ORIGINAL_NAME[type] !== name ? `${name} · ${ORIGINAL_NAME[type]}` : name;
 function tipAttrs(head, body, colour) {
   return `data-tip="${esc(body)}" data-tip-h="${esc(head)}" data-tip-c="${esc(colour || "")}"`;
 }
@@ -4746,11 +4817,11 @@ function setupTips() {
 }
 function renderDeptTile(type, cls, attrs, inner) {
   const def = DEPT_DEFS[type];
-  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, deptDesc(def), def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div></div>${inner || ""}</div>`;
+  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} ${tipAttrs(withOriginal(def.name, type), deptDesc(def), def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div></div>${inner || ""}</div>`;
 }
 function renderSpecCard(type, cls, attrs) {
   const def = SPEC_DEFS[type];
-  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, specDesc(def), def.colour)}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${specPicto(def)}</div></div>`;
+  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""} ${tipAttrs(withOriginal(def.name, type), specDesc(def), def.colour)}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${specPicto(def)}</div></div>`;
 }
 function renderMeeple(p, m, key) {
   const s = UI.sel, cls = ["b-" + m.colour];
@@ -4781,7 +4852,7 @@ function renderMeeple(p, m, key) {
     if (def.special === "copy" && p.consultantCopy) { ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`; picto = specPicto(SPEC_DEFS[p.consultantCopy]); }
   }
   const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" ${tipAttrs(meepleLabel(p, m), ability, m.colour)}><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${picto}</div></div>`;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" ${tipAttrs(spec ? withOriginal(meepleLabel(p, m), spec.type) : meepleLabel(p, m), ability, m.colour)}><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${picto}</div></div>`;
 }
 // The guest segment under a quarantine segment: its guests, and the
 // placement it offers while it holds any.
@@ -4798,7 +4869,7 @@ function renderNursery(p, wi) {
   const m = p.meeples.find(x => x.deptUid === n.uid);
   const dot = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
   let html = `<div class="${cls.join(" ")}" data-act="dept" data-uid="${n.uid}" role="button" tabindex="0" aria-disabled="${!cls.includes("can")}" aria-label="Guest segment ${wi + 1}, ${n.open ? n.dice.length + " " + plural(n.dice.length, "guest") : "offline"}" title="${esc(why)}"><div class="nh"><span>guests</span><span>${n.open ? "1 pink host → +1" : "offline"}</span></div><div class="nslots">`;
-  for (const d of n.dice) { const x = dieState(d.uid); html += `<div class="slot g">${renderDie(d, { cls: x.cls, act: x.act, small: true })}</div>`; }
+  for (const d of n.dice) { const x = dieState(d.uid); html += `<div class="slot g">${renderDie(d, { cls: x.cls, act: x.act, nudge: x.nudge, small: true })}</div>`; }
   html += `</div>${dot}</div>`;
   return html;
 }
@@ -4809,7 +4880,7 @@ function renderBoard() {
   const intake = G.phase === "intake" && G.step === "place";
   const consult = G.phase === "activate" && G.step === "consultant";
   const investing = G.phase === "improve" && G.step === "invest" && G.actor === 0 && !UI.animating;
-  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span></h3>`;
+  let html = `<h3>Your SOC${!G.cfg.solo && G.firstPlayer === 0 ? ' <span class="badge">Incident Commander</span>' : ""}${G.round === 1 && !G.overtime ? '<span class="h3-note">staff · tools · quarantine (top row queued, bottom row worked)</span>' : ""}</h3>`;
   // On a wide viewport the shared table sits in the side column, above the
   // rivals, so the board column keeps its height for the SOC itself.
   const center = renderCenter();
@@ -4837,7 +4908,7 @@ function renderBoard() {
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
     const clickable = cls.includes("can") || cls.includes("returnable");
-    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" ${tipAttrs(def.name, why, def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" ${tipAttrs(withOriginal(def.name, d.type), why, def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
   }
   html += '</div></section>';
   html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
@@ -4857,7 +4928,7 @@ function renderBoard() {
         const d = b[k];
         const x = d ? dieState(d.uid) : null;
         const open = !d && k === "u" && (placing ? ok : intake);
-        html += `<div class="slot ${k}${d ? "" : " empty"}${open ? " open" : ""}"${open && ok ? ` data-act="place" data-ward="${wi}" role="button" tabindex="0"` : ""} aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act }) : ""}</div>`;
+        html += `<div class="slot ${k}${d ? "" : " empty"}${open ? " open" : ""}"${open && ok ? ` data-act="place" data-ward="${wi}" role="button" tabindex="0"` : ""} aria-label="${k === "u" ? "Queued" : "Worked"} slot${d ? "" : ", empty"}">${d ? renderDie(d, { cls: x.cls, act: x.act, nudge: x.nudge }) : ""}</div>`;
       }
       html += '</div>';
     }
@@ -4894,17 +4965,27 @@ function renderCenter() {
   } else if (st === "extraReveal" && G.actor === 0 && G.players.length === 2) {
     html += '<div class="center-title">Extra reveal</div>' + renderDisplay(false);
   } else if (ph === "intake" && (st === "draw" || st === "pick")) {
-    html += '<div class="center-title">Escalation queues</div><div id="queues">';
     const myTurn = st === "pick" && G.actor === 0 && !UI.animating && p.ambulance === null;
+    html += myTurn
+      ? `<div class="center-title yours">Your pick: take one queue</div><div class="hint pick-hint">Lowest earns intel + Commander${p.id === G.firstPlayer ? "; not #1 for you" : ""}. Click twice to take.</div><div id="queues">`
+      : '<div class="center-title">Escalation queues</div><div id="queues">';
+    const free = emptyBeds(p).length;
     for (const a of G.ambulances.slice().sort((x, y) => x.num - y.num)) {
       const taken = a.takenBy !== null;
       const blocked = myTurn && !canPickAmbulance(p, a.num);
-      const cls = (taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "") + (taken && a.num === G.lastPick ? " just" : "");
-      const attrs = myTurn && !blocked ? `data-act="queue" data-idx="${a.num}" role="button" tabindex="0"` : "";
+      const picked = myTurn && UI.pick && UI.pick.kind === "queue" && UI.pick.idx === a.num;
+      const cls = (taken ? "taken" : myTurn && !blocked ? "pickable" : blocked ? "blocked" : "") + (taken && a.num === G.lastPick ? " just" : "") + (picked ? " sel" : "");
+      // A blocked queue still answers a click, with the reason.
+      const attrs = myTurn && !taken ? `data-act="queue" data-idx="${a.num}" role="button" tabindex="${blocked ? -1 : 0}"${blocked ? ' aria-disabled="true"' : ""}` : "";
       html += `<div class="queue ${cls}" ${attrs} aria-label="Queue ${a.num}${taken ? ", taken by " + G.players[a.takenBy].name : ""}">${a.num === 1 && G.players[G.firstPlayer] ? '' : ''}<div class="qn">#${a.num}</div>`;
       for (const d of a.dice) html += renderDie(d, { small: true });
       if (!a.dice.length && !taken) html += '<div class="qsum">—</div>';
-      if (a.dice.length) html += `<div class="qsum">Σ ${sum(a.dice.map(d => d.value))}</div>`;
+      if (a.dice.length) html += `<div class="qsum" title="Total of the dice: the queues are dealt lowest first">sum ${sum(a.dice.map(d => d.value))}</div>`;
+      // Will it fit? Hosts that do not fit are written off from your quarantine as breaches.
+      if (myTurn && !taken && !blocked && a.dice.length) {
+        const over = a.dice.length + (G.cfg.epidemic ? 1 : 0) - free;
+        html += over > 0 ? `<div class="qfit bad" title="${over} existing ${plural(over, "host")} would be written off as ${plural(over, "a breach", "breaches")} to make room">${over} breach</div>` : `<div class="qfit" title="Fits in your free quarantine slots">fits</div>`;
+      }
       if (taken) html += `<div class="qby">${esc(G.players[a.takenBy].name)}</div>`;
       html += '</div>';
     }
@@ -4929,7 +5010,11 @@ function renderCenter() {
   } else if (ph === "improve" && st === "invest" && G.cfg.invest) {
     html += '<div class="center-title">Procurement desk</div>' + renderProcurement();
   } else if (ph === "improve") {
-    html += `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>` + renderDisplay(st === "take" && G.actor === 0 && !UI.animating);
+    const mine = st === "take" && G.actor === 0 && !UI.animating;
+    html += mine
+      ? `<div class="center-title yours">Your pick: take ${G.cfg.solo ? "the tool or the specialist" : "one tool or specialist"}</div><div class="hint pick-hint">${G.cfg.solo ? "The other goes back. " : ""}Click twice to take.</div>`
+      : `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>`;
+    html += renderDisplay(mine);
   } else if (ph === "activate" && st === "consultant") {
     html += '<div class="center-title">Consultant</div><div class="hint">Click one of your specialists on the board for the Consultant to shadow this shift.</div>';
   } else if (ph === "discharge" && st === "reports") {
@@ -5024,12 +5109,12 @@ function renderDisplay(pickable, note) {
   const lv = UI.leaving, ch = UI.choosing; // a rival's pick: first highlighted, then drawn once more on its way out
   const chosen = (kind, i) => ch && ch.kind === kind && ch.idx === i;
   dd.forEach((t, i) => {
-    if (t) html += renderDeptTile(t, chosen("dept", i) ? "chosen" : pickable ? "pickable" : "", `data-key="d${i}" ` + (chosen("dept", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""));
+    if (t) html += renderDeptTile(t, chosen("dept", i) ? "chosen" : pickable ? "pickable" + (UI.pick && UI.pick.kind === "dept" && UI.pick.idx === i ? " sel" : "") : "", `data-key="d${i}" ` + (chosen("dept", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispDept" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "dept" && lv.idx === i) html += renderDeptTile(lv.item, "leaving", `data-key="d${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
     else html += gapSlot("gd", `d${i}`); // taken: its slot stays open
   });
   sd.forEach((t, i) => {
-    if (t) html += renderSpecCard(t, chosen("spec", i) ? "chosen" : pickable ? "pickable" : "", `data-key="s${i}" ` + (chosen("spec", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""));
+    if (t) html += renderSpecCard(t, chosen("spec", i) ? "chosen" : pickable ? "pickable" + (UI.pick && UI.pick.kind === "spec" && UI.pick.idx === i ? " sel" : "") : "", `data-key="s${i}" ` + (chosen("spec", i) ? `data-to="${esc(ch.name)}"` : pickable ? `data-act="dispSpec" data-idx="${i}" role="button" tabindex="0"` : ""));
     else if (lv && lv.kind === "spec" && lv.idx === i) html += renderSpecCard(lv.item, "leaving", `data-key="s${i}" data-to="→ ${esc(lv.name)}" aria-hidden="true"`);
     else html += gapSlot("gs", `s${i}`);
   });
@@ -5129,7 +5214,11 @@ function renderRivals() {
     const cls = [G.firstPlayer === p.id ? "cmd" : "", G.actor === p.id || (UI.choosing && UI.choosing.pid === p.id) ? "turn" : "", UI.leaving && UI.leaving.pid === p.id ? "took" : ""].join(" ");
     html += `<div class="rival-card ${cls}"><div class="rn"><span>${esc(p.name)} <span class="stack-info">${SKILL_NAMES[p.skill]}</span></span><span class="sc">${p.score}</span></div>`;
     html += `<div class="rl"><span>${p.meeples.length} staff</span><span>${p.departments.length} tools</span><span>intel ${p.bloodBags}</span><span style="color:var(--red)">breach ${p.fatalities}</span>${p.admin ? `<span title="${esc(adminDesc(p.admin))}">${esc(ADMIN_DEFS[p.admin].name)}</span>` : ""}</div>`;
-    html += '<div class="rdice">' + dice.sort((a, b) => a.value - b.value).map(d => renderPlainDie(d.colour, d.value, [d.treated ? "treated" : "", d.infant ? "infant" : "", d.ready ? "ready" : ""].join(" "))).join("") + (p.dischargedThisRound.length ? `<span class="stack-info"> +${p.dischargedThisRound.length} restored</span>` : "") + '</div>';
+    // Queued, then worked behind a rule, as on your own board: one row, the split still plain.
+    const rdie = d => renderPlainDie(d.colour, d.value, [d.treated ? "treated" : "", d.infant ? "infant" : "", d.ready ? "ready" : ""].join(" "));
+    const queued = dice.filter(d => !d.treated).sort((a, b) => a.value - b.value), worked = dice.filter(d => d.treated).sort((a, b) => a.value - b.value);
+    html += `<div class="rdice" title="${queued.length} queued${worked.length ? ` · ${worked.length} worked` : ""}">` + queued.map(rdie).join("") + (worked.length ? '<span class="rsep" aria-label="worked:"></span>' + worked.map(rdie).join("") : "") + '</div>';
+    if (p.dischargedThisRound.length) html += `<div class="rl"><span>+${p.dischargedThisRound.length} restored this shift</span></div>`;
     if (G.cfg.invest) { const n = sum(p.departments.map(d => (d.tokens || []).length)) + sum(p.specialists.map(x => (x.tokens || []).length)); html += `<div class="rl"><span>${n} ${plural(n, "upgrade")}</span>${p.meeples.some(m => m.invest) ? "<span>at the desk</span>" : ""}</div>`; }
     if (G.cfg.city) html += `<div class="rl"><span>${p.order ? "#" + p.order + " in order" : "order unset"}</span>${G.city.heli === p.id ? "<span>remote access</span>" : ""}${p.tokens.map(t => `<span class="token recon" title="${esc(CITY_TOKENS[t].desc)}">${esc(CITY_TOKENS[t].name)}</span>`).join("")}</div>`;
     if (p.botSummary) html += `<div class="rs">${esc(p.botSummary)}</div>`;
@@ -5178,7 +5267,10 @@ function promptFor() {
     return { text: `Responder at ${p.cityAt === null ? "the jump host" : cityZoneName(p.cityAt)}: click a linked zone. A host there must be taken. ${p.cityGot.length} of ${G.cityPer} collected.` };
   }
   if (ph === "intake" && st === "cityOrder") return { text: `Intake total ${cityAdjTotal(p)}: spend a Priority Lane token for −2 before the response order is set?`, buttons: [B("Spend one (−2)", "onLaneUse()"), B("Keep it", "onLaneKeep()", { primary: true })] };
-  if (ph === "intake" && st === "pick") return { text: `Click an escalation queue to take it. The lowest number taken earns an intel token and the Incident Commander role${p.id === G.firstPlayer ? "; as Commander you may not take #1" : ""}.` };
+  if (ph === "intake" && st === "pick") {
+    if (UI.pick && UI.pick.kind === "queue") return { text: `Queue #${UI.pick.idx} selected. Click it again or press Enter to take it; Escape to look again.`, buttons: [B(`Take queue #${UI.pick.idx}`, `onQueueClick(${UI.pick.idx})`, { primary: true, key: "Enter" })] };
+    return { text: "Your pick is on the table: take one escalation queue." };
+  }
   if (ph === "intake" && st === "keep") return { text: `Keep 3 of the ${p.pendingDice.length} rolled hosts; a kept total under ${SOLO_KEEP_BONUS_BELOW} earns an intel token.`, buttons: [B("Confirm", "onKeepConfirm()", { primary: true, disabled: s.dice.length !== 3 })] };
   if (ph === "intake" && st === "place" && G.overflow) return { text: `Quarantine is full: mark ${G.overflow.shortage} existing ${plural(G.overflow.shortage, "host")} to write off${G.cfg.maternity ? " (pink hosts are never written off)" : ""}.`, buttons: [B("Write off", "onOverflowConfirm()", { primary: true, disabled: G.overflow.marked.length !== G.overflow.shortage })] };
   if (ph === "intake" && st === "place" && p.twinsPending) return { text: "Provisioning Policy: does the new hypervisor bring one guest or twins?", buttons: [B("Twin guests", "onTwins(2)", { primary: true }), B("One guest", "onTwins(1)")] };
@@ -5194,7 +5286,14 @@ function promptFor() {
     if (s.meepleUid) return { text: "Now click a vendor line with a free slot.", buttons: [B("Skip procurement", "onInvestSkip()")] };
     return { text: "Procurement: click a free staff member, then a vendor line. Or skip.", buttons: [B("Skip procurement", "onInvestSkip()", { primary: true })] };
   }
-  if (ph === "improve" && st === "take") return { text: G.cfg.solo ? "Take the tool or the specialist; the other goes to the bottom of its stack." : "Take one improvement from the display." };
+  if (ph === "improve" && st === "take") {
+    if (UI.pick && UI.pick.kind !== "queue") {
+      const t = UI.pick.kind === "dept" ? G.deptDisplay[UI.pick.idx] : G.specDisplay[UI.pick.idx];
+      const name = t ? (UI.pick.kind === "dept" ? DEPT_DEFS[t] : SPEC_DEFS[t]).name : "That card";
+      return { text: `${name} selected. Click it again or press Enter to take it; Escape to look again.`, buttons: [B(`Take ${name}`, `onDisplayClick('${UI.pick.kind}', ${UI.pick.idx})`, { primary: true, key: "Enter" })] };
+    }
+    return { text: "Your pick is on the table: take one improvement." };
+  }
   if (ph === "improve" && st === "return") return { text: "Return one improvement for an intel token, or keep everything.", buttons: [B("Keep everything", "onReturnSkip()", { primary: true })] };
   if (ph === "activate" && st === "consultant") return { text: "Pick a specialist for the Consultant to shadow this shift.", buttons: [B("Skip", "onConsultantSkip()")] };
   if (ph === "activate" && st === "human") {
@@ -5360,8 +5459,8 @@ function showHowToPlay(tab) {
   const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["cards", "Reading Cards"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["expansions", "Expansions"], ["keys", "Keys"], ["about", "About"]];
   const panel = id => `class="help-panel ${tab === id ? "on" : ""}"`;
   const closeAction = G ? "closeModal()" : "showMainMenu()";
-  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td class="hp">${deptPicto(d)}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
-  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}</td><td class="hp">${specPicto(d)}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
+  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}${ORIGINAL_NAME[t] ? `<div class="orig">${esc(ORIGINAL_NAME[t])}</div>` : ""}</td><td class="hp">${deptPicto(d)}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
+  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}${ORIGINAL_NAME[t] && ORIGINAL_NAME[t] !== d.name ? `<div class="orig">${esc(ORIGINAL_NAME[t])}</div>` : ""}</td><td class="hp">${specPicto(d)}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
   // The key to the pictograms, drawn by the same code as the cards.
   const pgRow = (sym, means) => `<tr><td class="hp"><span class="pg">${sym}</span></td><td>${means}</td></tr>`;
   const legendHosts = [
@@ -5397,6 +5496,7 @@ function showHowToPlay(tab) {
     <div ${panel("overview")}>
       <p>You run a Security Operations Center. Compromised hosts arrive as dice: the face is the host's <b>integrity</b>, from 1 (about to be lost) to 6 (nearly clean). Staff your tools with analysts to raise integrity. A host pushed past 6 is <b>restored</b> to production and scores reputation. A host that drops below 1 is a <b>breach</b> and costs reputation at the end.</p>
       <p>Eight shifts. Most reputation wins. Dice colours are just colours: some tools and specialists only work on red, yellow or green hosts.</p>
+      <p><b>From Dice Hospital.</b> Hosts are patients, quarantine segments are wards, analysts are nurses, tools are departments, escalation queues are ambulances, intel tokens are blood bags, restoring is discharging, a breach is a fatality, dwell time is the neglect step, and the Incident Commander is the first player. Hover any card for its original name; the Tools and Specialists tabs list them all.</p>
       <p><b>Overtime.</b> When the shift 8 scorecard comes up you may play on: the shift counter resets to 1 and everything else stays as it is, hosts, staff, tools, upgrades, reputation, breaches and intel. The scorecard at the next close counts everything since the start.</p>
       <h4>Your SOC</h4>
       <ul>
