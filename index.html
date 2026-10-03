@@ -795,7 +795,6 @@ details.addons summary::-webkit-details-marker { display: none; }
 .help-table { width: 100%; border-collapse: collapse; font-size: 11px; }
 .help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .help-table th { color: var(--steel); font-weight: normal; }
-.help-table .orig { color: var(--text-dim); font-size: var(--fs-label); margin-top: 1px; } /* the Dice Hospital name */
 .help-table td.hp { white-space: nowrap; vertical-align: middle; padding-top: 5px; padding-bottom: 5px; } /* a card's pictogram, kept on one line */
 .help-table td.hp .pg { flex-wrap: nowrap; }
 @media (max-width: 600px) { .help-table td.hp { white-space: normal; } .help-table td.hp .pg { flex-wrap: wrap; } } /* a phone has no room for a one-line card column */
@@ -1229,7 +1228,7 @@ const EVENT_DEFS = {
    addon: true is layered on top and off by default.
    ============================================================ */
 const SLIDER_DEFS = {
-  mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], showIf: () => false, desc: "Solo uses the rulebook's solo rules (Audit Reports). Rivals uses the 2–4 player rules with AI SOCs." },
+  mode:        { label: "Mode",              min: 0, max: 1, default: 1, toggle: true, labels: ["Solo score-chase", "Vs rivals"], showIf: () => false, desc: "Solo is a score-chase against Audit Reports. Rivals puts you at a table with 1–3 AI SOCs." },
   rivals:      { label: "Rivals",            min: 1, max: 3, default: 2, labels: [null, "1 rival", "2 rivals", "3 rivals"], showIf: h => h.mode === 1, desc: "Number of AI SOCs at the table" },
   rivalSkill:  { label: "Rival Skill",       min: 0, max: 2, default: 1, labels: SKILL_NAMES, harder: true, showIf: h => h.mode === 1, desc: "How well the rivals play" },
   admins:      { label: "CISO Directives",   min: 0, max: 1, default: 1, toggle: true, labels: ["Off", "On"], showIf: h => h.mode === 1, desc: "Each SOC is dealt two and keeps one; a scoring or shielding rule for the whole game" },
@@ -1241,7 +1240,7 @@ const SLIDER_DEFS = {
   // Add-ons
   promo:       { label: "Promo Specialists", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Consultant and Intake Coordinator replace two random specialists" },
   experimental:{ label: "Beta Tooling",      min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], desc: "Four experimental tools and six more specialists join the stacks" },
-  events:      { label: "Incident Events",   min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "An event card each shift from shift 2 (PumaTriage originals)" },
+  events:      { label: "Incident Events",   min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "An event card each shift from shift 2" },
   crisis:      { label: "Inherited Mess",    min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Start the game with five compromised hosts (3, 3, 4, 5, 5) instead of three" },
   epidemic:    { label: "Worm Outbreak",     min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Every intake, one extra rolled host lands in each SOC's quarantine" },
   superbug:    { label: "Persistent Threat", min: 0, max: 1, default: 0, addon: true, toggle: true, labels: ["Off", "On"], harder: true, desc: "Dwell time degrades queued hosts by 2 instead of 1" },
@@ -1253,7 +1252,7 @@ const ADDONS_OFF = { maternity: 0, city: 0, invest: 0, promo: 0, experimental: 0
 const DIFFICULTY_PRESETS = {
   // Presets read as the size of the operation you run, smallest first.
   easy:   { label: "MSSP", title: "Managed service, one easy rival, no directives: the gentle start", sliders: { mode: 1, rivals: 1, rivalSkill: 0, admins: 0, tutorial: 1, ...ADDONS_OFF } },
-  normal: { label: "SOC",  title: "The base game: two rivals, directives on", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
+  normal: { label: "SOC",  title: "The standard game: two rivals, directives on", sliders: { mode: 1, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
   solo:   { label: "Solo",     sliders: { mode: 0, rivals: 2, rivalSkill: 1, admins: 1, tutorial: 1, ...ADDONS_OFF } },
   hard:   { label: "CIRT", title: "Three expert rivals, an inherited mess, a worm outbreak and persistent threats", sliders: { mode: 1, rivals: 3, rivalSkill: 2, admins: 1, tutorial: 0, ...ADDONS_OFF, crisis: 1, epidemic: 1, superbug: 1 } },
 };
@@ -4740,23 +4739,6 @@ function specPicto(def) {
    plain title met on the way is taken over the first time it is
    hovered, so the browser's own tooltip never shows.
    ============================================================ */
-/* The Dice Hospital name of each tool and specialist, for owners reading the
-   reskin against the cardboard. The Virtualization cards are left out: the
-   rule tables record what they do, not what they were called. */
-const ORIGINAL_NAME = {
-  ccu: "Critical Care Unit", oncology: "Oncology", pharmacy: "Pharmacy", intensive: "Intensive Care", imaging: "Imaging", clinic: "Clinic",
-  opTheatre: "Operating Theatre", cardiology: "Cardiology", anaesthesia: "Anaesthesia", crash: "Crash Centre", ent: "Ear, Nose & Throat",
-  immunology: "Immunology", allergy: "Allergy Centre", ortho: "Orthopaedics", urology: "Urology", renal: "Renal Medicine",
-  radiology: "Radiology", triageCtr: "Triage Centre", drugTrial: "Drug Trial Centre", physio: "Physiotherapy",
-  expTherapy: "Experimental Therapy", training: "Training Department", nursery: "Paediatric Ward", rotation: "Swap Room",
-  surgeon: "Surgeon", anaesthetist: "Anaesthetist", cardiologist: "Cardiologist", pharmacist: "Pharmacist", virologist: "Virologist",
-  microbiologist: "Microbiologist", haematologist: "Haematologist", urologist: "Urologist", radiologist: "Radiologist",
-  triageNurse: "Triage Nurse", paramedic: "Paramedic", gp: "General Practitioner", admissions: "Admissions Nurse",
-  procurementLead: "Investment Advisor", vendorMgr: "Hospital Strategist", integrationEng: "Project Consultant",
-  automationEng: "Strategy Consultant", apprentice: "Trainee", pathologist: "Pathologist", expChemist: "Experimental Chemist",
-  registrar: "Registrar", medStudent: "Medical Student", physioTh: "Physiotherapist", haemTech: "Haematology Technician",
-};
-const withOriginal = (name, type) => ORIGINAL_NAME[type] && ORIGINAL_NAME[type] !== name ? `${name} · ${ORIGINAL_NAME[type]}` : name;
 function tipAttrs(head, body, colour) {
   return `data-tip="${esc(body)}" data-tip-h="${esc(head)}" data-tip-c="${esc(colour || "")}"`;
 }
@@ -4822,11 +4804,11 @@ function setupTips() {
 }
 function renderDeptTile(type, cls, attrs, inner) {
   const def = DEPT_DEFS[type];
-  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} ${tipAttrs(withOriginal(def.name, type), deptDesc(def), def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div></div>${inner || ""}</div>`;
+  return `<div class="dept-tile tag-${def.tag} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, deptDesc(def), def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div></div>${inner || ""}</div>`;
 }
 function renderSpecCard(type, cls, attrs) {
   const def = SPEC_DEFS[type];
-  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""} ${tipAttrs(withOriginal(def.name, type), specDesc(def), def.colour)}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${specPicto(def)}</div></div>`;
+  return `<div class="spec-card tag-${def.colour} ${cls || ""}" ${attrs || ""} ${tipAttrs(def.name, specDesc(def), def.colour)}><div class="sn"><span class="mini-dot c-${def.colour} dot"></span> ${esc(def.name)}</div><div class="sd">${specPicto(def)}</div></div>`;
 }
 function renderMeeple(p, m, key) {
   const s = UI.sel, cls = ["b-" + m.colour];
@@ -4857,7 +4839,7 @@ function renderMeeple(p, m, key) {
     if (def.special === "copy" && p.consultantCopy) { ability = `Shadowing the ${SPEC_DEFS[p.consultantCopy].name}: ${specDesc(SPEC_DEFS[p.consultantCopy])}`; picto = specPicto(SPEC_DEFS[p.consultantCopy]); }
   }
   const label = meepleLabel(p, m) + (m.used ? " (placed)" : m.off ? " (out sick)" : "") + ". " + ability;
-  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" ${tipAttrs(spec ? withOriginal(meepleLabel(p, m), spec.type) : meepleLabel(p, m), ability, m.colour)}><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${picto}</div></div>`;
+  return `<div class="meeple ${cls.join(" ")}" data-act="meeple" data-uid="${m.uid}" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${s.meepleUid === m.uid}" ${tipAttrs(meepleLabel(p, m), ability, m.colour)}><div class="mh"><span class="dot c-${m.colour}"></span><span>${esc(meepleLabel(p, m))}</span>${spec && (spec.tokens || []).length ? spec.tokens.map(upgChip).join("") : ""}${key ? `<span class="key">${key}</span>` : ""}</div><div class="ab">${picto}</div></div>`;
 }
 // The guest segment under a quarantine segment: its guests, and the
 // placement it offers while it holds any.
@@ -4913,7 +4895,7 @@ function renderBoard() {
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
     const clickable = cls.includes("can") || cls.includes("returnable");
-    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" ${tipAttrs(withOriginal(def.name, d.type), why, def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
+    html += `<div class="dept-tile tag-${def.tag} ${cls.join(" ")}" data-act="dept" data-uid="${d.uid}" role="button" tabindex="0" aria-disabled="${!clickable}" ${tipAttrs(def.name, why, def.tag)}><div><div class="dn">${esc(def.name)}</div><div class="dr">${deptPicto(def)}</div>${(d.tokens || []).length ? `<div class="upgs">${d.tokens.map(upgChip).join("")}</div>` : ""}</div>${inner}</div>`;
   }
   html += '</div></section>';
   html += '<section class="grp grp-wards" aria-label="Quarantine"><div class="board-row"><span class="lbl">Quarantine</span></div><div id="wards">';
@@ -5464,8 +5446,8 @@ function showHowToPlay(tab) {
   const tabs = [["overview", "Overview"], ["shifts", "A Shift"], ["cards", "Reading Cards"], ["tools", "Tools"], ["specs", "Specialists"], ["solo", "Directives & Solo"], ["addons", "Add-ons"], ["expansions", "Expansions"], ["keys", "Keys"], ["about", "About"]];
   const panel = id => `class="help-panel ${tab === id ? "on" : ""}"`;
   const closeAction = G ? "closeModal()" : "showMainMenu()";
-  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}${ORIGINAL_NAME[t] ? `<div class="orig">${esc(ORIGINAL_NAME[t])}</div>` : ""}</td><td class="hp">${deptPicto(d)}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
-  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}${ORIGINAL_NAME[t] && ORIGINAL_NAME[t] !== d.name ? `<div class="orig">${esc(ORIGINAL_NAME[t])}</div>` : ""}</td><td class="hp">${specPicto(d)}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
+  const toolRows = Object.keys(DEPT_DEFS).map(t => { const d = DEPT_DEFS[t]; return `<tr><td>${esc(d.name)}${d.base ? ' <span class="badge">start</span>' : d.addon ? ' <span class="badge">beta</span>' : ""}</td><td class="hp">${deptPicto(d)}</td><td>${esc(deptDesc(d))}</td></tr>`; }).join("");
+  const specRows = Object.keys(SPEC_DEFS).map(t => { const d = SPEC_DEFS[t]; return `<tr><td><span class="mini-dot dot c-${d.colour}"></span> ${esc(d.name)}${d.addon ? ` <span class="badge">${d.addon}</span>` : ""}</td><td class="hp">${specPicto(d)}</td><td>${esc(specDesc(d))}</td></tr>`; }).join("");
   // The key to the pictograms, drawn by the same code as the cards.
   const pgRow = (sym, means) => `<tr><td class="hp"><span class="pg">${sym}</span></td><td>${means}</td></tr>`;
   const legendHosts = [
@@ -5487,7 +5469,7 @@ function showHowToPlay(tab) {
     pgRow(pgEff(OP_GLYPH.park), "Move the host to its Worked slot without healing it: it escapes dwell time."),
   ].join("");
   const legendSpecs = [
-    pgRow(pgDie("red", "", "trig") + pgSep(":"), "When this specialist heals a red host, then: its follow-up. The trigger die is badged +, as on the printed card."),
+    pgRow(pgDie("red", "", "trig") + pgSep(":"), "When this specialist heals a red host, then: its follow-up. The trigger die is badged +."),
     pgRow(pgDie("red", "↺"), "One of the hosts it just healed, again."),
     pgRow(pgDie("any", "="), "A different host, of any colour, whose value equals what the healed host showed before healing."),
     pgRow(pgDie("any", "✓") + pgSep(":"), "When this specialist restores a host, then: its follow-up."),
@@ -5501,7 +5483,6 @@ function showHowToPlay(tab) {
     <div ${panel("overview")}>
       <p>You run a Security Operations Center. Compromised hosts arrive as dice: the face is the host's <b>integrity</b>, from 1 (about to be lost) to 6 (nearly clean). Staff your tools with analysts to raise integrity. A host pushed past 6 is <b>restored</b> to production and scores reputation. A host that drops below 1 is a <b>breach</b> and costs reputation at the end.</p>
       <p>Eight shifts. Most reputation wins. Dice colours are just colours: some tools and specialists only work on red, yellow or green hosts.</p>
-      <p><b>From Dice Hospital.</b> Hosts are patients, quarantine segments are wards, analysts are nurses, tools are departments, escalation queues are ambulances, intel tokens are blood bags, restoring is discharging, a breach is a fatality, dwell time is the neglect step, and the Incident Commander is the first player. Hover any card for its original name; the Tools and Specialists tabs list them all.</p>
       <p><b>Overtime.</b> When the shift 8 scorecard comes up you may play on: the shift counter resets to 1 and everything else stays as it is, hosts, staff, tools, upgrades, reputation, breaches and intel. The scorecard at the next close counts everything since the start.</p>
       <h4>Your SOC</h4>
       <ul>
@@ -5524,7 +5505,7 @@ function showHowToPlay(tab) {
       </ol>
     </div>
     <div ${panel("cards")}>
-      <p>Every tool and specialist says its rule in dice, as the printed cards do: the dice it works on, then what it does to them. Hover any card in play, or read the Tools and Specialists tabs, for the rule in words.</p>
+      <p>Every tool and specialist says its rule in dice: the dice it works on, then what it does to them. Hover any card in play, or read the Tools and Specialists tabs, for the rule in words.</p>
       <h4>Which hosts</h4>
       <table class="help-table">${legendHosts}</table>
       <h4>What it does</h4>
@@ -5555,8 +5536,8 @@ function showHowToPlay(tab) {
     <div ${panel("addons")}>
       <table class="help-table">
         <tr><td>Promo Specialists</td><td>Consultant (copies a specialist each shift) and Intake Coordinator replace two random specialists in the deck.</td></tr>
-        <tr><td>Beta Tooling</td><td>The Experimental Medicine set: Beta Agent, Retagging Desk, Rollback Snapshot, Tabletop Exercise, plus six specialists. The tool stack is rebuilt as the mini-expansion describes.</td></tr>
-        <tr><td>Incident Events</td><td>From shift 2, an event card each shift. These are PumaTriage originals.</td></tr>
+        <tr><td>Beta Tooling</td><td>Four experimental tools (Beta Agent, Retagging Desk, Rollback Snapshot, Tabletop Exercise), two of each, plus six more specialists. To make room, the improvement tool stack keeps one of each tool instead of two, with four extras at a four-SOC table.</td></tr>
+        <tr><td>Incident Events</td><td>From shift 2, an event card each shift.</td></tr>
         <tr><td>Inherited Mess</td><td>Start with five hosts at 3, 3, 4, 5, 5.</td></tr>
         <tr><td>Worm Outbreak</td><td>Every intake, each SOC also draws and rolls one extra host straight into quarantine.</td></tr>
         <tr><td>Persistent Threat</td><td>Dwell time degrades queued hosts by 2.</td></tr>
@@ -5572,7 +5553,7 @@ function showHowToPlay(tab) {
       <ul>
         <li><b>Setup.</b> Every SOC starts with a 4th analyst, a hypervisor at 4 alone in a segment, and one guest at 4 in the guest segment below it. Two virtualization tools and two virtualization specialists (one each with a single rival) join the display from their own piles.</li>
         <li><b>Intake.</b> Fewer coloured hosts are rolled and hypervisors are added: 2 with one or two rivals, 3 with three. At most one hypervisor per queue: a second moves to the next queue and a coloured host swaps back. No SOC holds more than 4 hypervisors; at the cap a queue carrying one is off limits unless every open queue does, and then the hypervisor is swapped for a coloured host of the same value.</li>
-        <li><b>Placement.</b> You choose the segment for each incoming host. A hypervisor goes in a segment with no other hypervisor (a full one is allowed: one host there moves to a free bed elsewhere). It opens the guest segment below it and brings one guest or twins at value 4, rolled on the provisioning die. Hosts never move between segments otherwise.</li>
+        <li><b>Placement.</b> You choose the segment for each incoming host. A hypervisor goes in a segment with no other hypervisor (a full one is allowed: one host there moves to a free slot elsewhere). It opens the guest segment below it and brings one guest or twins at value 4, rolled on the provisioning die. Hosts never move between segments otherwise.</li>
         <li><b>Guest segments.</b> While it holds guests, each guest segment is a placement: one staff member there heals one pink host (hypervisor or guest) 1 step, once per shift. A specialist's follow-up applies as usual.</li>
         <li><b>Dwell time.</b> A queued hypervisor only degrades when other hosts share its segment, and never below 1: hypervisors never breach. Guests never lose a step, for any reason.</li>
         <li><b>Restoration.</b> A pink host healed past 6 is set aside, ready, until the hypervisor and all its guests are ready; then they restore together and score with everything else. Anything still waiting at the end of the shift drops back to 6. Up to 20 hosts can restore in a shift: 13–20 score 40, 46, 52, 68, 75, 82, 90, 98. The clear-segments bonus needs the guest segments empty too.</li>
@@ -5589,7 +5570,7 @@ function showHowToPlay(tab) {
         <li><b>Dwell time.</b> Every host still on the map degrades 1 step too. A drop to 2 brings a recon token onto its zone. Hosts lost out there are breaches, dealt one at a time from the back of the response order.</li>
         <li><b>With Virtualization.</b> A few zones spawn hypervisors instead of coloured hosts. A responder collects at most one hypervisor per shift and passes over any others as if the zone were empty. Hypervisors on the map never drop below 1.</li>
       </ul>
-      <p>Not printed in the rulebook, so approximated: the links on the 20 zone tiles (4 crossroads, 8 T-junctions, 4 straights, 4 corners here), the split of the 30 recon tokens (5 of each kind) and the number of hypervisor zones by table size (2, 3, 4).</p>
+      <p>The map is built from 20 zone tiles (4 crossroads, 8 T-junctions, 4 straights, 4 corners). There are 30 recon tokens, 5 of each kind. With Virtualization, 2, 3 or 4 zones spawn hypervisors, by table size.</p>
       <h4>Procurement</h4>
       <p>Switch it on under Expansions in the setup menu (rival games only). <b>Upgrades</b> are fitted to your tools for good, two per tool, and add an effect that fires after the tool's own. The display shows one more tool and one more specialist, and intake rolls one extra host (two from shift 5) into the top queue or queues, as a fourth host that goes home with them.</p>
       <ul>
@@ -5601,7 +5582,7 @@ function showHowToPlay(tab) {
         <li><b>Scoring.</b> No bonus for clearing every segment. Vendor Partnership directive: +1 in a shift in which one of your upgrades fired.</li>
         <li><b>With Virtualization.</b> No 4th analyst. With Network: no supplemental hosts.</li>
       </ul>
-      <p>Not printed in the rulebook, so approximated: the directive (an image), which three of the five specialists have two cards (Procurement Lead, Apprentice, Vendor Manager here), and the pink vendor line of the Virtualization combination, which is left out.</p>
+      <p>Procurement Lead, Apprentice and Vendor Manager come two to the pile; the other specialists one each. With Virtualization there is no pink vendor line.</p>
     </div>
     <div ${panel("keys")}>
       <ul>
@@ -5623,7 +5604,6 @@ function showHowToPlay(tab) {
         <p style="font-size:14px;color:var(--accent);margin-bottom:16px;">PumaTriage</p>
         <p style="font-size:12px;margin-bottom:8px;">Incident Response Dice Game</p>
         <p style="margin-bottom:24px;">Built by <a href="https://www.greykit.com" target="_blank" rel="noopener">greykit.com</a></p>
-        <p style="font-size:10px;color:var(--text-dim);">Inspired by Dice Hospital by Stanislav Kordonskiy and Mike Nudd / Alley Cat Games.<br>A one-for-one port of the base rules, re-themed for the SOC. Everything beyond the base game is an opt-in house rule.</p>
       </div>
     </div>
     <div class="modal-actions"><button class="action-btn" onclick="${closeAction}">${G ? "Close" : "Back"}</button></div>`;
