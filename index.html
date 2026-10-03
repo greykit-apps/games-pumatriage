@@ -69,6 +69,7 @@
   --die: clamp(36px, 2.7vw, 46px);
   --term: 1480px;
   --frame: clamp(8px, min(2vw, (100dvh - 860px) / 2), 28px);
+  --mat: 16px;
 }
 
 * { box-sizing: border-box; }
@@ -122,7 +123,11 @@ a { color: var(--accent); }
   max-height: calc(100dvh - 2 * var(--frame));
   grid-template-areas: "hud hud" "board side";
   background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
-  box-shadow: 0 0 0 1px rgba(5,7,15,0.6), 0 30px 90px rgba(0,0,0,0.65);
+  /* A mat of plain ground outside the border, feathering into the scene,
+     keeps the line-drawn SOC from crowding the table. It is shadow, not
+     layout: where the window is tight it runs off the edge rather than
+     taking width or height from the board. */
+  box-shadow: 0 0 0 var(--mat) var(--bg), 0 0 18px calc(var(--mat) + 2px) rgba(5,7,15,0.8), 0 30px 90px rgba(0,0,0,0.65);
 }
 #hud-top { grid-area: hud; }
 /* The board is not a box of its own: Staff, Tools and Quarantine sit directly
