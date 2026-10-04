@@ -959,8 +959,11 @@ const TITLE_CSS = `
 .gk-boot .gk-slide{position:absolute;inset:0;transform:translateX(calc(var(--d) * -1));
   animation:gk-slide .6s cubic-bezier(.65,0,.35,1) .5s forwards}
 .gk-boot .gk-lh,.gk-boot .gk-rh{position:absolute;top:0;width:var(--S);height:var(--S)}
-.gk-boot .gk-lh{left:0}
-.gk-boot .gk-rh{left:var(--S)}
+/* the halves overlap by 2px, the left on top: two images laid edge to edge
+   are anti-aliased edge by edge, and some browsers (Brave) leave a hairline
+   of background between them */
+.gk-boot .gk-lh{left:0;z-index:1}
+.gk-boot .gk-rh{left:calc(var(--S) - 2px)}
 .gk-boot .gk-pulse{width:100%;height:100%;position:relative;transform-origin:100% 50%;animation:gk-pulse .7s ease-in-out 1.15s}
 .gk-boot .gk-face img{display:block;width:100%;height:100%;filter:invert(1) brightness(.72)}
 .gk-boot .gk-pulse img{animation:gk-glow .7s ease-in-out 1.15s}
