@@ -1,5 +1,16 @@
 stages:
+  - validate
   - deploy
+
+# Every local file the page and its manifest name must be in the repo
+# (games-meta STANDARD.md §10). Runs on every branch and merge request, and
+# on main ahead of deploy, so a missing asset stops the deploy instead of
+# 404ing on the live site.
+validate:
+  stage: validate
+  image: node:20-alpine
+  script:
+    - node tools/check-assets.js
 
 deploy:
   stage: deploy
@@ -48,4 +59,4 @@ deploy:
       }
   script:
     # Single destination, so this job costs exactly one SSH connection.
-    - puma_rsync -avz --delete --exclude='.git' --exclude='.claude' --exclude='.gitlab-ci.yml' ./ ${DREAMHOST_USERNAME}@${DREAMHOST_HOST}:/home/${DREAMHOST_USERNAME}/greykit.com/games/pumatriage/
+    - puma_rsync -avz --delete --exclude='.git' --exclude='.claude' --exclude='.gitlab-ci.yml' --exclude='tools' ./ ${DREAMHOST_USERNAME}@${DREAMHOST_HOST}:/home/${DREAMHOST_USERNAME}/greykit.com/games/pumatriage/
