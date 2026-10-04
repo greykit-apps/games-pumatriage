@@ -43,6 +43,10 @@ Every tool and specialist shows its rule as a row of dice: the hosts it works on
 
 ## Ways to play
 
+The title screen's **New quick game** starts a shift straight away with the rules as they stand:
+the standard SOC game until you change them. **Custom game** picks one of these, or any mix. A shift
+in progress saves as you play, and **Resume game** picks it up.
+
 - **MSSP:** one easy rival, no directives. The gentle start.
 - **SOC:** two rivals, directives on. The standard game.
 - **CIRT:** three expert rivals, plus an inherited mess, a worm outbreak and persistent threats.
@@ -50,7 +54,7 @@ Every tool and specialist shows its rule as a row of dice: the hosts it works on
 - **Solo:** no rivals. Each intake you roll four hosts and keep three, and six **Audit Reports** sit on display asking for particular sets of restored hosts. File them for points; any left unfiled count against you. Solo games are graded S to F.
 - **Overtime:** when the final scorecard comes up you can play on from the same board for another eight shifts.
 
-A 7-step tutorial runs on your first game and can be switched off in setup.
+A 7-step tutorial runs on your first game and can be switched off in Custom game.
 
 ![Setup: presets, expansions and house rules](screenshots/setup.png)
 
