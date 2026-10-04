@@ -5405,7 +5405,8 @@ function showMainMenu(keepScroll) {
     <div class="modal-actions">
       <button class="action-btn primary" id="menu-start" onclick="startGame()">${saved ? "New game" : "Start shift 1"}</button>
       <button class="action-btn" onclick="showHowToPlay('overview')">How to play</button>
-    </div>`;
+    </div>
+    <div class="menu-tagline gk-credit" style="margin:14px 0 0;">Built by <a href="https://greykit.com/" target="_blank" rel="noopener">greykit.com</a></div>`;
   openModal(!!G);
   if (!keepScroll) { const b = document.getElementById("menu-start"); if (b) b.focus(); }
   mc.scrollTop = scroll;
@@ -5603,7 +5604,7 @@ function showHowToPlay(tab) {
       <div style="text-align:center;padding:40px 20px;">
         <p style="font-size:14px;color:var(--accent);margin-bottom:16px;">PumaTriage</p>
         <p style="font-size:12px;margin-bottom:8px;">Incident Response Dice Game</p>
-        <p style="margin-bottom:24px;">Built by <a href="https://www.greykit.com" target="_blank" rel="noopener">greykit.com</a></p>
+        <p class="gk-credit" style="margin-bottom:24px;">Built by <a href="https://greykit.com/" target="_blank" rel="noopener">greykit.com</a></p>
       </div>
     </div>
     <div class="modal-actions"><button class="action-btn" onclick="${closeAction}">${G ? "Close" : "Back"}</button></div>`;
