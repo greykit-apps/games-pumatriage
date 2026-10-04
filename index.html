@@ -1986,6 +1986,21 @@ function loadGame() {
   return true;
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+/* Settings' "Forget everything" (games-meta STANDARD.md): every key PumaTriage
+   owns, found by its prefix so a key added later is not one this misses, and
+   only those -- every game on greykit.com shares one origin, so one storage. */
+function forgetEverything() {
+  for (const area of ["localStorage", "sessionStorage"]) {
+    try {
+      const s = window[area];
+      for (let i = s.length - 1; i >= 0; i--) {
+        const k = s.key(i);
+        if (k && k.startsWith("pumatriage")) s.removeItem(k);
+      }
+    } catch (e) { /* no storage */ }
+  }
+  location.reload();
+}
 /* ============================================================
    RULES ENGINE
    Pure functions over a player + G. Nothing here touches the DOM,
@@ -5791,7 +5806,16 @@ function showSettings() {
     <div class="rules-head">Sound</div>
     <div class="presets"><button class="action-btn preset-btn ${!UI.muted ? "on" : ""}" aria-pressed="${!UI.muted}" onclick="if (UI.muted) toggleMute(); showSettings()">On</button><button class="action-btn preset-btn ${UI.muted ? "on" : ""}" aria-pressed="${UI.muted}" onclick="if (!UI.muted) toggleMute(); showSettings()">Off</button></div>
     <div class="hint">Both are in the header during a game too.</div>
+    <div class="rules-head">This browser</div>
+    <div class="presets"><button class="action-btn preset-btn" onclick="confirmForget()">Forget everything</button></div>
+    <div class="hint">Clears everything PumaTriage keeps in this browser: the shift in progress, speed, sound, and the tutorial.</div>
     <div class="modal-actions"><button class="action-btn" onclick="closeModal()">Close</button></div>`;
+  openModal(true);
+}
+function confirmForget() {
+  document.getElementById("modal-content").innerHTML = `<h2>Forget everything?</h2>
+    <p>Forget everything PumaTriage has saved in this browser: the shift in progress, speed, sound, the tutorial? This cannot be undone.</p>
+    <div class="modal-actions"><button class="action-btn primary" onclick="forgetEverything()">Forget everything</button><button class="action-btn" onclick="showSettings()">Cancel</button></div>`;
   openModal(true);
 }
 function setSpeed(n) { while (UI.speed !== n) cycleSpeed(); showSettings(); }
