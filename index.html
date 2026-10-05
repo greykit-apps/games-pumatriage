@@ -131,8 +131,10 @@ a { color: var(--accent); }
    difference rather than leaving a hole above the strip. */
 #board > .grp-wards { flex-grow: 1; }
 /* The shared table keeps one fixed height across phases so the board below
-   never shifts; anything taller scrolls inside it. */
-#table   { border: 1px solid var(--accent-dim); background: rgba(84,242,255,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; }
+   never shifts; anything taller scrolls inside it. It never shrinks either:
+   in the board's flex column a scroller's floor is zero, so a short window
+   would squash it to its padding; the board scrolls instead. */
+#table   { border: 1px solid var(--accent-dim); background: rgba(84,242,255,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; flex: none; }
 #app.p4 #table { height: 284px; } /* a 4-SOC display is six cards on two rows */
 #table.idle { border-color: var(--line); background: transparent; }
 #table.idle .center-title { color: var(--dim); }
