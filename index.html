@@ -29,9 +29,14 @@
 <link rel="icon" href="favicon.ico" sizes="16x16 32x32 48x48">
 <style>
 /* ============================================================
-   TOKENS — the cyan palette of PumaRally and PumaTycoon
-   (values copied from pumarally/editor/render/palette.js)
+   TOKENS — Tactical tribe: the canon block is the palette every
+   Tactical game shares; PumaTriage's own names follow it.
    ============================================================ */
+/* @gk-tokens-begin v0.1 -- greykit.games canon (games-meta STANDARD.md §4): the Tactical palette, PumaRally's (editor/render/palette.js). The copy of record is games-meta's canon/gk-tokens.css. */
+:root{--bg:#05070f;--panel:#0a0e1a;--panel2:#0d1424;--line:#1b2540;--lit:#47609c;
+  --text:#dbe4fb;--ink:#8b96b8;--dim:#7d8aa8;--accent:#54f2ff;--warn:#ffb000;--danger:#ff5266;
+  --good:#4ade6a;--violet:#b47dff;--steel:#94a0c4;--blue:#4c8dff}
+/* @gk-tokens-end */
 :root {
   /* Game colours: what a die, a tool tag or a staff dot IS. Red, yellow and
      pink keep their hues so a die never changes meaning; green, blue and the
@@ -39,25 +44,15 @@
   --green: #4ade6a;
   --red: #ff3333;
   --yellow: #ffdd33;
-  --blue: #4c8dff;
   --pink: #ff5fbf;
-  --violet: #b47dff;
-  --white: #dbe4fb;
-  /* Chrome: the cyan palette PumaRally and PumaTycoon share
-     (pumarally/editor/render/palette.js). Cyan is the one thing waiting on
-     you; amber is kept for a warning. */
-  --accent: #54f2ff;
+  /* (blue and violet are the canon block's --blue and --violet) */
+  /* Chrome: the canon block above is the palette every Tactical game shares;
+     --steel there is for labels and headings, quiet, so cyan can mean one
+     thing. Cyan is the one thing waiting on you; amber is kept for a
+     warning. PumaTriage's own names follow. */
   --accent-dim: #2b7f92;
-  --warn: #ffb000;
-  --bg: #05070f;
-  --panel: #0a0e1a;
-  --panel-2: #0d1424;
-  --border: #1b2540;
-  --lit: #47609c;
-  --line: #141d33;
-  --text: #9aa5c6;
-  --text-dim: #7d8aa8;
-  --steel: #94a0c4;     /* labels and headings: quiet, so cyan can mean one thing */
+  --body: #9aa5c6;      /* body text, a step brighter than the canon's --ink */
+  --hair: #141d33;      /* the faintest rule */
   /* Type scale: labels and meta, body and names, values. Nothing a player
      needs to read goes below the first step. */
   --fs-label: 11px;
@@ -78,7 +73,7 @@
 :root { color-scheme: dark; }
 html, body {
   margin: 0; padding: 0;
-  background: var(--bg); color: var(--text);
+  background: var(--bg); color: var(--body);
   font-family: var(--font-mono); font-size: 13px; line-height: 1.35;
 }
 /* The game floats in the middle of the window over a line-drawn SOC (after
@@ -116,7 +111,7 @@ a { color: var(--accent); }
      the two columns scroll inside it, the strip pinned to the board's foot. */
   max-height: calc(100dvh - 2 * var(--frame));
   grid-template-areas: "hud hud" "board side";
-  background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
   /* A mat of plain ground outside the border, feathering into the scene,
      keeps the line-drawn SOC from crowding the table. It is shadow, not
      layout: where the window is tight it runs off the edge rather than
@@ -139,8 +134,8 @@ a { color: var(--accent); }
    never shifts; anything taller scrolls inside it. */
 #table   { border: 1px solid var(--accent-dim); background: rgba(84,242,255,0.03); padding: 8px 10px 10px; margin-bottom: 12px; height: var(--table-h, 212px); overflow: auto; }
 #app.p4 #table { height: 284px; } /* a 4-SOC display is six cards on two rows */
-#table.idle { border-color: var(--border); background: transparent; }
-#table.idle .center-title { color: var(--text-dim); }
+#table.idle { border-color: var(--line); background: transparent; }
+#table.idle .center-title { color: var(--dim); }
 #table.idle #display { opacity: 0.55; }
 /* Staff and tool rows are reserved at their grown size too: the first
    specialist hire (a three-line card) and the second row of tools would
@@ -158,7 +153,7 @@ a { color: var(--accent); }
 #rivals-panel h3 { position: sticky; top: -8px; z-index: 1; margin: -8px -8px 6px; padding: 8px 8px 0; background: var(--panel); }
 
 .panel {
-  background: var(--panel); border: 1px solid var(--border); padding: 8px;
+  background: var(--panel); border: 1px solid var(--line); padding: 8px;
   position: relative;
 }
 .panel h3 {
@@ -171,7 +166,7 @@ a { color: var(--accent); }
   display: grid; align-items: center; gap: 2px 14px;
   grid-template-columns: auto 1fr;
   grid-template-areas: "title buttons" "strip stats";
-  padding: 4px 12px; border: 1px solid var(--border); background: var(--panel);
+  padding: 4px 12px; border: 1px solid var(--line); background: var(--panel);
 }
 #hud-top > .brand { grid-area: title; display: flex; align-items: baseline; gap: 10px; }
 #hud-top .hud-buttons { grid-area: buttons; justify-self: end; }
@@ -184,28 +179,28 @@ a { color: var(--accent); }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 50px; }
 .stat .ot { color: var(--warn); font-size: var(--fs-label); letter-spacing: 1px; }
 #phase-strip { display: flex; gap: 3px; align-items: center; margin-left: 10px; }
-.pstep { font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--border); color: var(--text-dim); }
-.pstep.done { color: var(--accent-dim); border-color: var(--line); }
-.pstep.on { color: var(--white); border-color: var(--lit); background: rgba(219,228,251,0.06); } /* the phase is status, not a move */
+.pstep { font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--line); color: var(--dim); }
+.pstep.done { color: var(--accent-dim); border-color: var(--hair); }
+.pstep.on { color: var(--text); border-color: var(--lit); background: rgba(219,228,251,0.06); } /* the phase is status, not a move */
 .bagdots { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 .bagdots .mini-dot { width: 9px; height: 9px; }
-.stat .lbl { font-size: var(--fs-label); letter-spacing: 0.5px; color: var(--text-dim); text-transform: uppercase; }
-.stat .val { font-size: var(--fs-value); color: var(--white); transition: color .3s; line-height: 1.1; }
+.stat .lbl { font-size: var(--fs-label); letter-spacing: 0.5px; color: var(--dim); text-transform: uppercase; }
+.stat .val { font-size: var(--fs-value); color: var(--text); transition: color .3s; line-height: 1.1; }
 .stat.flash .val { animation: stat-flash .6s ease-out; }
 .stat .val.warn { color: var(--warn); }
 .stat .val.bad  { color: var(--red); }
-@keyframes stat-flash { 0% { color: #fff; text-shadow: 0 0 10px #fff; } 100% { color: var(--white); } }
+@keyframes stat-flash { 0% { color: #fff; text-shadow: 0 0 10px #fff; } 100% { color: var(--text); } }
 .hud-buttons { display: flex; gap: 6px; }
 .icon-btn {
-  background: transparent; border: 1px solid var(--border); color: var(--white);
+  background: transparent; border: 1px solid var(--line); color: var(--text);
   width: 26px; height: 26px; cursor: pointer; font-size: 13px; padding: 0;
   display: inline-flex; align-items: center; justify-content: center;
 }
 .icon-btn:hover { border-color: var(--lit); background: rgba(219,228,251,0.08); }
 .icon-btn.warn { color: var(--red); border-color: var(--red); }
 #mute-btn { background-repeat: no-repeat; background-position: center; background-size: 16px; }
-#mute-btn[aria-pressed="false"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dbe4fb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'%3E%3C/path%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'%3E%3C/path%3E%3C/svg%3E"); }
-#mute-btn[aria-pressed="true"]  { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d8aa8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cline x1='23' y1='9' x2='17' y2='15'%3E%3C/line%3E%3Cline x1='17' y1='9' x2='23' y2='15'%3E%3C/line%3E%3C/svg%3E"); }
+#mute-btn[aria-pressed="true"]  { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23dbe4fb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cpath d='M15.54 8.46a5 5 0 0 1 0 7.07'%3E%3C/path%3E%3Cpath d='M19.07 4.93a10 10 0 0 1 0 14.14'%3E%3C/path%3E%3C/svg%3E"); }
+#mute-btn[aria-pressed="false"] { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237d8aa8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolygon points='11 5 6 9 2 9 2 15 6 15 11 19 11 5'%3E%3C/polygon%3E%3Cline x1='23' y1='9' x2='17' y2='15'%3E%3C/line%3E%3Cline x1='17' y1='9' x2='23' y2='15'%3E%3C/line%3E%3C/svg%3E"); }
 
 /* Phase toast */
 #phase-toast {
@@ -290,7 +285,7 @@ a { color: var(--accent); }
 .die.c-pink   { color: var(--pink);   border-color: var(--pink); }
 /* A pink host healed past 6 waits, ready, for the rest of its family. */
 .die.ready { outline: 2px solid var(--accent); outline-offset: 2px; }
-.die.ready::after { content: "✓"; position: absolute; right: -6px; top: -8px; font-size: 11px; color: var(--white); }
+.die.ready::after { content: "✓"; position: absolute; right: -6px; top: -8px; font-size: 11px; color: var(--text); }
 /* A restored host pulses on its 6 before it leaves for the ladder. The ring
    is its own class so a follow-up burst (also on ::before) can stand in for it. */
 .die.healed { animation: die-glow .7s ease-out; }
@@ -331,8 +326,8 @@ a { color: var(--accent); }
    BOARD — quarantine segments, tools, staff
    ============================================================ */
 #wards { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
-.ward { flex: 0 0 auto; border: 1px solid var(--border); background: var(--panel-2); padding: 4px 8px 8px; }
-.ward .ward-h { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
+.ward { flex: 0 0 auto; border: 1px solid var(--line); background: var(--panel2); padding: 4px 8px 8px; }
+.ward .ward-h { font-size: var(--fs-label); color: var(--dim); letter-spacing: 1px; margin-bottom: 4px; display: flex; justify-content: space-between; }
 .ward .beds { display: flex; gap: 6px; justify-content: flex-start; }
 /* Placing incoming hosts (Virtualization): the segments that may take the current one. */
 .ward.place-ok { border-color: var(--accent); box-shadow: 0 0 10px rgba(84,242,255,0.3); }
@@ -342,7 +337,7 @@ a { color: var(--accent); }
    hypervisor arrives above it, then a placement like a tool. */
 .nursery { margin-top: 6px; border: 1px dashed color-mix(in srgb, var(--pink) 35%, transparent); border-radius: 4px; padding: 3px 6px 4px; position: relative; }
 .nursery.closed { opacity: 0.35; border-style: dotted; }
-.nursery .nh { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; }
+.nursery .nh { font-size: var(--fs-label); color: var(--dim); letter-spacing: 1px; display: flex; justify-content: space-between; gap: 8px; text-transform: uppercase; }
 .nursery.open .nh span:first-child { color: var(--pink); }
 .nursery .nslots { display: flex; gap: 4px; min-height: 34px; align-items: center; }
 .nursery .slot.g { width: 34px; height: 34px; }
@@ -357,11 +352,11 @@ a { color: var(--accent); }
   border: 1px solid transparent; border-radius: 6px; display: flex; align-items: center; justify-content: center;
   position: relative;
 }
-.slot.u.empty { border-color: var(--border); border-style: dashed; }
+.slot.u.empty { border-color: var(--line); border-style: dashed; }
 .slot.u.empty.open { border-color: #2e3f6a; }
-.slot.t.empty::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+.slot.t.empty::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--line); }
 .slot.t { background: rgba(219,228,251,0.03); }
-.h3-note { float: right; color: var(--text-dim); letter-spacing: 0; text-transform: none; font-size: var(--fs-label); }
+.h3-note { float: right; color: var(--dim); letter-spacing: 0; text-transform: none; font-size: var(--fs-label); }
 .slot.drop-ok { border-color: var(--accent); box-shadow: inset 0 0 8px rgba(84,242,255,0.3); cursor: pointer; }
 .slot.mark-breach { border-color: var(--red); box-shadow: inset 0 0 10px rgba(255,51,51,0.5); }
 
@@ -397,13 +392,13 @@ a { color: var(--accent); }
 #staff { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 6px; margin-bottom: 10px; }
 #depts { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; margin-bottom: 12px; }
 .dept-tile {
-  border: 1px solid var(--border); border-left: 3px solid var(--border); background: var(--panel-2);
+  border: 1px solid var(--line); border-left: 3px solid var(--line); background: var(--panel2);
   padding: 8px 10px; min-height: 68px; position: relative; cursor: default; transition: box-shadow .2s, border-color .2s;
   display: flex; flex-direction: column; justify-content: space-between;
 }
-.dept-tile .dn { font-size: 13px; color: var(--white); line-height: 1.2; }
-.dept-tile .dr { font-size: 12px; color: var(--text); margin-top: 4px; letter-spacing: 0.3px; }
-.dept-tile { --tag: var(--border); border-left-color: var(--tag); }
+.dept-tile .dn { font-size: 13px; color: var(--text); line-height: 1.2; }
+.dept-tile .dr { font-size: 12px; color: var(--body); margin-top: 4px; letter-spacing: 0.3px; }
+.dept-tile { --tag: var(--line); border-left-color: var(--tag); }
 .dept-tile.tag-red    { --tag: var(--red); }
 .dept-tile.tag-yellow { --tag: var(--yellow); }
 .dept-tile.tag-green  { --tag: var(--green); }
@@ -411,9 +406,9 @@ a { color: var(--accent); }
 .dept-tile.tag-exp    { --tag: var(--blue); }
 .dept-tile.tag-pink   { --tag: var(--pink); }
 /* An available tile lights up in its own colour; unavailable ones dim. */
-.dept-tile.can { border-color: var(--tag); background: color-mix(in oklab, var(--tag) 9%, var(--panel-2)); box-shadow: 0 0 8px color-mix(in srgb, var(--tag) 35%, transparent); cursor: pointer; }
-.dept-tile.can:hover { background: color-mix(in oklab, var(--tag) 16%, var(--panel-2)); }
-.dept-tile.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
+.dept-tile.can { border-color: var(--tag); background: color-mix(in oklab, var(--tag) 9%, var(--panel2)); box-shadow: 0 0 8px color-mix(in srgb, var(--tag) 35%, transparent); cursor: pointer; }
+.dept-tile.can:hover { background: color-mix(in oklab, var(--tag) 16%, var(--panel2)); }
+.dept-tile.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel2)); box-shadow: 0 0 0 1px var(--accent); }
 .dept-tile.used { opacity: 0.45; }
 /* A used tool is dimmed and carries its staff member's dot; the hover box
    says "Used this shift". No corner label: one would push the name onto a
@@ -425,41 +420,41 @@ a { color: var(--accent); }
 .dept-tile .meep-on { position: absolute; right: 6px; bottom: 6px; width: 12px; height: 12px; }
 
 .meeple {
-  display: flex; flex-direction: column; gap: 3px; padding: 5px 8px 4px; border: 1px solid var(--border); border-left: 3px solid var(--border);
-  background: var(--panel-2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
+  display: flex; flex-direction: column; gap: 3px; padding: 5px 8px 4px; border: 1px solid var(--line); border-left: 3px solid var(--line);
+  background: var(--panel2); cursor: default; font-size: 12px; min-height: 52px; transition: box-shadow .2s, border-color .2s; position: relative;
 }
-.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--white); line-height: 14px; } /* the dot's height: room for the dice below */
+.meeple .mh { display: flex; align-items: center; gap: 7px; color: var(--text); line-height: 14px; } /* the dot's height: room for the dice below */
 .meeple .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #000; flex: none; }
-.meeple .key { color: var(--text-dim); font-size: var(--fs-label); margin-left: auto; }
-.meeple .ab { font-size: 11px; color: var(--text); line-height: 1.3; }
+.meeple .key { color: var(--dim); font-size: var(--fs-label); margin-left: auto; }
+.meeple .ab { font-size: 11px; color: var(--body); line-height: 1.3; }
 .meeple.used::after { content: "PLACED"; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: var(--accent); letter-spacing: 1px; }
 .meeple.off::after { content: "OUT SICK"; position: absolute; right: 6px; bottom: 5px; font-size: 10px; color: var(--red); letter-spacing: 1px; }
 .meeple.returnable { border-color: var(--accent); cursor: pointer; }
-.meeple.clickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); }
-.dot.c-white  { background: var(--white); } .dot.c-red { background: var(--red); }
+.meeple.clickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); }
+.dot.c-white  { background: var(--text); } .dot.c-red { background: var(--red); }
 .dot.c-yellow { background: var(--yellow); } .dot.c-green { background: var(--green); } .dot.c-blue { background: var(--blue); } .dot.c-pink { background: var(--pink); }
-.meeple.avail { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.meeple.avail { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
 .meeple.avail:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
-.meeple.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
+.meeple.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel2)); box-shadow: 0 0 0 1px var(--accent); }
 .meeple.used { opacity: 0.45; }
 .meeple.off { opacity: 0.45; border-style: dashed; }
 /* The colour accent on the left edge outranks every state above (avail,
    sel, returnable set border-color on all four sides): it comes last. */
-.meeple.b-white { border-left-color: var(--white); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
+.meeple.b-white { border-left-color: var(--text); } .meeple.b-red { border-left-color: var(--red); } .meeple.b-yellow { border-left-color: var(--yellow); }
 .meeple.b-green { border-left-color: var(--green); } .meeple.b-blue { border-left-color: var(--blue); } .meeple.b-pink { border-left-color: var(--pink); }
 .mini-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #000; }
 
 #specs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .spec-card {
-  border: 1px solid var(--border); background: var(--panel-2); padding: 4px 6px; font-size: 10px; max-width: 200px;
-  border-top: 3px solid var(--border);
+  border: 1px solid var(--line); background: var(--panel2); padding: 4px 6px; font-size: 10px; max-width: 200px;
+  border-top: 3px solid var(--line);
 }
-.spec-card .sn { color: var(--white); font-size: 11px; }
-.spec-card .sd { color: var(--text); font-size: 11px; }
+.spec-card .sn { color: var(--text); font-size: 11px; }
+.spec-card .sd { color: var(--body); font-size: 11px; }
 .spec-card.returnable { border-color: var(--accent); cursor: pointer; }
 .spec-card.clickable { cursor: pointer; }
 .spec-card.clickable:hover { border-color: var(--accent); }
-.spec-card.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
+.spec-card.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel2)); box-shadow: 0 0 0 1px var(--accent); }
 
 #tray { min-height: 44px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .token { display: inline-block; padding: 1px 6px; border: 1px solid; border-radius: 3px; font-size: var(--fs-label); letter-spacing: 1px; }
@@ -476,29 +471,29 @@ a { color: var(--accent); }
 /* A specialist's trigger: the die it heals, badged + as on the printed card. */
 .pd.trig { position: relative; margin-right: 3px; }
 .pd.trig::after { content: "+"; position: absolute; top: -3px; right: -6px; width: 9px; height: 9px; border-radius: 50%;
-  border: 1px solid currentColor; background: var(--panel-2); font: bold 9px/8px var(--font-mono); text-align: center; }
+  border: 1px solid currentColor; background: var(--panel2); font: bold 9px/8px var(--font-mono); text-align: center; }
 .pd.c-red { color: var(--red); } .pd.c-yellow { color: var(--yellow); } .pd.c-green { color: var(--green); }
-.pd.c-pink { color: var(--pink); } .pd.c-white { color: var(--white); } .pd.c-blue { color: var(--blue); }
-.ps { color: var(--text); font-size: 12px; }
-.pe { color: var(--white); font-size: 13px; font-weight: bold; } .pe.c-pink { color: var(--pink); }
-.pt { color: var(--text); font-size: 11px; }
-.dept-tile .dr, .meeple .ab, .spec-card .sd { color: var(--text); }
+.pd.c-pink { color: var(--pink); } .pd.c-white { color: var(--text); } .pd.c-blue { color: var(--blue); }
+.ps { color: var(--body); font-size: 12px; }
+.pe { color: var(--text); font-size: 13px; font-weight: bold; } .pe.c-pink { color: var(--pink); }
+.pt { color: var(--body); font-size: 11px; }
+.dept-tile .dr, .meeple .ab, .spec-card .sd { color: var(--body); }
 /* PLACED / OUT SICK sit at the foot, beside the dice row, never on the name:
    a card must not change height when its state does. */
 
 /* The hover box. Its edge takes the colour of what it describes. */
 #tip {
   position: fixed; z-index: 9800; left: 0; top: 0; max-width: 300px; pointer-events: none;
-  padding: 7px 10px 8px; background: var(--panel); color: var(--text); font-size: 12px; line-height: 1.4;
+  padding: 7px 10px 8px; background: var(--panel); color: var(--body); font-size: 12px; line-height: 1.4;
   border: 1px solid var(--lit); border-left: 3px solid var(--tc, var(--accent)); border-radius: 3px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 12px rgba(84,242,255,0.08);
   opacity: 0; visibility: hidden; transition: opacity .12s, visibility 0s .12s;
 }
 #tip.on { opacity: 1; visibility: visible; transition: opacity .12s; }
-#tip .th { color: var(--white); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+#tip .th { color: var(--text); font-size: 11px; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
 #tip[data-c="red"] { --tc: var(--red); } #tip[data-c="yellow"] { --tc: var(--yellow); } #tip[data-c="green"] { --tc: var(--green); }
 #tip[data-c="pink"] { --tc: var(--pink); } #tip[data-c="any"] { --tc: var(--violet); } #tip[data-c="exp"], #tip[data-c="blue"] { --tc: var(--blue); }
-#tip[data-c="white"] { --tc: var(--white); } #tip[data-c="warn"] { --tc: var(--warn); }
+#tip[data-c="white"] { --tc: var(--text); } #tip[data-c="warn"] { --tc: var(--warn); }
 /* A refused click: one short shake. */
 .nope { animation: nope .32s ease-in-out; }
 @keyframes nope { 25% { translate: -3px 0; } 75% { translate: 3px 0; } }
@@ -512,20 +507,20 @@ a { color: var(--accent); }
 .center-title { color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; }
 #queues { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .queue {
-  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; min-width: 66px;
+  border: 1px solid var(--line); background: var(--panel2); padding: 6px; min-width: 66px;
   display: flex; flex-direction: column; align-items: center; gap: 5px; position: relative; transition: box-shadow .2s, opacity .3s;
 }
-.queue .qn { color: var(--white); font-size: 14px; letter-spacing: 1px; }
-.queue .qsum { font-size: var(--fs-label); color: var(--text-dim); }
+.queue .qn { color: var(--text); font-size: 14px; letter-spacing: 1px; }
+.queue .qsum { font-size: var(--fs-label); color: var(--dim); }
 .queue .qfit { font-size: var(--fs-label); color: var(--green); }
 .queue .qfit.bad { color: var(--red); }
-.queue.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel-2)); box-shadow: 0 0 0 1px var(--accent); }
+.queue.sel { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 14%, var(--panel2)); box-shadow: 0 0 0 1px var(--accent); }
 .queue.blocked { cursor: not-allowed; }
-.queue.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.queue.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
 .queue.pickable:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
 .queue.taken { opacity: 0.5; }
 .queue.blocked { opacity: 0.4; border-style: dashed; }
-.queue .qby { font-size: 10px; color: var(--text); letter-spacing: 1px; text-align: center; max-width: 56px; line-height: 1.2; } /* a taker's name wraps rather than widening its queue into a second row */
+.queue .qby { font-size: 10px; color: var(--body); letter-spacing: 1px; text-align: center; max-width: 56px; line-height: 1.2; } /* a taker's name wraps rather than widening its queue into a second row */
 .queue .qcmd { position: absolute; right: -6px; top: -8px; }
 
 #display { display: flex; flex-direction: column; gap: 8px; }
@@ -540,12 +535,12 @@ a { color: var(--accent); }
 #display .disp-row .spec-card .sd { font-size: 12px; }
 .dept-tile.pickable { cursor: pointer; border-color: var(--tag); }
 .dept-tile.pickable:hover { box-shadow: 0 0 8px color-mix(in srgb, var(--tag) 35%, transparent); }
-.spec-card.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.spec-card.pickable { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
 .spec-card.pickable:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
 /* The colour accent on the top edge outranks pickable/sel/returnable, which
    set border-color on all four sides: it comes after them. */
 .spec-card.tag-red { border-top-color: var(--red); } .spec-card.tag-yellow { border-top-color: var(--yellow); }
-.spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--white); }
+.spec-card.tag-green { border-top-color: var(--green); } .spec-card.tag-white { border-top-color: var(--text); }
 .spec-card.tag-blue { border-top-color: var(--blue); } .spec-card.tag-pink { border-top-color: var(--pink); }
 /* Dealing and taking. Cards deal in from the stacks; a taken card goes to
    its new owner: yours onto your board (a FLIP move), a rival's off toward
@@ -554,37 +549,37 @@ a { color: var(--accent); }
 /* A rival weighing the display: its choice lifts under a cyan outline, named. */
 .dept-tile.chosen, .spec-card.chosen { position: relative; outline: 2px solid var(--accent); outline-offset: 1px; animation: chosen-lift .3s var(--ease-out-quart) both; }
 @keyframes chosen-lift { 0% { transform: none; } 100% { transform: translateY(-4px); } }
-.chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--white); letter-spacing: 1px; }
+.chosen::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--text); letter-spacing: 1px; }
 /* After your own pick the remaining rival picks run quick. */
 #display.quick .leaving { animation-duration: .3s; }
 #display.quick .chosen { animation-duration: .15s; }
 @keyframes deal-in { 0% { opacity: 0; transform: translateX(28px) rotate(1.5deg); } 100% { opacity: 1; transform: none; } }
 .dept-tile.leaving, .spec-card.leaving { animation: card-away .6s var(--ease-out-quart) forwards; pointer-events: none; position: relative; }
 @keyframes card-away { 0% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translate(70px, -14px) scale(0.92); } }
-.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--white); letter-spacing: 1px; }
+.leaving::after { content: attr(data-to); position: absolute; right: 6px; top: 5px; font-size: 10px; color: var(--text); letter-spacing: 1px; }
 .dept-tile.pickable:active, .spec-card.pickable:active, .queue.pickable:active { transform: translateY(1px); }
 .rival-card.took { animation: took-flash .8s ease-out; }
-@keyframes took-flash { 0% { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.6); } 100% { border-color: var(--border); box-shadow: none; } }
+@keyframes took-flash { 0% { border-color: var(--accent); box-shadow: 0 0 12px rgba(84,242,255,0.6); } 100% { border-color: var(--line); box-shadow: none; } }
 .queue.just .qby { animation: stamp-in .35s var(--ease-out-quart); }
 @keyframes stamp-in { 0% { opacity: 0; transform: scale(1.6); } 100% { opacity: 1; transform: none; } }
-.stack-info { font-size: var(--fs-label); color: var(--text-dim); }
+.stack-info { font-size: var(--fs-label); color: var(--dim); }
 
 .keep-row { display: flex; gap: 12px; justify-content: center; margin: 10px 0; }
 
 .rule-card { border: 1px solid color-mix(in oklab, var(--warn) 45%, transparent); background: rgba(255,176,0,0.05); padding: 6px 8px; margin-bottom: 8px; font-size: 11px; }
 .rule-card .rn { color: var(--warn); font-size: 12px; } /* an incident event is news: amber */
 .act-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.hint { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+.hint { font-size: 11px; color: var(--dim); margin-top: 6px; }
 
 #reports { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .report {
-  border: 1px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; font-size: var(--fs-label);
+  border: 1px solid var(--line); background: var(--panel2); padding: 6px; text-align: center; font-size: var(--fs-label);
   display: flex; flex-direction: column; align-items: center; gap: 4px;
 }
-.report .rp { color: var(--white); font-size: 14px; }
+.report .rp { color: var(--text); font-size: 14px; }
 .report .rneed { display: flex; gap: 3px; }
 .report.top { opacity: 0.55; }
-.report.done-able { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--border)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
+.report.done-able { cursor: pointer; border-color: color-mix(in oklab, var(--accent) 60%, var(--line)); box-shadow: 0 0 6px rgba(84,242,255,0.18); }
 .report.empty { border-style: dashed; opacity: 0.3; }
 .report-list { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 
@@ -595,10 +590,10 @@ a { color: var(--accent); }
 .colour-btn:hover { background: rgba(255,255,255,0.08); }
 
 .admin-pick { display: flex; gap: 8px; }
-.admin-card { flex: 1; border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--border)); padding: 8px; cursor: pointer; background: var(--panel-2); }
+.admin-card { flex: 1; border: 1px solid color-mix(in oklab, var(--accent) 60%, var(--line)); padding: 8px; cursor: pointer; background: var(--panel2); }
 .admin-card:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.3); }
-.admin-card .an { color: var(--white); font-size: 12px; margin-bottom: 4px; }
-.admin-card .ad { font-size: var(--fs-label); color: var(--text-dim); }
+.admin-card .an { color: var(--text); font-size: 12px; margin-bottom: 4px; }
+.admin-card .ad { font-size: var(--fs-label); color: var(--dim); }
 
 .collection { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
 .coll-slot { width: 46px; height: 46px; border: 2px dashed; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
@@ -606,32 +601,32 @@ a { color: var(--accent); }
 .coll-slot.filled { border-style: solid; background: rgba(255,255,255,0.06); }
 
 .summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; font-size: 11px; }
-.summary-grid .k { color: var(--text-dim); }
+.summary-grid .k { color: var(--dim); }
 
 /* Procurement (Investments): upgrade chips on tools and the Apprentice, the
    vendor lines on the table, the drawn upgrades to pick from. */
 .upgs { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 4px; }
-.upg { display: inline-block; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 0 3px; border: 1px solid var(--border); line-height: 13px; color: var(--text-dim); }
+.upg { display: inline-block; font-size: 10px; letter-spacing: 0.5px; text-transform: uppercase; padding: 0 3px; border: 1px solid var(--line); line-height: 13px; color: var(--dim); }
 .upg.c-red { color: var(--red); border-color: var(--red); } .upg.c-yellow { color: var(--yellow); border-color: var(--yellow); } .upg.c-green { color: var(--green); border-color: var(--green); }
 .meeple .upg { margin-left: 4px; }
 .meeple.used.invest::after { content: "AT DESK"; }
 .meeple.used.clickable { opacity: 0.8; border-color: var(--accent); }
 .vendors { display: flex; gap: 8px; justify-content: center; }
-.vendor { flex: 1 1 0; max-width: 150px; border: 1px solid var(--border); border-top: 3px solid var(--border); background: var(--panel-2); padding: 6px; text-align: center; }
+.vendor { flex: 1 1 0; max-width: 150px; border: 1px solid var(--line); border-top: 3px solid var(--line); background: var(--panel2); padding: 6px; text-align: center; }
 .vendor.c-red { border-top-color: var(--red); } .vendor.c-yellow { border-top-color: var(--yellow); } .vendor.c-green { border-top-color: var(--green); }
-.vendor .vn { color: var(--white); font-size: 12px; }
-.vendor .vs { font-size: var(--fs-label); color: var(--text-dim); }
+.vendor .vn { color: var(--text); font-size: 12px; }
+.vendor .vs { font-size: var(--fs-label); color: var(--dim); }
 .vendor .vo { display: flex; gap: 4px; justify-content: center; margin-top: 4px; }
-.vslot { min-width: 28px; height: 16px; border: 1px dashed var(--border); font-size: 10px; line-height: 14px; letter-spacing: 1px; color: var(--text); }
+.vslot { min-width: 28px; height: 16px; border: 1px dashed var(--line); font-size: 10px; line-height: 14px; letter-spacing: 1px; color: var(--body); }
 .vslot.on { border-style: solid; border-color: var(--accent-dim); }
 .vendor.can { cursor: pointer; border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.35); }
 .vendor.can:hover { background: rgba(84,242,255,0.08); }
 .vendor.full { opacity: 0.5; }
 .itokens { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; }
-.itoken { border: 1px solid var(--border); border-left: 4px solid var(--border); background: var(--panel-2); padding: 5px 8px; max-width: 210px; cursor: pointer; }
+.itoken { border: 1px solid var(--line); border-left: 4px solid var(--line); background: var(--panel2); padding: 5px 8px; max-width: 210px; cursor: pointer; }
 .itoken.c-red { border-left-color: var(--red); } .itoken.c-yellow { border-left-color: var(--yellow); } .itoken.c-green { border-left-color: var(--green); }
 .itoken:hover { border-color: var(--accent); box-shadow: 0 0 8px rgba(84,242,255,0.35); }
-.itoken .in { color: var(--white); font-size: 11px; } .itoken .id { font-size: var(--fs-label); color: var(--text); margin-top: 2px; }
+.itoken .in { color: var(--text); font-size: 11px; } .itoken .id { font-size: var(--fs-label); color: var(--body); margin-top: 2px; }
 /* One more tool and specialist on display: the table grows a row. */
 #app.invest #table { height: 250px; } #app.invest.p4 #table { height: 330px; }
 #app.invest #side-table #table { height: 350px; } #app.invest.p4 #side-table #table { height: 470px; }
@@ -639,7 +634,7 @@ a { color: var(--accent); }
 /* Network map (City): zones on a grid, links drawn as bars to the edges,
    the host on top; a jump host sits on the outside edge of its ingress. */
 .netmap { display: grid; gap: 3px; --tile: 56px; justify-content: center; margin: 2px 0 4px; }
-.ctile { position: relative; width: var(--tile); height: var(--tile); background: var(--panel-2); border: 1px solid var(--border); border-radius: 3px; }
+.ctile { position: relative; width: var(--tile); height: var(--tile); background: var(--panel2); border: 1px solid var(--line); border-radius: 3px; }
 .ctile .rd { position: absolute; background: #24345a; }
 .ctile .rd.n { top: 0; left: 50%; width: 8px; height: 50%; margin-left: -4px; }
 .ctile .rd.s { bottom: 0; left: 50%; width: 8px; height: 50%; margin-left: -4px; }
@@ -658,17 +653,17 @@ a { color: var(--accent); }
 .ctile .ctok { right: 1px; top: 1px; }
 .strip-rule .ctok { display: inline-block; font-size: 10px; line-height: 12px; padding: 0 3px; border: 1px solid var(--warn); color: var(--warn); margin-right: 2px; }
 .strip-rule .ctok.t-red { color: var(--red); border-color: var(--red); } .strip-rule .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .strip-rule .ctok.t-green { color: var(--green); border-color: var(--green); }
-.strip-rule .ctok.t-contractor { color: var(--white); border-color: var(--white); }
+.strip-rule .ctok.t-contractor { color: var(--text); border-color: var(--text); }
 .ctile .ctok.t-red { color: var(--red); border-color: var(--red); } .ctile .ctok.t-yellow { color: var(--yellow); border-color: var(--yellow); } .ctile .ctok.t-green { color: var(--green); border-color: var(--green); }
-.ctile .ctok.t-contractor { color: var(--white); border-color: var(--white); }
-.ctile .van { border-color: var(--text-dim); color: var(--text); }
+.ctile .ctok.t-contractor { color: var(--text); border-color: var(--text); }
+.ctile .van { border-color: var(--dim); color: var(--body); }
 .ctile .van.you { border-color: var(--accent); color: var(--accent); }
 .ctile .van.side-n { top: -1px; left: 50%; transform: translateX(-50%); } .ctile .van.side-s { bottom: -1px; left: 50%; transform: translateX(-50%); }
 .ctile .van.side-w { left: -1px; top: 50%; transform: translateY(-50%); } .ctile .van.side-e { right: -1px; top: 50%; transform: translateY(-50%); }
 .ctile .van.heli { left: 1px; top: 1px; border-style: dashed; }
 .ctile .pm { position: absolute; left: 3px; bottom: 3px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); z-index: 3; }
-.city-order { font-size: var(--fs-label); color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 6px; }
-.city-order .you { color: var(--white); font-weight: bold; }
+.city-order { font-size: var(--fs-label); color: var(--dim); letter-spacing: 0.5px; margin-bottom: 6px; }
+.city-order .you { color: var(--text); font-weight: bold; }
 .token.recon { color: var(--warn); border-color: #cc8800; }
 /* The map shares the table with the display, so the table gets taller. */
 #app.city #table { height: min(300px, 42vh); }
@@ -679,11 +674,11 @@ a { color: var(--accent); }
    SIDE — rivals + SIEM log
    ============================================================ */
 #rivals { display: flex; flex-direction: column; gap: 6px; }
-.rival-card { border: 1px solid var(--border); background: var(--panel-2); padding: 5px 7px; font-size: var(--fs-label); }
-.rival-card .rn { color: var(--white); font-size: 11px; display: flex; justify-content: space-between; }
-.rival-card .rn .sc { color: var(--white); }
-.rival-card .rl { display: flex; gap: 8px; flex-wrap: wrap; color: var(--text-dim); margin-top: 2px; }
-.rival-card .rs { color: var(--text-dim); font-style: italic; margin-top: 2px; }
+.rival-card { border: 1px solid var(--line); background: var(--panel2); padding: 5px 7px; font-size: var(--fs-label); }
+.rival-card .rn { color: var(--text); font-size: 11px; display: flex; justify-content: space-between; }
+.rival-card .rn .sc { color: var(--text); }
+.rival-card .rl { display: flex; gap: 8px; flex-wrap: wrap; color: var(--dim); margin-top: 2px; }
+.rival-card .rs { color: var(--dim); font-style: italic; margin-top: 2px; }
 .rival-card .rdice { display: flex; gap: 3px; flex-wrap: wrap; margin-top: 3px; align-items: center; }
 .rival-card .rsep { width: 1px; align-self: stretch; margin: 0 3px; background: var(--lit); } /* queued | worked */
 .rival-card.cmd .rn::after { content: "CMD"; font-size: 9px; color: var(--steel); border: 1px solid var(--lit); padding: 0 3px; margin-left: 4px; }
@@ -695,14 +690,14 @@ a { color: var(--accent); }
 #siem { flex: 1 1 0; min-height: 120px; contain: size; display: flex; flex-direction: column; margin-bottom: 0; } /* level with the strip: the board has no padding of its own now */
 #siem .log-scroll { flex: 1; min-height: 0; overflow-y: auto; }
 #siem ul { list-style: none; margin: 0; padding: 0; font-size: var(--fs-label); }
-#siem li { padding: 2px 0; border-bottom: 1px solid var(--line); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
+#siem li { padding: 2px 0; border-bottom: 1px solid var(--hair); animation: log-enter .3s var(--ease-out-quart); word-break: break-word; }
 @keyframes log-enter { 0% { opacity: 0; transform: translateX(-6px); } 100% { opacity: 1; transform: none; } }
-#siem li.warn { color: var(--warn); } #siem li.bad { color: var(--red); } #siem li.good { color: var(--green); } #siem li.sys { color: var(--text-dim); }
+#siem li.warn { color: var(--warn); } #siem li.bad { color: var(--red); } #siem li.good { color: var(--green); } #siem li.sys { color: var(--dim); }
 #siem li .ts { color: #56627f; margin-right: 4px; }
-#log-older summary { cursor: pointer; color: var(--text-dim); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; padding: 6px 0 3px; list-style: none; }
+#log-older summary { cursor: pointer; color: var(--dim); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; padding: 6px 0 3px; list-style: none; }
 #log-older summary::before { content: "▸ "; } #log-older[open] summary::before { content: "▾ "; }
 #log-older summary::-webkit-details-marker { display: none; }
-#log-older summary:hover { color: var(--white); }
+#log-older summary:hover { color: var(--text); }
 #log-older ul { opacity: 0.75; }
 
 /* ============================================================
@@ -719,33 +714,33 @@ a { color: var(--accent); }
 }
 .strip-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
 .strip-phase { color: var(--steel); font-size: 12px; letter-spacing: 2px; text-transform: uppercase; }
-.strip-shift { color: var(--text-dim); font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; }
-.strip-rule { font-size: 12px; color: var(--text); padding: 3px 0; }
-.strip-rule b { color: var(--white); font-weight: normal; }
+.strip-shift { color: var(--dim); font-size: var(--fs-label); letter-spacing: 1px; text-transform: uppercase; }
+.strip-rule { font-size: 12px; color: var(--body); padding: 3px 0; }
+.strip-rule b { color: var(--text); font-weight: normal; }
 .strip-rule .strip-count { color: var(--accent); margin-left: 6px; }
 .strip-rule.follow { color: var(--accent); } /* a specialist's follow-up: what is waiting on you */
 .strip-rule.note { color: var(--violet); }
-#phase-instructions { font-size: 12px; min-height: 18px; color: var(--white); margin: 4px 0 6px; }
+#phase-instructions { font-size: 12px; min-height: 18px; color: var(--text); margin: 4px 0 6px; }
 #action-buttons { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--border); }
+.strip-tools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
 .strip-tools .hint { margin: 0 0 0 auto; }
 .ladder { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; }
-.lcell { font-size: var(--fs-label); padding: 1px 5px; border: 1px solid var(--border); color: var(--text-dim); }
-.lcell b { font-weight: normal; color: var(--text); }
-.lcell.cur { color: var(--bg); background: var(--white); border-color: var(--white); }
+.lcell { font-size: var(--fs-label); padding: 1px 5px; border: 1px solid var(--line); color: var(--dim); }
+.lcell b { font-weight: normal; color: var(--body); }
+.lcell.cur { color: var(--bg); background: var(--text); border-color: var(--text); }
 .lcell.cur b { color: var(--bg); }
-.lcell.next { color: var(--white); border-color: var(--lit); }
+.lcell.next { color: var(--text); border-color: var(--lit); }
 .action-btn {
-  background: transparent; color: var(--white); border: 1px solid var(--lit); padding: 6px 12px;
+  background: transparent; color: var(--text); border: 1px solid var(--lit); padding: 6px 12px;
   cursor: pointer; font-size: 12px; letter-spacing: 1px; text-transform: uppercase; transition: all .15s;
 }
-.action-btn:hover:not(:disabled) { background: rgba(219,228,251,0.1); border-color: var(--white); }
+.action-btn:hover:not(:disabled) { background: rgba(219,228,251,0.1); border-color: var(--text); }
 .action-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .action-btn.primary { border-color: var(--accent); color: var(--accent); }
 .action-btn.primary:hover:not(:disabled) { background: rgba(84,242,255,0.12); }
 .action-btn.danger { border-color: var(--red); color: var(--red); }
 .action-btn.sm { padding: 3px 8px; font-size: var(--fs-label); }
-.action-btn .k { color: var(--text-dim); font-size: 10px; margin-left: 4px; }
+.action-btn .k { color: var(--dim); font-size: 10px; margin-left: 4px; }
 
 /* ============================================================
    MODAL + HELP + MENU
@@ -768,47 +763,47 @@ body.on-title #app { visibility: hidden; }
   max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 70px rgba(0,0,0,0.7); animation: modal-in .25s var(--ease-out-quart);
 }
 @keyframes modal-in { from { opacity: 0; transform: translateY(12px) scale(0.98); } to { opacity: 1; transform: none; } }
-#modal-content h2 { color: var(--white); letter-spacing: 3px; font-weight: normal; margin: 0 0 8px; font-size: 20px; text-align: center; }
+#modal-content h2 { color: var(--text); letter-spacing: 3px; font-weight: normal; margin: 0 0 8px; font-size: 20px; text-align: center; }
 #modal-content h4 { color: var(--steel); font-weight: normal; letter-spacing: 1px; margin: 12px 0 4px; font-size: 12px; text-transform: uppercase; }
 #modal-content p, #modal-content li { font-size: 12px; }
 #modal-content ul { padding-left: 18px; margin: 4px 0; }
 .modal-actions { display: flex; gap: 8px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-.menu-tagline { text-align: center; color: var(--text-dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
+.menu-tagline { text-align: center; color: var(--dim); font-size: 11px; letter-spacing: 1px; margin-bottom: 14px; }
 .presets { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 10px; }
 .preset-sep { flex: 0 0 18px; } /* Solo stands apart: a mode, not a difficulty */
 .preset-btn.on { background: rgba(84,242,255,0.15); border-color: var(--accent); color: var(--accent); }
 .rule-row { display: grid; grid-template-columns: 160px 1fr; align-items: center; gap: 4px 10px; padding: 4px 0; font-size: 11px; }
-.rule-row .rl { color: var(--white); }
-.rule-row .rd { color: var(--text-dim); font-size: var(--fs-label); grid-column: 2; margin-top: -2px; }
+.rule-row .rl { color: var(--text); }
+.rule-row .rd { color: var(--dim); font-size: var(--fs-label); grid-column: 2; margin-top: -2px; }
 .seg { display: flex; flex-wrap: wrap; }
-.seg-btn { background: transparent; border: 1px solid var(--border); color: var(--text-dim); padding: 3px 10px; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; }
+.seg-btn { background: transparent; border: 1px solid var(--line); color: var(--dim); padding: 3px 10px; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; }
 .seg-btn + .seg-btn { margin-left: -1px; }
-.seg-btn:hover { color: var(--white); border-color: var(--lit); }
+.seg-btn:hover { color: var(--text); border-color: var(--lit); }
 .seg-btn.on { color: var(--accent); border-color: var(--accent); background: rgba(84,242,255,0.12); position: relative; z-index: 1; }
-details.addons summary { cursor: pointer; color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--border); padding-bottom: 3px; list-style: none; }
+details.addons summary { cursor: pointer; color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; text-transform: uppercase; margin: 12px 0 4px; border-bottom: 1px solid var(--line); padding-bottom: 3px; list-style: none; }
 details.addons summary::before { content: "▸ "; } details.addons[open] summary::before { content: "▾ "; }
 details.addons summary::-webkit-details-marker { display: none; }
-.rules-head { color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-.help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
-.help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--text-dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
-.help-tab.on { color: var(--accent); border-color: var(--border); }
+.rules-head { color: var(--steel); font-size: var(--fs-label); letter-spacing: 2px; margin: 10px 0 4px; text-transform: uppercase; border-bottom: 1px solid var(--line); }
+.help-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+.help-tab { background: transparent; border: 1px solid transparent; border-bottom: none; color: var(--dim); padding: 5px 10px; cursor: pointer; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+.help-tab.on { color: var(--accent); border-color: var(--line); }
 .help-panel { display: none; } .help-panel.on { display: block; }
 .help-table { width: 100%; border-collapse: collapse; font-size: 11px; }
-.help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.help-table th, .help-table td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--hair); vertical-align: top; }
 .help-table th { color: var(--steel); font-weight: normal; }
 .help-table td.hp { white-space: nowrap; vertical-align: middle; padding-top: 5px; padding-bottom: 5px; } /* a card's pictogram, kept on one line */
 .help-table td.hp .pg { flex-wrap: nowrap; }
 @media (max-width: 600px) { .help-table td.hp { white-space: normal; } .help-table td.hp .pg { flex-wrap: wrap; } } /* a phone has no room for a one-line card column */
 .score-table { font-size: 12px; border-collapse: collapse; margin: 8px auto; }
-.score-table td { padding: 3px 10px; border-bottom: 1px solid var(--line); }
-.score-table .tot { color: var(--white); font-size: 14px; }
+.score-table td { padding: 3px 10px; border-bottom: 1px solid var(--hair); }
+.score-table .tot { color: var(--text); font-size: 14px; }
 .grade { text-align: center; font-size: 40px; color: var(--accent); text-shadow: 0 0 12px rgba(84,242,255,0.3); margin: 6px 0; }
 .tut-step { min-height: 90px; }
 
 /* ============================================================
    A11Y, touch, motion, mobile
    ============================================================ */
-*:focus-visible { outline: 2px solid var(--white); outline-offset: 2px; }
+*:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 @media (pointer: coarse) {
   .action-btn, .icon-btn { min-height: 44px; }
@@ -904,7 +899,7 @@ details.addons summary::-webkit-details-marker { display: none; }
     <div class="hud-buttons">
       <button class="icon-btn" id="btn-help" onclick="showHowToPlay()" aria-label="How to play" title="How to play (H)">?</button>
       <button class="icon-btn" id="speed-btn" onclick="cycleSpeed()" aria-label="Rival and phase speed" title="Rival and phase speed: normal (S)">1×</button>
-      <button class="icon-btn" id="mute-btn" onclick="toggleMute()" aria-label="Toggle sound" aria-pressed="false" title="Toggle sound (M)"></button>
+      <button class="icon-btn" id="mute-btn" onclick="toggleMute()" aria-label="Sound" aria-pressed="true" title="Sound (M)"></button>
       <button class="icon-btn" id="newgame-btn" onclick="toTitle()" aria-label="Menu" title="Back to the title screen. This shift stays saved." style="width:auto;padding:0 8px;font-size:11px;">MENU</button>
     </div>
   </header>
@@ -923,10 +918,11 @@ details.addons summary::-webkit-details-marker { display: none; }
 <div id="announcements" class="sr-only" aria-live="polite"></div>
 
 <script>
-/* @gk-title-begin v0.1 -- greykit.games canon, byte-identical in every
- * Tactical game that has it: change it in one, copy it to all. Plain script,
- * no imports or exports, so a single-file game can paste it into a classic
- * <script> as it stands. */
+/* @gk-title-begin v0.3 -- greykit.games canon (games-meta STANDARD.md §3),
+ * byte-identical in every Tactical game. The copy of record is games-meta's
+ * canon/gk-title.js: change it there, bump the version, copy it to all, and
+ * tools/diff-standard.sh says where it differs. Plain script, no imports or
+ * exports, so a single-file game can paste it into a classic <script>. */
 
 /* greykit.com's mark: the right half of the face, flat cut on the left
  * (greykitweb/assets/greykit-mark.png at 240px). */
@@ -959,8 +955,11 @@ const TITLE_CSS = `
 .gk-boot .gk-slide{position:absolute;inset:0;transform:translateX(calc(var(--d) * -1));
   animation:gk-slide .6s cubic-bezier(.65,0,.35,1) .5s forwards}
 .gk-boot .gk-lh,.gk-boot .gk-rh{position:absolute;top:0;width:var(--S);height:var(--S)}
-.gk-boot .gk-lh{left:0}
-.gk-boot .gk-rh{left:var(--S)}
+/* the halves overlap by 2px, the left on top: two images laid edge to edge
+   are anti-aliased edge by edge, and some browsers (Brave) leave a hairline
+   of background between them */
+.gk-boot .gk-lh{left:0;z-index:1}
+.gk-boot .gk-rh{left:calc(var(--S) - 2px)}
 .gk-boot .gk-pulse{width:100%;height:100%;position:relative;transform-origin:100% 50%;animation:gk-pulse .7s ease-in-out 1.15s}
 .gk-boot .gk-face img{display:block;width:100%;height:100%;filter:invert(1) brightness(.72)}
 .gk-boot .gk-pulse img{animation:gk-glow .7s ease-in-out 1.15s}
@@ -1137,6 +1136,94 @@ function decodeTitle(h1, text) {
   }, 28);
 }
 
+/* The title's stylesheet, once, for a game that does not build its own CSS
+ * around TITLE_CSS. */
+function injectTitleCSS() {
+  if (!document.getElementById("gk-title-css")) document.head.insertAdjacentHTML("beforeend", '<style id="gk-title-css">' + TITLE_CSS + "</style>");
+}
+
+/* The boot log's first line: the page being reloaded, escaped. */
+function bootReloadLine() {
+  return "reload <b>" + escHTML(location.pathname.replace(/index\.html$/, "")) + "</b>";
+}
+
+/* The entrance: the menu rises, the name decodes, the default is focused.
+ * t is the .gk-title (the page's, if left out); the name is read off the h1. */
+function revealTitle(t = document.querySelector(".gk-title")) {
+  if (!t) return;
+  t.classList.add("gk-rise");
+  const h1 = t.querySelector("h1");
+  decodeTitle(h1, h1.getAttribute("aria-label"));
+  const b = t.querySelector(".gk-primary") || t.querySelector(".gk-menu button");
+  if (b) b.focus({ preventScroll: true });
+}
+
+/* The menu button a key presses: the one whose <kbd> shows that key, and the
+ * ? item for h and / as well. Read off the menu itself, so a key and its
+ * label cannot disagree. null when the key is not the menu's. */
+function titleKeyButton(menu, key) {
+  const k = key.length === 1 ? key.toLowerCase() : key;
+  const bs = [...menu.querySelectorAll("button")], kbd = b => (b.querySelector("kbd") || {}).textContent || "";
+  return bs.find(b => kbd(b).toLowerCase() === k) || ((k === "h" || k === "/") && bs.find(b => kbd(b) === "?")) || null;
+}
+
+/* ArrowDown / ArrowUp through the menu, wrapping. true when the key was one. */
+function titleArrow(menu, ev) {
+  if (ev.key !== "ArrowDown" && ev.key !== "ArrowUp") return false;
+  const bs = [...menu.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+  ev.preventDefault();
+  bs[(i + (ev.key === "ArrowDown" ? 1 : -1) + bs.length) % bs.length].focus();
+  return true;
+}
+
+/* A question or a notice in the title's sheet, from any screen of the game,
+ * in place of window.confirm and window.alert (STANDARD.md §11): those are
+ * silently answered "no", or never shown, where a page is embedded, and a
+ * button that does nothing reads as broken. confirmSheet resolves true only
+ * on the yes button; Cancel, Escape and the backdrop resolve false.
+ * alertSheet resolves when it is dismissed. While one is up it has the keys:
+ * Tab stays inside it and nothing reaches the game behind. Focus goes back
+ * to whatever had it. */
+function confirmSheet(question, yes, title = "Are you sure?") { return dialogSheet(title, question, yes, "Cancel"); }
+function alertSheet(message, title = "Notice") { return dialogSheet(title, message, "OK", null); }
+function dialogSheet(title, text, yes, no) {
+  return new Promise(resolve => {
+    const back = document.activeElement;
+    const el = document.createElement("div");
+    el.className = "gk-sheet";
+    el.setAttribute("role", "alertdialog");
+    el.setAttribute("aria-modal", "true");
+    el.setAttribute("aria-label", title);
+    el.innerHTML = '<div class="gk-box"><div class="gk-head"><h2>' + escHTML(title) + '</h2></div><div class="gk-body"><p>' + escHTML(text) +
+      "</p><div class='gk-row'><button data-yes>" + escHTML(yes) + "</button>" + (no ? "<button data-no>" + escHTML(no) + "</button>" : "") + "</div></div></div>";
+    const done = v => {
+      document.removeEventListener("keydown", onKey, true);
+      el.remove();
+      if (back && back.isConnected && back.focus) back.focus({ preventScroll: true });
+      resolve(v);
+    };
+    const onKey = ev => {
+      if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); done(false); return; }
+      if (ev.key === "Tab") {
+        const bs = [...el.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
+        ev.preventDefault();
+        bs[(i + (ev.shiftKey ? -1 : 1) + bs.length) % bs.length].focus();
+      }
+      /* nothing reaches the game behind; Enter and Space still press the
+         focused button, which is their default, not a listener's */
+      ev.stopPropagation();
+    };
+    el.addEventListener("click", ev => {
+      if (ev.target === el) return done(false);
+      const b = ev.target.closest("button");
+      if (b) done(b.hasAttribute("data-yes"));
+    });
+    document.addEventListener("keydown", onKey, true);
+    document.body.appendChild(el);
+    el.querySelector("[data-yes]").focus();
+  });
+}
+
 /**
  * The title screen, into host.
  *   name      the game's name
@@ -1157,8 +1244,7 @@ function mountTitle(host, cfg) {
   const ctl = new AbortController();
   const sig = { signal: ctl.signal };
   host.innerHTML = titleHTML(cfg);
-  const root = host.firstChild, h1 = root.querySelector("h1"), menu = root.querySelector(".gk-menu");
-  const items = cfg.items.filter(Boolean);
+  const root = host.firstChild, menu = root.querySelector(".gk-menu");
   if (cfg.scene) cfg.scene(root.querySelector(".scene"));
   const focusPrimary = () => { const b = menu.querySelector(".gk-primary") || menu.querySelector("button"); if (b) b.focus({ preventScroll: true }); };
 
@@ -1225,18 +1311,13 @@ function mountTitle(host, cfg) {
     if (ev.ctrlKey || ev.metaKey || ev.altKey) return;
     if (sheet) { if (ev.key === "Escape") { ev.preventDefault(); closeSheet(); } return; }
     if (ev.target.closest && ev.target.closest("input,select,textarea")) return;
-    const k = ev.key.toLowerCase();
-    const hit = items.find(it => it.key && it.key.toLowerCase() === k) || ((k === "h" || k === "/") && items.find(it => it.act === "help"));
-    if (hit) { ev.preventDefault(); act(hit.act); return; }
-    if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
-      const bs = [...menu.querySelectorAll("button")], i = bs.indexOf(document.activeElement);
-      bs[(i + (ev.key === "ArrowDown" ? 1 : -1) + bs.length) % bs.length].focus();
-      ev.preventDefault();
-    }
+    const hit = titleKeyButton(menu, ev.key);
+    if (hit) { ev.preventDefault(); act(hit.dataset.act); return; }
+    titleArrow(menu, ev);
   }, sig);
 
   return {
-    reveal() { root.classList.add("gk-rise"); decodeTitle(h1, cfg.name); focusPrimary(); },
+    reveal() { revealTitle(root); },
     unmount() { ctl.abort(); closeSheet(); }
   };
 }
@@ -1986,6 +2067,21 @@ function loadGame() {
   return true;
 }
 function clearSave() { try { localStorage.removeItem(SAVE_KEY); } catch (e) {} }
+/* Settings' "Forget everything" (games-meta STANDARD.md): every key PumaTriage
+   owns, found by its prefix so a key added later is not one this misses, and
+   only those -- every game on greykit.com shares one origin, so one storage. */
+function forgetEverything() {
+  for (const area of ["localStorage", "sessionStorage"]) {
+    try {
+      const s = window[area];
+      for (let i = s.length - 1; i >= 0; i--) {
+        const k = s.key(i);
+        if (k && k.startsWith("pumatriage")) s.removeItem(k);
+      }
+    } catch (e) { /* no storage */ }
+  }
+  location.reload();
+}
 /* ============================================================
    RULES ENGINE
    Pure functions over a player + G. Nothing here touches the DOM,
@@ -4712,7 +4808,7 @@ function cycleSpeed() {
 function toggleMute() {
   UI.muted = !UI.muted;
   const b = document.getElementById("mute-btn");
-  if (b) b.setAttribute("aria-pressed", UI.muted ? "true" : "false");
+  if (b) b.setAttribute("aria-pressed", UI.muted ? "false" : "true");
   try { localStorage.setItem("pumatriage_muted_v1", UI.muted ? "1" : "0"); } catch (e) {}
 }
 
@@ -5707,7 +5803,7 @@ function currentPreset() {
    SOC game until Custom game changes them), Custom game (the rules
    and presets), Settings, Help, About.
    ============================================================ */
-document.head.insertAdjacentHTML("beforeend", '<style id="gk-title-css">' + TITLE_CSS + "</style>");
+injectTitleCSS();
 const TITLE_NAME = "PumaTriage";
 function rulesLine() {
   if (houseRules.mode === 0) return "solo";
@@ -5745,15 +5841,6 @@ function closeTitle() {
   el.innerHTML = "";
   document.body.classList.remove("on-title");
 }
-/* the entrance: the menu rises and the name decodes */
-function revealTitle() {
-  const t = document.querySelector("#title .gk-title");
-  if (!t) return;
-  t.classList.add("gk-rise");
-  decodeTitle(t.querySelector("h1"), TITLE_NAME);
-  const b = t.querySelector(".gk-primary");
-  if (b) b.focus({ preventScroll: true });
-}
 function toTitle() { closeModal(); openTitle(); revealTitle(); }
 /* the menu's dialogs refresh the title under them, whose quick-game line
    follows the rules */
@@ -5786,12 +5873,21 @@ function titleAct(a) {
 function showSettings() {
   const speedName = ["", "Normal", "Fast", "Instant"];
   document.getElementById("modal-content").innerHTML = `<h2>Settings</h2>
-    <div class="rules-head">Rival and phase speed</div>
-    <div class="presets">${[1, 2, 3].map(n => `<button class="action-btn preset-btn ${UI.speed === n ? "on" : ""}" aria-pressed="${UI.speed === n}" onclick="setSpeed(${n})">${speedName[n]}</button>`).join("")}</div>
     <div class="rules-head">Sound</div>
     <div class="presets"><button class="action-btn preset-btn ${!UI.muted ? "on" : ""}" aria-pressed="${!UI.muted}" onclick="if (UI.muted) toggleMute(); showSettings()">On</button><button class="action-btn preset-btn ${UI.muted ? "on" : ""}" aria-pressed="${UI.muted}" onclick="if (!UI.muted) toggleMute(); showSettings()">Off</button></div>
+    <div class="rules-head">Rival and phase speed</div>
+    <div class="presets">${[1, 2, 3].map(n => `<button class="action-btn preset-btn ${UI.speed === n ? "on" : ""}" aria-pressed="${UI.speed === n}" onclick="setSpeed(${n})">${speedName[n]}</button>`).join("")}</div>
     <div class="hint">Both are in the header during a game too.</div>
+    <div class="rules-head">This browser</div>
+    <div class="presets"><button class="action-btn preset-btn" onclick="confirmForget()">Forget everything</button></div>
+    <div class="hint">Clears everything PumaTriage keeps in this browser: the shift in progress, speed, sound, and the tutorial.</div>
     <div class="modal-actions"><button class="action-btn" onclick="closeModal()">Close</button></div>`;
+  openModal(true);
+}
+function confirmForget() {
+  document.getElementById("modal-content").innerHTML = `<h2>Forget everything?</h2>
+    <p>Forget everything PumaTriage has saved in this browser: the shift in progress, speed, sound, the tutorial? This cannot be undone.</p>
+    <div class="modal-actions"><button class="action-btn primary" onclick="forgetEverything()">Forget everything</button><button class="action-btn" onclick="showSettings()">Cancel</button></div>`;
   openModal(true);
 }
 function setSpeed(n) { while (UI.speed !== n) cycleSpeed(); showSettings(); }
@@ -5801,14 +5897,9 @@ function titleKey(e) {
   if (document.getElementById("modal-overlay").classList.contains("open")) return false;
   const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   if (k === "Enter" || k === " " || k === "Tab" || k === "Shift") return false;
-  const want = { r: "resume", n: "quick", c: "custom", s: "settings", "?": "help", "/": "help", h: "help", a: "about" }[k];
-  const hit = want && document.querySelector(`#title [data-act="${want}"]`);
-  if (hit) { e.preventDefault(); titleAct(want); return true; }
-  if (k === "ArrowDown" || k === "ArrowUp") {
-    const bs = [...document.querySelectorAll("#title .gk-menu button")], i = bs.indexOf(document.activeElement);
-    e.preventDefault();
-    bs[(i + (k === "ArrowDown" ? 1 : -1) + bs.length) % bs.length].focus();
-  }
+  const menu = document.querySelector("#title .gk-menu"), hit = menu && titleKeyButton(menu, k);
+  if (hit) { e.preventDefault(); titleAct(hit.dataset.act); return true; }
+  if (menu) titleArrow(menu, e);
   return true;       /* the SOC is hidden: its keys wait */
 }
 document.getElementById("title").addEventListener("click", e => {
@@ -6157,14 +6248,14 @@ function init() {
   if (scene) scene.innerHTML = sceneSVG();
   setupTips();
   setupInput();
-  try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "true"); } } catch (e) {}
+  try { if (localStorage.getItem("pumatriage_muted_v1") === "1") { UI.muted = true; document.getElementById("mute-btn").setAttribute("aria-pressed", "false"); } } catch (e) {}
   try { const sp = parseInt(localStorage.getItem("pumatriage_speed_v1") || "1", 10); if (sp >= 1 && sp <= 3) { UI.speed = sp; const b = document.getElementById("speed-btn"); if (b) b.textContent = SPEED_LABEL[sp]; } } catch (e) {}
   document.getElementById("board").innerHTML = '<h3>Your SOC</h3><div class="hint">No active shift.</div>';
   const shot = /[#&]shot=([a-z]+)/.exec(location.hash);
   if (shot) { screenshotState(shot[1]); return; }
   /* every load opens on the title, under the boot sequence */
   const saved = hasSave();
-  const boot = runBoot({ lines: ["reload <b>" + esc(location.pathname.replace(/index\.html$/, "")) + "</b>", "one file: nothing to fetch"] });
+  const boot = runBoot({ lines: [bootReloadLine(), "one file: nothing to fetch"] });
   openTitle();
   boot.finish([saved ? `shift ${Math.min(saved.round, ROUNDS)} in progress` : "no shift in progress"]).then(revealTitle);
 }
