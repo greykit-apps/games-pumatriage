@@ -18,6 +18,8 @@ Presets run from one easy rival to three experts with extra trouble, and Custom 
 
 Best on a desktop or laptop screen. Click a staff member, then a tool, then the hosts it should work on.
 
+A touchscreen works too: tap where you would click, and press and hold a card or button to read what it does without acting.
+
 | Key | Action |
 |---|---|
 | 1–9 | Select an analyst or specialist |

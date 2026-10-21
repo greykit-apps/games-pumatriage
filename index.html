@@ -835,10 +835,6 @@ details.addons summary::-webkit-details-marker { display: none; }
    ============================================================ */
 *:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-@media (pointer: coarse) {
-  .action-btn, .icon-btn { min-height: 44px; }
-  .meeple { min-height: 36px; }
-}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
@@ -914,6 +910,46 @@ details.addons summary::-webkit-details-marker { display: none; }
   #hud-top { grid-template-columns: 1fr auto; grid-template-areas: "title buttons" "strip strip" "stats stats"; }
   #hud-top .stats { justify-content: flex-start; }
   #phase-strip { flex-wrap: wrap; }
+}
+
+/* TOUCH. Any coarse pointer on the machine counts (a touchscreen laptop
+   reports one beside its trackpad), and the rules sit last so the laptop
+   compaction above cannot shrink a target back below a fingertip. Nothing
+   here keys off width: an iPad and a touch laptop get the same board. */
+@media (any-pointer: coarse) {
+  :root { --die: clamp(44px, 2.7vw, 48px); }
+  #app, #modal-content { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  /* A press-and-hold on the board asks "what is this?" (setupTips): it must
+     not also select the text or raise the browser's own menu. */
+  #app { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  html { overscroll-behavior-y: contain; }
+  .action-btn, .seg-btn, .help-tab, .preset-btn, .colour-btn { min-height: 44px; }
+  .icon-btn { min-width: 44px; min-height: 44px; }
+  #newgame-btn { min-width: 44px; }
+  .action-btn.sm { padding: 3px 12px; }
+  .seg-btn { padding: 3px 14px; }
+  .help-tab { padding: 5px 14px; }
+  .colour-btn { height: 44px; }
+  .meeple, .dept-tile { min-height: 44px; }
+  /* Fingertip buttons make the strip's two rows taller than its floor: it
+     must grow, not squash to the floor and spill its buttons off the foot. */
+  #strip { flex-shrink: 0; }
+  .dept-tile { padding-top: 6px; padding-bottom: 6px; }
+  .meeple { padding-top: 6px; padding-bottom: 6px; }
+  .spec-card, .vendor, .itoken, .admin-card, .report { min-height: 44px; }
+  .ward .ward-h { min-height: 24px; align-items: center; }
+  .ward.place-ok .ward-h { min-height: 44px; }
+  .nursery .slot.g { width: 48px; height: 48px; }
+  .nursery .slot.g .die-sm { --die: 44px; }
+  .nursery .nslots { min-height: 48px; }
+  .action-btn { min-width: 44px; }
+  #log-older summary, details.addons summary { display: flex; align-items: center; min-height: 44px; padding-top: 0; padding-bottom: 0; }
+  #modal-content { max-height: 92vh; max-height: 92dvh; overscroll-behavior: contain; }
+  #tip { font-size: 14px; max-width: 340px; }
+  #tip .th { font-size: 12px; }
+}
+@media (any-pointer: coarse) and (max-width: 960px) {
+  :root { --die: clamp(44px, 9vw, 52px); }
 }
 </style>
 </head>
@@ -2782,7 +2818,7 @@ const WAIT = "wait", ANIM = "anim", NEXT = "next";
 
 const UI = {
   sel: {}, legalTargets: new Set(), legalByDept: {}, undo: [], undoBarrier: 0,
-  eventQueue: [], queueTimer: null, pick: null, clickEl: null, boardMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
+  eventQueue: [], queueTimer: null, pick: null, clickEl: null, touch: false, lastAttention: null, boardMax: 0, boardFor: null, boardKey: "", animating: false, headless: false, simulating: false,
   flipRects: new Map(), cardH: new Map(), prevHUD: {}, prevPhase: null, muted: false,
   reducedMotion: window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   phaseToastTimer: null, autoHuman: false, tutorialStep: -1,
@@ -4922,11 +4958,11 @@ function toggleDie(list, uid) { const i = list.indexOf(uid); if (i >= 0) list.sp
 // A quick second click on the same host commits the selection; a slow second
 // click still toggles it off. Tracked by uid and time rather than the native
 // dblclick event, because the board is rebuilt between the two clicks.
-const DBLCLICK_MS = 350;
+const DBLCLICK_MS = 350, DBLCLICK_TOUCH_MS = 500; // a fingertip is slower to land twice than a mouse button
 function isDoubleClick(uid) {
   const now = Date.now(), last = UI.lastDieClick;
   UI.lastDieClick = { uid, t: now };
-  if (last && last.uid === uid && now - last.t < DBLCLICK_MS) { UI.lastDieClick = null; return true; }
+  if (last && last.uid === uid && now - last.t < (UI.touch ? DBLCLICK_TOUCH_MS : DBLCLICK_MS)) { UI.lastDieClick = null; return true; }
   return false;
 }
 function keepCommit(uid) {
@@ -6019,9 +6055,17 @@ function markAttention() {
   const want = G ? attentionTarget() : null;
   const map = { table: "#table", strip: "#strip", staff: ".grp-staff", tools: ".grp-tools", wards: ".grp-wards" };
   document.querySelectorAll(".attention").forEach(el => el.classList.remove("attention"));
-  if (!want) return;
+  if (!want) { UI.lastAttention = null; return; }
   const el = document.querySelector(map[want]);
   if (el && !el.classList.contains("idle")) el.classList.add("attention");
+  // Where the next move is can sit below the fold behind the strip, and a
+  // finger has no wheel to go and find it: bring it up when the move changes.
+  const strip = document.getElementById("strip");
+  if (UI.touch && !UI.headless && el && strip && want !== UI.lastAttention) {
+    el.style.scrollMarginBottom = strip.offsetHeight + 8 + "px";
+    el.scrollIntoView({ block: "nearest", behavior: UI.reducedMotion ? "auto" : "smooth" });
+  }
+  UI.lastAttention = want;
 }
 // The card you took travels from the display to its place on your board.
 function playTake() {
@@ -6204,7 +6248,13 @@ function specPicto(def) {
 function tipAttrs(head, body, colour) {
   return `data-tip="${esc(body)}" data-tip-h="${esc(head)}" data-tip-c="${esc(colour || "")}"`;
 }
-const TIP = { el: null, target: null, x: -1, y: -1, timer: null };
+const TIP = { el: null, target: null, x: -1, y: -1, timer: null, hold: null, eat: false };
+/* Touch is a mode of the last input, not a property of the screen: a touch
+   laptop keeps its trackpad and keys, so the prompts follow whichever the
+   player used last. Wording only; sizes are CSS (any-pointer: coarse). */
+function tw(s) {
+  return UI.touch ? s.replace(/\bHover\b/g, "Press and hold").replace(/\b([Dd])ouble-click\b/g, "$1ouble-tap").replace(/\bClick(s?)\b/g, "Tap$1").replace(/\bclick(s?)\b/g, "tap$1") : s;
+}
 function tipTarget(node) {
   const el = node && node.closest ? node.closest("[data-tip], [title]") : null;
   if (!el || el === document.documentElement) return null;
@@ -6254,15 +6304,51 @@ function setupTips() {
   tip.id = "tip"; tip.setAttribute("role", "tooltip"); tip.setAttribute("aria-hidden", "true");
   document.body.appendChild(tip);
   TIP.el = tip;
+  UI.touch = matchMedia("(pointer: coarse)").matches;
   document.addEventListener("pointerover", e => { if (e.pointerType === "touch") return; TIP.x = e.clientX; TIP.y = e.clientY; hoverTip(e.target); });
   document.addEventListener("pointermove", e => { TIP.x = e.clientX; TIP.y = e.clientY; }, { passive: true });
   document.addEventListener("pointerout", e => { if (!e.relatedTarget) hideTip(); });
   // A click is an action, not a question: the box gets out of the way of what it changes.
   document.addEventListener("pointerdown", hideTip, { capture: true });
+  setupTouchTips();
   document.addEventListener("focusin", e => { if (e.target.matches && e.target.matches(":focus-visible")) hoverTip(e.target, true); });
   document.addEventListener("focusout", () => hideTip());
   document.addEventListener("keydown", e => { if (e.key === "Escape") hideTip(); });
   window.addEventListener("scroll", hideTip, { passive: true, capture: true });
+}
+/* Touch has no hover, so the box answers a press-and-hold: the card, tool or
+   button opens it after a beat and the lift-off that follows is swallowed, so
+   asking never acts. A plain tap on something that does nothing opens it too,
+   for a few seconds. Moving the finger is a scroll, not a question. */
+const HOLD_MS = 420, HOLD_SLOP = 10, TAP_TIP_MS = 3500;
+function setupTouchTips() {
+  const clear = () => { if (TIP.hold) clearTimeout(TIP.hold.timer); TIP.hold = null; };
+  document.addEventListener("pointerdown", e => {
+    clear(); TIP.eat = false;
+    const touch = e.pointerType !== "mouse";
+    UI.touch = touch; // the prompts reword at the next render, never under a press in progress
+    if (!touch) return;
+    const el = tipTarget(e.target);
+    if (!el) return;
+    const hold = TIP.hold = { id: e.pointerId, x: e.clientX, y: e.clientY, el, timer: 0 };
+    hold.timer = setTimeout(() => { TIP.eat = true; TIP.x = hold.x; TIP.y = hold.y; if (el.isConnected) showTip(el); TIP.hold = null; }, HOLD_MS);
+  }, { capture: true });
+  document.addEventListener("pointermove", e => {
+    const h = TIP.hold;
+    if (h && e.pointerId === h.id && Math.hypot(e.clientX - h.x, e.clientY - h.y) > HOLD_SLOP) clear();
+  }, { passive: true });
+  document.addEventListener("pointerup", e => {
+    const h = TIP.hold;
+    clear();
+    if (!h || e.pointerId !== h.id || !h.el.isConnected || h.el.closest("[data-act], button, summary, a, [onclick]")) return;
+    showTip(h.el);
+    TIP.timer = setTimeout(hideTip, TAP_TIP_MS);
+  });
+  document.addEventListener("pointercancel", clear);
+  // The lift-off after a hold is not a click on what was held.
+  document.addEventListener("click", e => { if (TIP.eat) { TIP.eat = false; e.stopPropagation(); e.preventDefault(); } }, true);
+  // Android raises its own menu on a long press; the box is the answer here.
+  document.addEventListener("contextmenu", e => { if (UI.touch && e.target.closest && e.target.closest("#app")) e.preventDefault(); });
 }
 function renderDeptTile(type, cls, attrs, inner) {
   const def = DEPT_DEFS[type];
@@ -6352,7 +6438,7 @@ function renderBoard() {
       else if (!d.used) { cls.push("disabled"); why = "No valid targets right now. " + why; }
     }
     if (live && s.deptUid === d.uid) cls.push("sel");
-    if (returning && d.improvement) { cls.push("returnable"); why = "Click to return it for an intel token. " + why; }
+    if (returning && d.improvement) { cls.push("returnable"); why = tw("Click to return it for an intel token. ") + why; }
     if (d.uid >= G.nextUid - 2) cls.push("new");
     const m = p.meeples.find(x => x.deptUid === d.uid);
     const inner = m ? `<span class="meep-on mini-dot dot c-${m.colour}" title="${esc(meepleLabel(p, m))}"></span>` : "";
@@ -6410,13 +6496,13 @@ function renderCenter() {
   } else if (ph === "setup" && st === "startDice") {
     html += '<div class="center-title">Starting hosts</div><div class="keep-row">';
     for (const d of p.startDice) html += renderDie(d, { act: true, cls: s.pending === d.uid ? "sel clickable" : "clickable" });
-    html += '</div><div class="hint">Click two hosts to swap their values. Colour is just colour.</div>';
+    html += `</div><div class="hint">${tw("Click two hosts to swap their values. Colour is just colour.")}</div>`;
   } else if (st === "extraReveal" && G.actor === 0 && G.players.length === 2) {
     html += '<div class="center-title">Extra reveal</div>' + renderDisplay(false);
   } else if (ph === "intake" && (st === "draw" || st === "pick")) {
     const myTurn = st === "pick" && G.actor === 0 && !UI.animating && p.ambulance === null;
     html += myTurn
-      ? `<div class="center-title yours">Your pick: take one queue</div><div class="hint pick-hint">Lowest earns intel + Commander${p.id === G.firstPlayer ? "; not #1 for you" : ""}. Click twice to take.</div><div id="queues">`
+      ? `<div class="center-title yours">Your pick: take one queue</div><div class="hint pick-hint">${tw(`Lowest earns intel + Commander${p.id === G.firstPlayer ? "; not #1 for you" : ""}. Click twice to take.`)}</div><div id="queues">`
       : '<div class="center-title">Escalation queues</div><div id="queues">';
     const free = emptyBeds(p).length;
     for (const a of G.ambulances.slice().sort((x, y) => x.num - y.num)) {
@@ -6455,17 +6541,17 @@ function renderCenter() {
     const cur = placingDie(p);
     html += '<div class="center-title">Incoming hosts — place each</div><div class="keep-row">';
     for (const d of p.pendingDice) html += renderDie(d, { cls: cur && cur.uid === d.uid ? "sel" : "dim" });
-    html += `</div><div class="hint">${p.twinsPending ? "Choose the guests below." : p.pendingDice.length ? "Hypervisors first. Click a glowing segment." : "All placed."}</div>`;
+    html += `</div><div class="hint">${p.twinsPending ? "Choose the guests below." : p.pendingDice.length ? tw("Hypervisors first. Click a glowing segment.") : "All placed."}</div>`;
   } else if (ph === "improve" && st === "invest" && G.cfg.invest) {
     html += '<div class="center-title">Procurement desk</div>' + renderProcurement();
   } else if (ph === "improve") {
     const mine = st === "take" && G.actor === 0 && !UI.animating;
     html += mine
-      ? `<div class="center-title yours">Your pick: take ${G.cfg.solo ? "the tool or the specialist" : "one tool or specialist"}</div><div class="hint pick-hint">${G.cfg.solo ? "The other goes back. " : ""}Click twice to take.</div>`
+      ? `<div class="center-title yours">Your pick: take ${G.cfg.solo ? "the tool or the specialist" : "one tool or specialist"}</div><div class="hint pick-hint">${tw(`${G.cfg.solo ? "The other goes back. " : ""}Click twice to take.`)}</div>`
       : `<div class="center-title">${G.cfg.solo ? "Improvement — take one, the other goes back" : "Improvement display"}</div>`;
     html += renderDisplay(mine);
   } else if (ph === "activate" && st === "consultant") {
-    html += '<div class="center-title">Consultant</div><div class="hint">Click one of your specialists on the board for the Consultant to shadow this shift.</div>';
+    html += `<div class="center-title">Consultant</div><div class="hint">${tw("Click one of your specialists on the board for the Consultant to shadow this shift.")}</div>`;
   } else if (ph === "discharge" && st === "reports") {
     html += '<div class="center-title">Audit Reports</div>' + renderReports(true);
   } else if (ph === "final" && st === "collections") {
@@ -6778,7 +6864,7 @@ function updatePhaseUI() {
   const pr = promptFor();
   const pi = document.getElementById("phase-instructions"), ab = document.getElementById("action-buttons");
   if (!pi || !ab) return;
-  pi.textContent = pr.text || "";
+  pi.textContent = tw(pr.text || "");
   ab.innerHTML = (pr.buttons || []).map(b =>
     `<button class="action-btn ${b.primary ? "primary" : ""} ${b.danger ? "danger" : ""}" onclick="${b.fn}" ${b.disabled ? "disabled" : ""}>${esc(b.label)}${b.key ? `<span class="k">${b.key}</span>` : ""}</button>`).join("");
 }
@@ -7398,7 +7484,7 @@ function showHowToPlay(tab) {
       </ol>
     </div>
     <div ${panel("cards")}>
-      <p>Every tool and specialist says its rule in dice: the dice it works on, then what it does to them. Hover any card in play, or read the Tools and Specialists tabs, for the rule in words.</p>
+      <p>Every tool and specialist says its rule in dice: the dice it works on, then what it does to them. ${tw("Hover any card in play")}, or read the Tools and Specialists tabs, for the rule in words.</p>
       <h4>Which hosts</h4>
       <table class="help-table">${legendHosts}</table>
       <h4>What it does</h4>
@@ -7488,7 +7574,8 @@ function showHowToPlay(tab) {
         <li><b>H</b> or <b>?</b> — this help</li>
         <li><b>M</b> — toggle sound</li>
         <li><b>S</b> — rival and phase speed: normal, fast, instant</li>
-        <li><b>Double-click a host</b> — confirm the current selection (a slow second click deselects it instead)</li>
+        <li><b>Double-click</b> or <b>double-tap</b> a host — confirm the current selection (a slow second click deselects it instead)</li>
+        <li><b>Press and hold</b> a card, tool, host or button on a touchscreen — read what it does without acting; the next touch closes the note</li>
         <li><b>Tab</b> — every host, tool and analyst is reachable by keyboard</li>
       </ul>
     </div>
@@ -7552,7 +7639,7 @@ function showTutorial(i) {
   const mc = document.getElementById("modal-content");
   if (i >= TUTORIAL_STEPS.length) { endTutorial(); return; }
   const [t, body] = TUTORIAL_STEPS[i];
-  mc.innerHTML = `<h2>${esc(t)}</h2><div class="menu-tagline">Tutorial ${i + 1} of ${TUTORIAL_STEPS.length}</div><p class="tut-step">${esc(body)}</p>
+  mc.innerHTML = `<h2>${esc(t)}</h2><div class="menu-tagline">Tutorial ${i + 1} of ${TUTORIAL_STEPS.length}</div><p class="tut-step">${esc(tw(body))}</p>
     <div class="modal-actions"><button class="action-btn primary" onclick="showTutorial(${i + 1})">${i + 1 === TUTORIAL_STEPS.length ? "Start" : "Next"}</button><button class="action-btn" onclick="endTutorial()">Skip</button></div>`;
   openModal(false);
 }
