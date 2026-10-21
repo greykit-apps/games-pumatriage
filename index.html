@@ -6331,7 +6331,7 @@ function setupTouchTips() {
     const el = tipTarget(e.target);
     if (!el) return;
     const hold = TIP.hold = { id: e.pointerId, x: e.clientX, y: e.clientY, el, timer: 0 };
-    hold.timer = setTimeout(() => { TIP.eat = true; TIP.x = hold.x; TIP.y = hold.y; if (el.isConnected) showTip(el); TIP.hold = null; if (navigator.vibrate) navigator.vibrate(12); }, HOLD_MS);
+    hold.timer = setTimeout(() => { TIP.eat = true; TIP.x = hold.x; TIP.y = hold.y; if (el.isConnected) showTip(el); TIP.hold = null; }, HOLD_MS);
   }, { capture: true });
   document.addEventListener("pointermove", e => {
     const h = TIP.hold;
